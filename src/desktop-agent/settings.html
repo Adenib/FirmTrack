@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>FirmTrack Tracker Settings</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+        font-size: 13px;
+        color: #111827;
+        background: #ffffff;
+        padding: 16px;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 4px;
+      }
+      p.subtitle {
+        color: #6b7280;
+        margin: 0 0 16px;
+      }
+      label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #6b7280;
+        margin: 12px 0 4px;
+      }
+      input[type='text'],
+      input[type='password'],
+      select {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+      .row {
+        display: flex;
+        gap: 6px;
+      }
+      .row input {
+        flex: 1;
+      }
+      .row button {
+        flex: 0 0 auto;
+        padding: 0 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: #f9fafb;
+        cursor: pointer;
+      }
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 14px;
+      }
+      .checkbox-row label {
+        margin: 0;
+        text-transform: none;
+        font-weight: 400;
+        font-size: 13px;
+        color: #111827;
+      }
+      #save {
+        margin-top: 20px;
+        width: 100%;
+        padding: 8px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      #save:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      #status {
+        margin-top: 10px;
+        font-size: 12px;
+        min-height: 16px;
+      }
+      #status.ok {
+        color: #16a34a;
+      }
+      #status.err {
+        color: #dc2626;
+      }
+      #queue-note {
+        margin-top: 6px;
+        font-size: 11px;
+        color: #9ca3af;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>FirmTrack Tracker</h1>
+    <p class="subtitle">Configure how this PC reports activity to FirmTrack.</p>
+
+    <label for="serverUrl">FirmTrack server URL</label>
+    <input id="serverUrl" type="text" placeholder="https://yourfirm.example.com" />
+
+    <label for="apiKey">API key</label>
+    <div class="row">
+      <input id="apiKey" type="password" placeholder="ftk_..." />
+      <button id="toggle-key" type="button">Show</button>
+    </div>
+
+    <label for="interval">Tracking interval</label>
+    <select id="interval">
+      <option value="30">30 seconds</option>
+      <option value="60">60 seconds</option>
+      <option value="300">5 minutes</option>
+    </select>
+
+    <div class="checkbox-row">
+      <input id="startOnLogin" type="checkbox" />
+      <label for="startOnLogin">Start automatically when Windows logs in</label>
+    </div>
+
+    <button id="save">Save</button>
+    <p id="status"></p>
+    <p id="queue-note"></p>
+
+    <script src="settings.js"></script>
+  </body>
+</html>

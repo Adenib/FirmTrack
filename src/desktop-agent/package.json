@@ -1,0 +1,20 @@
+{
+  "name": "firmtrack-tracker",
+  "version": "1.0.0",
+  "description": "FirmTrack Time Tracker Agent",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "build:installer": "electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "active-win": "^8.2.1",
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  }
+}

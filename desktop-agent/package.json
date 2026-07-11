@@ -1,0 +1,14 @@
+{
+  "name": "firmtrack-desktop-agent",
+  "version": "1.0.0",
+  "description": "Tracks the active window/process on a lawyer's Windows PC and reports it to FirmTrack every 30 seconds.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "active-win": "^8.2.1",
+    "dotenv": "^16.4.5"
+  }
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Design source for icon.png/icon.ico/tray-icon*.png (generated as raster PNG/ICO, since Windows
+       tray and app icons must be PNG/ICO, not SVG). Regenerate with a script similar to the one used
+       to produce those files if you replace this placeholder with a real logo. -->
+  <circle cx="128" cy="128" r="118" fill="#2563eb" />
+</svg>

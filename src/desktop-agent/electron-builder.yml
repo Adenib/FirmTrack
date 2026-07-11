@@ -1,0 +1,43 @@
+# electron-builder config. Deliberately kept separate from package.json's
+# "build" field (rather than duplicating settings in both places) since
+# electron-builder only reads one or the other — having both risks a config
+# silently overriding itself.
+appId: com.compnet.firmtrack-tracker
+productName: FirmTrack Tracker
+directories:
+  output: dist
+
+# Default `files` glob (everything except .git, node_modules/.bin, etc.) is
+# used deliberately — it already packs all of node_modules, main.js,
+# tracker.js, preload.js, settings.html/js, and assets/.
+asar: true
+
+win:
+  target: nsis
+  icon: assets/icon.ico
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: false
+  createStartMenuShortcut: true
+  runAfterFinish: true
+
+extraResources:
+  - assets/
+
+# --- Code signing (production) ---
+# Unsigned builds will trigger a Windows SmartScreen warning on first run.
+# To sign, either:
+#   1. Set CSC_LINK (path or URL to a .pfx) and CSC_KEY_PASSWORD env vars
+#      before running `npm run build:installer` — electron-builder picks
+#      these up automatically, no config change needed here.
+#   2. Or add:
+#        win:
+#          certificateFile: path/to/cert.pfx
+#          certificatePassword: ${env.CERT_PASSWORD}
+# A self-signed cert (e.g. via `New-SelfSignedCertificate` in PowerShell)
+# removes the warning for internal/testing distribution only — it will
+# still show a SmartScreen warning for the public until the cert
+# accumulates enough reputation, or until a proper EV/OV cert is used.

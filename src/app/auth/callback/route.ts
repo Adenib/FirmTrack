@@ -1,0 +1,76 @@
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+
+const slugify = (text: string) =>
+  text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=missing_code`)
+  }
+
+  const supabase = await createClient()
+
+  const { data: sessionData, error: sessionError } =
+    await supabase.auth.exchangeCodeForSession(code)
+
+  if (sessionError || !sessionData.user) {
+    return NextResponse.redirect(`${origin}/login?error=confirmation_failed`)
+  }
+
+  const user = sessionData.user
+
+  // Check if this user already has a profile (avoids duplicate org creation
+  // if they click the confirmation link twice)
+  const { data: existingProfile } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', user.id)
+    .single()
+
+  if (existingProfile) {
+    return NextResponse.redirect(`${origin}/dashboard`)
+  }
+
+  const orgName = (user.user_metadata?.org_name as string) || 'My Organization'
+  const slug = slugify(orgName) + '-' + Math.random().toString(36).slice(2, 7)
+
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .insert({ name: orgName, slug, plan: 'free' })
+    .select()
+    .single()
+
+  if (orgError || !org) {
+    return NextResponse.redirect(`${origin}/login?error=org_creation_failed`)
+  }
+
+  const { error: userError } = await supabase
+    .from('users')
+    .insert({
+      id: user.id,
+      tenant_id: org.id,
+      email: user.email,
+      role: 'owner',
+    })
+
+  if (userError) {
+    return NextResponse.redirect(`${origin}/login?error=profile_creation_failed`)
+  }
+
+  const freeModules = ['timetrack', 'movementtrack', 'tasktrack', 'billtrack', 'admin']
+  const subscriptionRows = freeModules.map((module) => ({
+    tenant_id: org.id,
+    module,
+    tier: 'free',
+    is_active: true,
+    price_per_user: 0,
+  }))
+
+  await supabase.from('subscriptions').insert(subscriptionRows)
+
+  return NextResponse.redirect(`${origin}/dashboard`)
+}
