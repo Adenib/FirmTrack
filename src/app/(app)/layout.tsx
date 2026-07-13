@@ -49,6 +49,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [])
 
   const { organization, profile, activeModules } = data
+  // Owner/admin see every module (locked ones included, as an upsell surface).
+  // Everyone else only sees modules their tenant currently subscribes to —
+  // no "Locked" upsell noise for staff who can't act on it anyway.
+  const isPrivileged = profile?.role === 'owner' || profile?.role === 'admin'
+  const visibleModules = isPrivileged ? MODULES : MODULES.filter((mod) => activeModules.includes(mod.key))
 
   return (
     <div className="min-h-screen flex">
@@ -80,7 +85,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <i className="ti ti-file-plus" style={{ fontSize: 18 }} />
             New Matter
           </Link>
-          {MODULES.map((mod) => {
+          {visibleModules.map((mod) => {
             const isActive = activeModules.includes(mod.key)
             return isActive ? (
               <Link
