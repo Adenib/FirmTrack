@@ -28,8 +28,16 @@ export default function ResetPasswordPage() {
     const hashParams = new URLSearchParams(window.location.hash.slice(1))
     const accessToken = hashParams.get('access_token')
     const refreshToken = hashParams.get('refresh_token')
+    const hashError = hashParams.get('error_description')
 
-    if (code) {
+    if (hashError) {
+      // Supabase forwards a failed verification (already-used or expired
+      // token) as #error=...&error_description=... rather than a code or
+      // access_token — distinct from the link simply having no auth data
+      // at all, so this gets its own message rather than falling through
+      // to the generic "invalid or missing" case below.
+      setError(decodeURIComponent(hashError.replace(/\+/g, ' ')))
+    } else if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
         if (exchangeError) {
           setError('This reset link has expired or already been used. Please request a new one.')
