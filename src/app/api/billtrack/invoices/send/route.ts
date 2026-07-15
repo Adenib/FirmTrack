@@ -10,6 +10,10 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Headless Chromium cold-start + PDF render + Resend upload can take
+// several seconds; Vercel's default function duration (10s) cuts it close.
+export const maxDuration = 30
+
 // Manually sends (or re-sends) an invoice notification email right now.
 // `kind` defaults to 'initial' the first time, 'reminder' otherwise — but
 // the caller can always pick, since a lawyer might want to manually

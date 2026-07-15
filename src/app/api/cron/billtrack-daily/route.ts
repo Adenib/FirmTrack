@@ -9,6 +9,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// This loop can send a PDF-attached email per invoice across every
+// billtrack-subscribed tenant in one run, so it gets more headroom than a
+// single-invoice send route.
+export const maxDuration = 120
+
 // Vercel Cron triggers this with GET and, when CRON_SECRET is set as a
 // project env var, automatically sends it as this bearer token — so this
 // check alone is enough to reject any non-Vercel caller.
