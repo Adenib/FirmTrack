@@ -11,20 +11,24 @@ export default function ResetPasswordPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  // The emailed link lands here one of two ways depending on whether the
-  // browser opening it has the code-verifier cookie from the request (same
-  // browser/device): ?code=... (PKCE, exchanged below) — or, very commonly
-  // in practice (clicking the link from a phone's mail app, a different
-  // browser than the one that requested the reset, etc.), no matching
-  // verifier is found and Supabase falls back to the implicit flow instead,
-  // landing here with #access_token=...&refresh_token=... in the hash
-  // fragment. Both must be handled or cross-device resets silently fail.
-  // This must NOT reuse /auth/callback either way: that route treats any
+  // token_hash is the primary path: the Reset Password email template is
+  // configured to link directly here with ?token_hash=...&type=recovery,
+  // verified via verifyOtp() — which needs no code-verifier cookie at all,
+  // so it works no matter which browser/device opens the link (checking
+  // email on a phone while the reset was requested on a desktop browser is
+  // the common case, and PKCE's code_verifier is by design only available
+  // in the browser session that originated the request, breaking that).
+  // ?code= and #access_token= are kept as fallbacks in case the email
+  // template ever reverts to Supabase's default confirmation-link format.
+  // None of these must reuse /auth/callback: that route treats any
   // first-time code exchange for an existing profile as "just log them
   // in," which would silently skip the password change entirely.
   useEffect(() => {
     const supabase = createClient()
-    const code = new URLSearchParams(window.location.search).get('code')
+    const searchParams = new URLSearchParams(window.location.search)
+    const tokenHash = searchParams.get('token_hash')
+    const otpType = searchParams.get('type')
+    const code = searchParams.get('code')
     const hashParams = new URLSearchParams(window.location.hash.slice(1))
     const accessToken = hashParams.get('access_token')
     const refreshToken = hashParams.get('refresh_token')
@@ -37,6 +41,14 @@ export default function ResetPasswordPage() {
       // at all, so this gets its own message rather than falling through
       // to the generic "invalid or missing" case below.
       setError(decodeURIComponent(hashError.replace(/\+/g, ' ')))
+    } else if (tokenHash) {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: (otpType as 'recovery') || 'recovery' }).then(({ error: verifyError }) => {
+        if (verifyError) {
+          setError('This reset link has expired or already been used. Please request a new one.')
+          return
+        }
+        setReady(true)
+      })
     } else if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
         if (exchangeError) {
