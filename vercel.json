@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/billtrack-daily",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

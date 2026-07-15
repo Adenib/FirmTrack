@@ -20,6 +20,31 @@ function extractCookieHeader(res: Response): string {
   return setCookies.map((c) => c.split(';')[0]).join('; ')
 }
 
+async function loginAs(email: string, password: string) {
+  const loginRes = await fetch(`${APP_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  if (!loginRes.ok) {
+    throw new Error(`Failed to log in test user: ${JSON.stringify(await loginRes.json())}`)
+  }
+  const cookieHeader = extractCookieHeader(loginRes)
+  if (!cookieHeader) {
+    throw new Error('Login succeeded but no session cookie was returned')
+  }
+
+  return (path: string, init: RequestInit = {}) =>
+    fetch(`${APP_URL}${path}`, {
+      ...init,
+      headers: {
+        'content-type': 'application/json',
+        ...(init.headers || {}),
+        cookie: cookieHeader,
+      },
+    })
+}
+
 // Registers a brand-new throwaway tenant (own org, own auth user) via the
 // same routes a real signup uses, so tests exercise real code paths rather
 // than inserting fixture rows directly. Each test FILE should call this
@@ -63,50 +88,59 @@ export async function createTestTenant(namePrefix: string): Promise<TestTenant> 
     price_per_user: 0,
   })
 
-  const loginRes = await fetch(`${APP_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  })
-  if (!loginRes.ok) {
-    throw new Error(`Failed to log in test user: ${JSON.stringify(await loginRes.json())}`)
-  }
-  const cookieHeader = extractCookieHeader(loginRes)
-  if (!cookieHeader) {
-    throw new Error('Login succeeded but no session cookie was returned')
-  }
-
-  const authedFetch = (path: string, init: RequestInit = {}) =>
-    fetch(`${APP_URL}${path}`, {
-      ...init,
-      headers: {
-        'content-type': 'application/json',
-        ...(init.headers || {}),
-        cookie: cookieHeader,
-      },
-    })
+  const authedFetch = await loginAs(email, password)
 
   return { tenantId, userId, email, fetch: authedFetch }
+}
+
+// Creates an additional user in an existing tenant (owner/admin-only route,
+// so must be called with an already-privileged tenant.fetch) and logs them
+// in, returning their own authenticated fetch — for tests that need to
+// exercise permission checks as a specific non-owner role.
+export async function createTestUser(
+  tenant: TestTenant,
+  opts: { role: string }
+): Promise<TestTenant> {
+  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const email = `test-${opts.role}-${uniqueId}@firmtrack-test.local`
+  const password = 'TestPassword123!'
+
+  const res = await tenant.fetch('/api/admin/users', {
+    method: 'POST',
+    body: JSON.stringify({ email, role: opts.role, password }),
+  })
+  const body = await res.json()
+  if (!res.ok) throw new Error(`Failed to create test user: ${body.error}`)
+
+  const authedFetch = await loginAs(email, password)
+  return { tenantId: tenant.tenantId, userId: body.userId, email, fetch: authedFetch }
 }
 
 // Explicit ordered delete by tenant_id across every table, rather than
 // relying solely on `on delete cascade` from organizations — the
 // pre-migration tables (matters, clients, time_entries, lawyers) predate
 // this repo's migration history and their cascade behavior isn't confirmed.
-export async function destroyTestTenant(tenant: { tenantId: string; userId: string }) {
+export async function destroyTestTenant(tenant: { tenantId: string; userId: string }, extraUserIds: string[] = []) {
   const { tenantId, userId } = tenant
 
   const tablesInOrder = [
+    'invoice_reminders',
+    'billtrack_settings',
     'journal_lines',
     'journal_entries',
     'accounting_periods',
     'budgets',
-    'invoices',
+    // activity_log.converted_to_entry_id -> time_entries, and
+    // time_entries.invoice_id / disbursements.invoice_id -> invoices, so
+    // both must be deleted before the tables they reference or the
+    // FK-constrained delete on the parent silently fails (no cascade on
+    // either FK) and leaves orphaned rows.
+    'activity_log',
+    'time_entries',
     'disbursements',
+    'invoices',
     'trust_ledger_entries',
     'chart_of_accounts',
-    'time_entries',
-    'activity_log',
     'agent_api_keys',
     'accounts_staff',
     'accounts_categories',
@@ -125,22 +159,30 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
   }
 
   await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {})
+  for (const extraId of extraUserIds) {
+    await supabaseAdmin.auth.admin.deleteUser(extraId).catch(() => {})
+  }
 }
 
-export async function createTestClient(tenant: TestTenant, name: string) {
+export async function createTestClient(tenant: TestTenant, name: string, opts: { email?: string } = {}) {
   const res = await tenant.fetch('/api/admin/clients', {
     method: 'POST',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, email: opts.email }),
   })
   const body = await res.json()
   if (!res.ok) throw new Error(`Failed to create test client: ${body.error}`)
   return body.client
 }
 
-export async function createTestMatter(tenant: TestTenant, clientId: string, caseName: string) {
+export async function createTestMatter(
+  tenant: TestTenant,
+  clientId: string,
+  caseName: string,
+  opts: { responsible_lawyer?: string } = {}
+) {
   const res = await tenant.fetch('/api/admin/matters', {
     method: 'POST',
-    body: JSON.stringify({ client_id: clientId, case_name: caseName }),
+    body: JSON.stringify({ client_id: clientId, case_name: caseName, responsible_lawyer: opts.responsible_lawyer }),
   })
   const body = await res.json()
   if (!res.ok) throw new Error(`Failed to create test matter: ${body.error}`)
