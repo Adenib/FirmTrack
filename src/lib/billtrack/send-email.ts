@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { generateInvoicePdf, type InvoiceRow } from './invoice-pdf'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +13,12 @@ type InvoiceForEmail = {
   invoice_number: string
   invoice_date: string
   due_date: string | null
+  fees_amount_usd: number
+  disbursements_amount_usd: number
   total_amount_usd: number
+  paid_amount_usd: number
+  status: string
+  matter_id: string
   matters: { case_name: string } | { case_name: string }[] | null
 }
 
@@ -23,12 +29,14 @@ export type SendTransport = (args: {
   to: string
   subject: string
   html: string
+  attachment: { filename: string; content: string }
 }) => Promise<void>
 
 // Real Resend call, isolated behind the SendTransport type so tests can
 // inject a stub and assert on recipient/subject/content without a network
-// call or a live API key.
-const resendTransport: SendTransport = async ({ apiKey, fromEmail, fromName, to, subject, html }) => {
+// call, a live API key, or (since attachment generation renders a PDF via
+// headless Chromium) an actual browser launch.
+const resendTransport: SendTransport = async ({ apiKey, fromEmail, fromName, to, subject, html, attachment }) => {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -40,6 +48,7 @@ const resendTransport: SendTransport = async ({ apiKey, fromEmail, fromName, to,
       to: [to],
       subject,
       html,
+      attachments: [attachment],
     }),
   })
   if (!res.ok) {
@@ -110,7 +119,11 @@ export async function sendInvoiceEmail(
 ): Promise<void> {
   const { data: invoice } = await supabaseAdmin
     .from('invoices')
-    .select('id, invoice_number, invoice_date, due_date, total_amount_usd, matters(case_name, clients(email))')
+    .select(`
+      id, invoice_number, invoice_date, due_date, fees_amount_usd,
+      disbursements_amount_usd, total_amount_usd, paid_amount_usd, status,
+      matter_id, matters(case_name, clients(email))
+    `)
     .eq('id', invoiceId)
     .eq('tenant_id', tenantId)
     .single()
@@ -129,7 +142,16 @@ export async function sendInvoiceEmail(
 
   try {
     const { apiKey, fromEmail, fromName } = await resolveSenderConfig(tenantId)
-    await transport({ apiKey, fromEmail, fromName, to: recipientEmail, subject, html })
+    const pdfBuffer = await generateInvoicePdf(tenantId, invoice as unknown as InvoiceRow)
+    await transport({
+      apiKey,
+      fromEmail,
+      fromName,
+      to: recipientEmail,
+      subject,
+      html,
+      attachment: { filename: `${invoice.invoice_number}.pdf`, content: pdfBuffer.toString('base64') },
+    })
 
     await supabaseAdmin.from('invoice_reminders').insert({
       tenant_id: tenantId,

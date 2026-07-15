@@ -93,9 +93,14 @@ export default function BillTrackPage() {
     <div className="p-8 max-w-6xl">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-bold text-gray-900">BillTrack</h1>
-        <Link href="/billtrack/settings" className="text-sm text-blue-600 hover:underline">
-          Settings →
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/billtrack/reports" className="text-sm text-blue-600 hover:underline">
+            Reports →
+          </Link>
+          <Link href="/billtrack/settings" className="text-sm text-blue-600 hover:underline">
+            Settings →
+          </Link>
+        </div>
       </div>
       <p className="text-gray-600 mb-6">
         Firmwide invoices — send notifications, track reminders, and record payments without leaving BillTrack.
