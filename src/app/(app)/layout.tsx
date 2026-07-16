@@ -6,14 +6,24 @@ import UpgradeModal from '@/components/ui/upgrade-modal'
 
 const MODULES = [
   { key: 'timetrack', label: 'TimeTrack', icon: 'ti-clock', href: '/timetrack' },
-  { key: 'movementtrack', label: 'MovementTrack', icon: 'ti-map-pin', href: '/movementtrack' },
-  { key: 'tasktrack', label: 'TaskTrack', icon: 'ti-checklist', href: '/tasktrack' },
   { key: 'billtrack', label: 'BillTrack', icon: 'ti-receipt', href: '/billtrack' },
   { key: 'accounttrack', label: 'AccountTrack', icon: 'ti-chart-bar', href: '/accounttrack' },
   { key: 'doctrack', label: 'DocTrack', icon: 'ti-file-text', href: '/doctrack' },
   { key: 'hrtrack', label: 'HRTrack', icon: 'ti-id-badge', href: '/hrtrack' },
   { key: 'calentrack', label: 'CalenTrack', icon: 'ti-calendar', href: '/calentrack' },
   { key: 'admin', label: 'Admin', icon: 'ti-settings', href: '/admin' },
+]
+
+// MovementTrack and TaskTrack live under the HRTrack nav group now, but
+// keep their OWN subscription gating exactly as before (both are free
+// modules today; hrtrack is a separate paid one — folding their gating
+// into hrtrack would silently turn free functionality paid, which this
+// nav reorganization does not do).
+const HR_GROUP_ITEMS = [
+  { key: 'hrtrack', label: 'Attendance', icon: 'ti-clock', href: '/hrtrack/attendance' },
+  { key: 'movementtrack', label: 'Movement', icon: 'ti-map-pin', href: '/hrtrack/movement' },
+  { key: 'tasktrack', label: 'Performance', icon: 'ti-checklist', href: '/hrtrack/performance' },
+  { key: 'hrtrack', label: 'Reports', icon: 'ti-report', href: '/hrtrack/reports' },
 ]
 
 type LayoutData = {
@@ -53,7 +63,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Everyone else only sees modules their tenant currently subscribes to —
   // no "Locked" upsell noise for staff who can't act on it anyway.
   const isPrivileged = profile?.role === 'owner' || profile?.role === 'admin'
-  const visibleModules = isPrivileged ? MODULES : MODULES.filter((mod) => activeModules.includes(mod.key))
+  // The 'hrtrack' entry must stay visible if the tenant has EITHER an
+  // hrtrack subscription OR movementtrack/tasktrack (now reached only
+  // through the HRTrack group) — otherwise a tenant with just the free
+  // movementtrack/tasktrack modules active, but no hrtrack subscription,
+  // would lose access to features they already have.
+  const hrGroupHasAnyActiveItem = HR_GROUP_ITEMS.some((item) => activeModules.includes(item.key))
+  const visibleModules = isPrivileged
+    ? MODULES
+    : MODULES.filter((mod) => activeModules.includes(mod.key) || (mod.key === 'hrtrack' && hrGroupHasAnyActiveItem))
 
   return (
     <div className="min-h-screen flex">
@@ -87,6 +105,53 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
           {visibleModules.map((mod) => {
             const isActive = activeModules.includes(mod.key)
+
+            if (mod.key === 'hrtrack') {
+              const visibleSubItems = isPrivileged
+                ? HR_GROUP_ITEMS
+                : HR_GROUP_ITEMS.filter((item) => activeModules.includes(item.key))
+              if (visibleSubItems.length === 0) return null
+
+              return (
+                <div key="hrtrack-group">
+                  <Link
+                    href="/hrtrack"
+                    className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <i className={`ti ${mod.icon}`} style={{ fontSize: 18 }} />
+                    {mod.label}
+                  </Link>
+                  {visibleSubItems.map((item) => {
+                    const subActive = activeModules.includes(item.key)
+                    return subActive ? (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="flex items-center gap-3 pl-10 pr-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                      >
+                        <i className={`ti ${item.icon}`} style={{ fontSize: 14 }} />
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <button
+                        key={item.href}
+                        onClick={() => setUpgradeModule(item.key)}
+                        className="w-full flex items-center justify-between gap-3 pl-10 pr-4 py-1.5 text-sm text-gray-400 hover:bg-gray-50"
+                      >
+                        <span className="flex items-center gap-3">
+                          <i className={`ti ${item.icon}`} style={{ fontSize: 14 }} />
+                          {item.label}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                          Locked
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            }
+
             return isActive ? (
               <Link
                 key={mod.key}

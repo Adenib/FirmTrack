@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import MatterSearchInput, { type MatterResult } from '@/components/timetrack/matter-search-input'
 
@@ -134,7 +135,12 @@ export default function CalenTrackPage() {
 
   return (
     <div className="p-8 max-w-4xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">CalenTrack</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-bold text-gray-900">CalenTrack</h1>
+        <Link href="/calentrack/reports" className="text-sm text-blue-600 hover:underline">
+          Reports →
+        </Link>
+      </div>
       <p className="text-gray-600 mb-6">Schedule and manage meetings, shifts, leave, and deadlines.</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">

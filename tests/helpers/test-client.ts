@@ -126,6 +126,8 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
   const tablesInOrder = [
     'invoice_reminders',
     'billtrack_settings',
+    'attendance_records',
+    'office_locations',
     'journal_lines',
     'journal_entries',
     'accounting_periods',
@@ -147,6 +149,7 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     'lawyer_rates',
     'lawyers',
     'lawyer_categories',
+    'conflict_checks',
     'matters',
     'clients',
     'subscriptions',
@@ -182,7 +185,17 @@ export async function createTestMatter(
 ) {
   const res = await tenant.fetch('/api/admin/matters', {
     method: 'POST',
-    body: JSON.stringify({ client_id: clientId, case_name: caseName, responsible_lawyer: opts.responsible_lawyer }),
+    body: JSON.stringify({
+      client_id: clientId,
+      case_name: caseName,
+      responsible_lawyer: opts.responsible_lawyer,
+      // Matter creation requires a confirmed conflict-of-interest check —
+      // tests aren't exercising that feature here, so satisfy it the same
+      // way a real "ran the search, found nothing, confirmed" flow would.
+      conflict_search_terms: [caseName],
+      conflict_search_confirmed: true,
+      conflict_search_results: { terms: [caseName], clients: [], matters: [], timeEntries: [] },
+    }),
   })
   const body = await res.json()
   if (!res.ok) throw new Error(`Failed to create test matter: ${body.error}`)

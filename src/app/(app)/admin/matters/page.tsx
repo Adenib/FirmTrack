@@ -54,6 +54,14 @@ export default function NewMatterPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  // Conflict of interest check — must be run and confirmed before Create
+  // matter is enabled (also re-enforced server-side in POST /api/admin/matters).
+  const [conflictNames, setConflictNames] = useState([''])
+  const [conflictSearching, setConflictSearching] = useState(false)
+  const [conflictResults, setConflictResults] = useState(null)
+  const [conflictConfirmed, setConflictConfirmed] = useState(false)
+  const [conflictError, setConflictError] = useState('')
+
   const searchTimeout = useRef(null)
 
   useEffect(() => {
@@ -85,7 +93,45 @@ export default function NewMatterPage() {
     // Auto-populate billing fields
     setBillingName(c.name)
     setBillingCurrency(c.billing_currency || 'NGN')
+    // Auto-populate the conflict search with the client's name, if the
+    // staff member hasn't already started typing names of their own.
+    setConflictNames((prev) => (prev.length === 1 && !prev[0] ? [c.name] : prev))
   }
+
+  const updateConflictName = (i, v) => {
+    const next = [...conflictNames]
+    next[i] = v
+    setConflictNames(next)
+    setConflictResults(null)
+    setConflictConfirmed(false)
+  }
+  const addConflictName = () => setConflictNames([...conflictNames, ''])
+  const removeConflictName = (i) => {
+    setConflictNames(conflictNames.filter((_, idx) => idx !== i))
+    setConflictResults(null)
+    setConflictConfirmed(false)
+  }
+
+  const runConflictSearch = async () => {
+    const names = conflictNames.map((n) => n.trim()).filter(Boolean)
+    if (names.length === 0) { setConflictError('Enter at least one name to search'); return }
+    setConflictSearching(true)
+    setConflictError('')
+    setConflictConfirmed(false)
+    const r = await fetch('/api/admin/conflict-search', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ names }),
+    })
+    const d = await r.json()
+    if (!r.ok) { setConflictError(d.error || 'Search failed'); setConflictSearching(false); return }
+    setConflictResults(d.results)
+    setConflictSearching(false)
+  }
+
+  const conflictMatchCount = conflictResults
+    ? conflictResults.clients.length + conflictResults.matters.length + conflictResults.timeEntries.length
+    : 0
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -138,6 +184,9 @@ export default function NewMatterPage() {
         assigned_lawyer: assignedLawyer || null,
         open_date: openDate, status,
         lawyers: lawyers.filter(l => l.user_id),
+        conflict_search_terms: conflictNames.map((n) => n.trim()).filter(Boolean),
+        conflict_search_confirmed: conflictConfirmed,
+        conflict_search_results: conflictResults,
       }),
     })
 
@@ -224,6 +273,91 @@ export default function NewMatterPage() {
                   <option value='USD'>USD (US Dollar)</option>
                 </select>
               </div>
+            </div>
+          )}
+        </div>
+
+        <div className='bg-white border border-gray-200 rounded-lg p-5'>
+          <h2 className='font-semibold text-gray-900 mb-1'>Conflict of Interest Check</h2>
+          <p className='text-xs text-gray-500 mb-3'>
+            Required before this matter can be created. Searches clients, matters, and time entry notes across the firm.
+          </p>
+
+          <div className='space-y-2 mb-3'>
+            {conflictNames.map((n, i) => (
+              <div key={i} className='flex items-center gap-2'>
+                <input
+                  type='text'
+                  placeholder='Name to check (client, opposing party, related party...)'
+                  value={n}
+                  onChange={(e) => updateConflictName(i, e.target.value)}
+                  className='flex-1 px-3 py-2 border rounded-md text-sm'
+                />
+                {conflictNames.length > 1 && (
+                  <button type='button' onClick={() => removeConflictName(i)} className='text-red-500 text-xs hover:underline'>Remove</button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className='flex items-center gap-3 mb-3'>
+            <button type='button' onClick={addConflictName} className='text-xs text-blue-600 hover:underline'>+ Add another name</button>
+            <button
+              type='button'
+              onClick={runConflictSearch}
+              disabled={conflictSearching}
+              className='text-sm bg-gray-900 text-white px-3 py-1.5 rounded-md hover:bg-gray-800 disabled:opacity-50'
+            >
+              {conflictSearching ? 'Searching...' : 'Run conflict search'}
+            </button>
+          </div>
+
+          {conflictError && <p className='text-red-600 text-xs mb-2'>{conflictError}</p>}
+
+          {conflictResults && (
+            <div className='border border-gray-200 rounded-lg p-3 mb-3'>
+              {conflictMatchCount === 0 ? (
+                <p className='text-sm text-green-700'>No potential conflicts found for: {conflictResults.terms.join(', ')}</p>
+              ) : (
+                <>
+                  <p className='text-sm text-amber-700 font-medium mb-2'>
+                    {conflictMatchCount} potential match{conflictMatchCount === 1 ? '' : 'es'} found — review before proceeding:
+                  </p>
+                  {conflictResults.clients.length > 0 && (
+                    <div className='mb-2'>
+                      <p className='text-xs font-medium text-gray-500 uppercase'>Clients</p>
+                      {conflictResults.clients.map((c) => (
+                        <p key={c.id} className='text-sm text-gray-800'>{c.name}{c.company ? ` (${c.company})` : ''}</p>
+                      ))}
+                    </div>
+                  )}
+                  {conflictResults.matters.length > 0 && (
+                    <div className='mb-2'>
+                      <p className='text-xs font-medium text-gray-500 uppercase'>Matters</p>
+                      {conflictResults.matters.map((m) => (
+                        <p key={m.id} className='text-sm text-gray-800'>
+                          {m.case_name} ({m.matter_id}) — {m.clients?.name} · <span className='capitalize'>{m.status}</span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {conflictResults.timeEntries.length > 0 && (
+                    <div>
+                      <p className='text-xs font-medium text-gray-500 uppercase'>Time entry notes</p>
+                      {conflictResults.timeEntries.map((t) => (
+                        <p key={t.id} className='text-sm text-gray-800'>
+                          {t.matters?.case_name} ({t.matters?.matter_id}), {t.entry_date}: {(t.explanation || t.notes || '').slice(0, 120)}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              <label className='flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 text-sm'>
+                <input type='checkbox' checked={conflictConfirmed} onChange={(e) => setConflictConfirmed(e.target.checked)} />
+                I have reviewed these results and confirm there is no conflict of interest.
+              </label>
             </div>
           )}
         </div>
@@ -364,8 +498,13 @@ export default function NewMatterPage() {
           </div>
         </div>
 
-        <button type='submit' disabled={submitting} className='w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50'>
-          {submitting ? 'Creating...' : 'Create matter'}
+        <button
+          type='submit'
+          disabled={submitting || !conflictConfirmed}
+          title={!conflictConfirmed ? 'Run and confirm the conflict of interest check above first' : undefined}
+          className='w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50'
+        >
+          {submitting ? 'Creating...' : !conflictConfirmed ? 'Complete conflict check to continue' : 'Create matter'}
         </button>
       </form>
     </div>

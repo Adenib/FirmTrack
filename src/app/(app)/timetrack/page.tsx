@@ -301,6 +301,9 @@ export default function TimeTrackPage() {
           <Link href="/timetrack/quick-fee" className="text-sm text-blue-600 hover:underline">
             Quick Fee →
           </Link>
+          <Link href="/timetrack/reports" className="text-sm text-blue-600 hover:underline">
+            Reports →
+          </Link>
         </div>
       </div>
       <p className="text-gray-600 mb-6">Log billable time against matters.</p>

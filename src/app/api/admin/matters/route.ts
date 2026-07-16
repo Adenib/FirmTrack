@@ -73,8 +73,25 @@ export async function POST(request: Request) {
   const e_associate_rate = body.e_associate_rate || null
   const e_senior_associate_rate = body.e_senior_associate_rate || null
   const e_partner_rate = body.e_partner_rate || null
+  const conflict_search_terms = body.conflict_search_terms
+  const conflict_search_confirmed = body.conflict_search_confirmed
+  const conflict_search_results = body.conflict_search_results
   if (!client_id || !case_name) {
     return NextResponse.json({ error: 'client_id and case_name are required' }, { status: 400 })
+  }
+
+  // Enforced server-side, not just a disabled button client-side: a
+  // conflict-of-interest search must have actually been run (at least one
+  // search term) and its results explicitly confirmed before a matter can
+  // be created at all.
+  const searchTerms = Array.isArray(conflict_search_terms)
+    ? conflict_search_terms.map((t: string) => (t || '').trim()).filter((t: string) => t.length > 0)
+    : []
+  if (searchTerms.length === 0 || conflict_search_confirmed !== true) {
+    return NextResponse.json(
+      { error: 'A conflict of interest search must be run and confirmed before creating a matter' },
+      { status: 400 }
+    )
   }
 
   const finalMatterId = matter_id || await generateMatterId(profile.tenant_id, client_id)
@@ -121,6 +138,18 @@ export async function POST(request: Request) {
   if (matterError || !matter) {
     return NextResponse.json({ error: matterError?.message || 'Failed to create matter' }, { status: 500 })
   }
+
+  // Records that the (already-confirmed) conflict search happened, linked
+  // to the matter it cleared — the audit trail proving a check was done
+  // before this matter was opened.
+  await supabaseAdmin.from('conflict_checks').insert({
+    tenant_id: profile.tenant_id,
+    matter_id: matter.id,
+    search_terms: searchTerms,
+    results_snapshot: conflict_search_results || null,
+    confirmed_no_conflict: true,
+    searched_by: user.id,
+  })
 
   // Insert lawyer assignments
   if (lawyers && Array.isArray(lawyers) && lawyers.length > 0) {
