@@ -21,6 +21,7 @@ export default function HRTrackRequestsPage() {
   const [requests, setRequests] = useState([])
   const [leaveTypes, setLeaveTypes] = useState([])
   const [leaveBalances, setLeaveBalances] = useState([])
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -29,6 +30,7 @@ export default function HRTrackRequestsPage() {
   const [leaveStart, setLeaveStart] = useState('')
   const [leaveEnd, setLeaveEnd] = useState('')
   const [leaveReason, setLeaveReason] = useState('')
+  const [reliefOfficerId, setReliefOfficerId] = useState('')
 
   // Redeployment form
   const [currentAssignment, setCurrentAssignment] = useState('')
@@ -45,6 +47,7 @@ export default function HRTrackRequestsPage() {
 
   const [submitting, setSubmitting] = useState(false)
   const [reviewNotes, setReviewNotes] = useState({})
+  const [reviewAllowance, setReviewAllowance] = useState({})
 
   const isPrivileged = REVIEW_PRIVILEGED.includes(role)
 
@@ -64,13 +67,19 @@ export default function HRTrackRequestsPage() {
 
   useEffect(() => {
     const init = async () => {
-      const layoutRes = await fetch('/api/layout-data').then((r) => r.json())
+      const [layoutRes, usersRes] = await Promise.all([
+        fetch('/api/layout-data').then((r) => r.json()),
+        fetch('/api/admin/clients/detail?type=users').then((r) => r.json()),
+      ])
       setRole(layoutRes.profile?.role || '')
       setMe(layoutRes.profile)
+      setUsers(usersRes.users || [])
       await load()
     }
     init()
   }, [])
+
+  const emailFor = (userId) => users.find((u) => u.id === userId)?.email || null
 
   const submitRequest = async (type, details) => {
     setSubmitting(true)
@@ -93,8 +102,8 @@ export default function HRTrackRequestsPage() {
 
   const handleLeaveSubmit = async (e) => {
     e.preventDefault()
-    const ok = await submitRequest('leave', { leave_type_id: leaveTypeId, start_date: leaveStart, end_date: leaveEnd, reason: leaveReason })
-    if (ok) { setLeaveTypeId(''); setLeaveStart(''); setLeaveEnd(''); setLeaveReason('') }
+    const ok = await submitRequest('leave', { leave_type_id: leaveTypeId, start_date: leaveStart, end_date: leaveEnd, reason: leaveReason, relief_officer_id: reliefOfficerId || null })
+    if (ok) { setLeaveTypeId(''); setLeaveStart(''); setLeaveEnd(''); setLeaveReason(''); setReliefOfficerId('') }
   }
   const handleRedeploymentSubmit = async (e) => {
     e.preventDefault()
@@ -112,12 +121,12 @@ export default function HRTrackRequestsPage() {
     if (ok) { setLastWorkingDay(''); setExitReason('') }
   }
 
-  const handleReview = async (id, status) => {
+  const handleReview = async (id, status, leaveAllowanceAmount) => {
     setError('')
     const res = await fetch('/api/hrtrack/requests', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, status, reviewer_notes: reviewNotes[id] || '' }),
+      body: JSON.stringify({ id, status, reviewer_notes: reviewNotes[id] || '', leave_allowance_amount: leaveAllowanceAmount ?? null }),
     })
     const result = await res.json()
     if (!res.ok) setError(result.error || 'Could not update request')
@@ -163,6 +172,12 @@ export default function HRTrackRequestsPage() {
             {(r.details.reason || r.details.description) && (
               <p className="text-sm text-gray-600">{r.details.reason || r.details.description}</p>
             )}
+            {r.type === 'leave' && r.details.relief_officer_id && (
+              <p className="text-xs text-gray-500 mt-1">Relief officer: {emailFor(r.details.relief_officer_id) || 'Unknown'}</p>
+            )}
+            {r.type === 'leave' && r.leave_allowance_amount != null && (
+              <p className="text-xs text-gray-500 mt-1">Leave allowance: ₦{Number(r.leave_allowance_amount).toLocaleString()}</p>
+            )}
             {r.reviewer_notes && <p className="text-xs text-gray-500 mt-1">Reviewer notes: {r.reviewer_notes}</p>}
             {r.status === 'pending' && (
               <button type="button" onClick={() => handleWithdraw(r.id)} className="text-xs text-red-500 hover:underline mt-2">Withdraw</button>
@@ -207,7 +222,7 @@ export default function HRTrackRequestsPage() {
                   {leaveBalances.map((b) => (
                     <div key={b.leave_type_id} className="bg-white border border-gray-200 rounded-lg p-3">
                       <p className="text-xs text-gray-500">{b.name}</p>
-                      <p className="text-lg font-semibold text-gray-900">{b.remaining} of {b.annual_days} days</p>
+                      <p className="text-lg font-semibold text-gray-900">{b.unlimited ? 'Unlimited' : `${b.remaining} of ${b.annual_days} days`}</p>
                     </div>
                   ))}
                 </div>
@@ -221,6 +236,10 @@ export default function HRTrackRequestsPage() {
                   <input type="date" required value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} className="px-3 py-2 border rounded-md text-sm" />
                   <input type="date" required value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} className="px-3 py-2 border rounded-md text-sm" />
                 </div>
+                <select value={reliefOfficerId} onChange={(e) => setReliefOfficerId(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm">
+                  <option value="">Relief officer (optional)...</option>
+                  {users.filter((u) => u.email !== me?.email).map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
+                </select>
                 <textarea placeholder="Reason (optional)" value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-md text-sm" />
                 <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50">
                   {submitting ? 'Submitting...' : 'Request leave'}
@@ -293,6 +312,9 @@ export default function HRTrackRequestsPage() {
                           {(r.details.reason || r.details.description) && (
                             <p className="text-xs text-gray-500 mt-1">{r.details.reason || r.details.description}</p>
                           )}
+                          {type === 'leave' && r.details.relief_officer_id && (
+                            <p className="text-xs text-gray-500 mt-1">Relief officer: {emailFor(r.details.relief_officer_id) || 'Unknown'}</p>
+                          )}
                           <input
                             type="text"
                             placeholder="Notes (optional)"
@@ -300,8 +322,18 @@ export default function HRTrackRequestsPage() {
                             onChange={(e) => setReviewNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
                             className="w-full px-2 py-1 border rounded text-xs mt-2 mb-2"
                           />
+                          {type === 'leave' && (
+                            <input
+                              type="number"
+                              step="0.01"
+                              placeholder="Leave allowance amount (optional, ₦)"
+                              value={reviewAllowance[r.id] || ''}
+                              onChange={(e) => setReviewAllowance((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                              className="w-full px-2 py-1 border rounded text-xs mb-2"
+                            />
+                          )}
                           <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => handleReview(r.id, 'approved')} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700">Approve</button>
+                            <button type="button" onClick={() => handleReview(r.id, 'approved', type === 'leave' ? reviewAllowance[r.id] : null)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700">Approve</button>
                             <button type="button" onClick={() => handleReview(r.id, 'rejected')} className="text-xs border px-3 py-1.5 rounded-md hover:bg-gray-50">Reject</button>
                           </div>
                         </div>

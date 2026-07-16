@@ -69,11 +69,11 @@ export async function GET(request: Request) {
       const d = r.details as { leave_type_id?: string; start_date?: string; days?: number }
       return d.leave_type_id === lt.id && d.start_date && new Date(d.start_date).getFullYear() === currentYear
     })
-    const remaining = computeLeaveBalance(
+    const remaining = lt.unlimited ? null : computeLeaveBalance(
       Number(lt.annual_days),
       usedThisYear.map((r) => ({ days: Number((r.details as { days?: number }).days || 0) }))
     )
-    return { leave_type_id: lt.id, name: lt.name, annual_days: Number(lt.annual_days), remaining }
+    return { leave_type_id: lt.id, name: lt.name, annual_days: Number(lt.annual_days), unlimited: lt.unlimited, remaining }
   })
 
   return NextResponse.json({ requests, leaveTypes: leaveTypes || [], leaveBalances })
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   const finalDetails: Record<string, unknown> = { ...details }
 
   if (type === 'leave') {
-    const { leave_type_id, start_date, end_date, reason } = details || {}
+    const { leave_type_id, start_date, end_date, reason, relief_officer_id } = details || {}
     if (!leave_type_id || !start_date || !end_date) {
       return NextResponse.json({ error: 'leave_type_id, start_date, and end_date are required' }, { status: 400 })
     }
@@ -104,35 +104,38 @@ export async function POST(request: Request) {
 
     const { data: leaveType } = await supabaseAdmin
       .from('leave_types')
-      .select('annual_days')
+      .select('annual_days, unlimited')
       .eq('id', leave_type_id)
       .eq('tenant_id', profile.tenant_id)
       .single()
     if (!leaveType) return NextResponse.json({ error: 'Unknown leave_type_id' }, { status: 400 })
 
-    const currentYear = new Date(start_date).getFullYear()
-    const { data: approvedThisYear } = await supabaseAdmin
-      .from('requests')
-      .select('details')
-      .eq('tenant_id', profile.tenant_id)
-      .eq('user_id', user.id)
-      .eq('type', 'leave')
-      .eq('status', 'approved')
+    if (!leaveType.unlimited) {
+      const currentYear = new Date(start_date).getFullYear()
+      const { data: approvedThisYear } = await supabaseAdmin
+        .from('requests')
+        .select('details')
+        .eq('tenant_id', profile.tenant_id)
+        .eq('user_id', user.id)
+        .eq('type', 'leave')
+        .eq('status', 'approved')
 
-    const usedThisYear = (approvedThisYear || []).filter((r) => {
-      const d = r.details as { leave_type_id?: string; start_date?: string }
-      return d.leave_type_id === leave_type_id && d.start_date && new Date(d.start_date).getFullYear() === currentYear
-    })
-    const remaining = computeLeaveBalance(
-      Number(leaveType.annual_days),
-      usedThisYear.map((r) => ({ days: Number((r.details as { days?: number }).days || 0) }))
-    )
-    if (days > remaining) {
-      return NextResponse.json({ error: `This request (${days} days) exceeds your remaining balance (${remaining} days)` }, { status: 400 })
+      const usedThisYear = (approvedThisYear || []).filter((r) => {
+        const d = r.details as { leave_type_id?: string; start_date?: string }
+        return d.leave_type_id === leave_type_id && d.start_date && new Date(d.start_date).getFullYear() === currentYear
+      })
+      const remaining = computeLeaveBalance(
+        Number(leaveType.annual_days),
+        usedThisYear.map((r) => ({ days: Number((r.details as { days?: number }).days || 0) }))
+      )
+      if (days > remaining) {
+        return NextResponse.json({ error: `This request (${days} days) exceeds your remaining balance (${remaining} days)` }, { status: 400 })
+      }
     }
 
     finalDetails.days = days
     finalDetails.reason = reason || null
+    finalDetails.relief_officer_id = relief_officer_id || null
   } else if (type === 'redeployment') {
     if (!details?.requested_assignment) {
       return NextResponse.json({ error: 'requested_assignment is required' }, { status: 400 })
@@ -175,7 +178,7 @@ export async function PATCH(request: Request) {
   const profile = await getProfile(supabase, user.id)
   if (!profile) return NextResponse.json({ error: 'No profile' }, { status: 403 })
 
-  const { id, status, reviewer_notes } = await request.json()
+  const { id, status, reviewer_notes, leave_allowance_amount } = await request.json()
   if (!id || !['approved', 'rejected', 'withdrawn'].includes(status)) {
     return NextResponse.json({ error: 'id and a valid status are required' }, { status: 400 })
   }
@@ -207,6 +210,14 @@ export async function PATCH(request: Request) {
     updates.reviewed_by = user.id
     updates.reviewer_notes = reviewer_notes || null
     updates.reviewed_at = new Date().toISOString()
+  }
+  // Allowance is only meaningful for an approved leave request -- the
+  // reviewer enters it by hand since there's no payroll system to derive
+  // it from yet, so it's just a record, not an actual disbursement.
+  if (existing.type === 'leave' && status === 'approved') {
+    updates.leave_allowance_amount = leave_allowance_amount != null && leave_allowance_amount !== ''
+      ? Number(leave_allowance_amount)
+      : null
   }
 
   const { data: updated, error } = await supabaseAdmin

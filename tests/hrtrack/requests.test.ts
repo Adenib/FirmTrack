@@ -116,6 +116,93 @@ describe('HRTrack Requests: leave balance enforcement', () => {
   })
 })
 
+describe('HRTrack Requests: default leave types, relief officer, unlimited types, allowance', () => {
+  let tenant: TestTenant
+  let staff: TestTenant
+  let relief: TestTenant
+  let unpaidTypeId: string
+
+  beforeAll(async () => {
+    tenant = await createTestTenant('RequestsDefaults')
+    staff = await createTestUser(tenant, { role: 'staff' })
+    relief = await createTestUser(tenant, { role: 'staff' })
+  })
+
+  afterAll(async () => {
+    await destroyTestTenant(tenant, [staff.userId, relief.userId])
+  })
+
+  it('registration seeds the 6 default leave types', async () => {
+    const res = await tenant.fetch('/api/hrtrack/leave-types')
+    const { leaveTypes } = await res.json()
+    const names = leaveTypes.map((lt: { name: string }) => lt.name).sort()
+    expect(names).toEqual(['Annual', 'Compassionate', 'Maternity', 'Sick', 'Study/Exams', 'Unpaid'].sort())
+
+    const unpaid = leaveTypes.find((lt: { name: string }) => lt.name === 'Unpaid')
+    expect(unpaid.unlimited).toBe(true)
+    unpaidTypeId = unpaid.id
+  })
+
+  it('a leave request records the chosen relief officer', async () => {
+    const annual = await tenant.fetch('/api/hrtrack/leave-types').then((r) => r.json())
+    const annualType = annual.leaveTypes.find((lt: { name: string }) => lt.name === 'Annual')
+
+    const res = await staff.fetch('/api/hrtrack/requests', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'leave',
+        details: { leave_type_id: annualType.id, start_date: '2026-10-05', end_date: '2026-10-06', relief_officer_id: relief.userId },
+      }),
+    })
+    expect(res.status).toBe(200)
+    const { request } = await res.json()
+    expect(request.details.relief_officer_id).toBe(relief.userId)
+  })
+
+  it('an unlimited leave type (Unpaid) bypasses the balance check even for a large request', async () => {
+    const res = await staff.fetch('/api/hrtrack/requests', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'leave',
+        details: { leave_type_id: unpaidTypeId, start_date: '2026-11-01', end_date: '2026-11-30' },
+      }),
+    })
+    expect(res.status).toBe(200)
+    const { request } = await res.json()
+    expect(request.details.days).toBe(30)
+  })
+
+  it('leave_allowance_amount can be set by the reviewer on approval and defaults to null otherwise', async () => {
+    const annual = await tenant.fetch('/api/hrtrack/leave-types').then((r) => r.json())
+    const annualType = annual.leaveTypes.find((lt: { name: string }) => lt.name === 'Annual')
+
+    const createRes = await staff.fetch('/api/hrtrack/requests', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'leave', details: { leave_type_id: annualType.id, start_date: '2027-02-01', end_date: '2027-02-02' } }),
+    })
+    const { request: withAllowance } = await createRes.json()
+    const approveRes = await tenant.fetch('/api/hrtrack/requests', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: withAllowance.id, status: 'approved', leave_allowance_amount: 15000 }),
+    })
+    expect(approveRes.status).toBe(200)
+    const { request: approved } = await approveRes.json()
+    expect(Number(approved.leave_allowance_amount)).toBe(15000)
+
+    const createRes2 = await staff.fetch('/api/hrtrack/requests', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'leave', details: { leave_type_id: annualType.id, start_date: '2027-03-01', end_date: '2027-03-02' } }),
+    })
+    const { request: noAllowance } = await createRes2.json()
+    const approveRes2 = await tenant.fetch('/api/hrtrack/requests', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: noAllowance.id, status: 'approved' }),
+    })
+    const { request: approved2 } = await approveRes2.json()
+    expect(approved2.leave_allowance_amount).toBeNull()
+  })
+})
+
 describe('HRTrack Requests: review gating for non-grievance types', () => {
   let tenant: TestTenant
   let staff: TestTenant

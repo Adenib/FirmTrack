@@ -25,6 +25,10 @@ export default function HRTrackReportsPage() {
   const [to, setTo] = useState(() => iso(now))
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
+  const [leaveRequests, setLeaveRequests] = useState([])
+  const [leaveTypes, setLeaveTypes] = useState([])
+  const [leaveLoading, setLeaveLoading] = useState(true)
+  const [users, setUsers] = useState([])
 
   const load = async (fromDate, toDate) => {
     setLoading(true)
@@ -34,7 +38,22 @@ export default function HRTrackReportsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load(from, to) }, [])
+  const loadLeaveHistory = async () => {
+    setLeaveLoading(true)
+    const [reqRes, usersRes] = await Promise.all([
+      fetch('/api/hrtrack/requests?type=leave').then((r) => r.json()),
+      fetch('/api/admin/clients/detail?type=users').then((r) => r.json()),
+    ])
+    setLeaveRequests((reqRes.requests || []).filter((r) => r.status !== 'withdrawn'))
+    setLeaveTypes(reqRes.leaveTypes || [])
+    setUsers(usersRes.users || [])
+    setLeaveLoading(false)
+  }
+
+  useEffect(() => { load(from, to); loadLeaveHistory() }, [])
+
+  const leaveTypeName = (id) => leaveTypes.find((lt) => lt.id === id)?.name || 'Unknown'
+  const emailFor = (id) => users.find((u) => u.id === id)?.email || null
 
   const byStaff = {}
   for (const r of records) {
@@ -104,6 +123,44 @@ export default function HRTrackReportsPage() {
                   <td className="px-4 py-3 text-gray-700">{stats.remoteDays}</td>
                   <td className="px-4 py-3 text-gray-700">{stats.totalHours.toFixed(2)}h</td>
                   <td className="px-4 py-3 text-gray-700">{stats.openSessions > 0 ? stats.openSessions : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h2 className="text-lg font-semibold text-gray-900 mt-10 mb-1">Leave History</h2>
+      <p className="text-gray-600 mb-4">All leave requests, regardless of period selected above.</p>
+
+      {leaveLoading ? (
+        <p className="text-gray-500 text-sm">Loading...</p>
+      ) : leaveRequests.length === 0 ? (
+        <p className="text-gray-500 text-sm">No leave requests yet.</p>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Staff</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Type</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Dates</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Days</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Relief Officer</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Allowance</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {leaveRequests.map((r) => (
+                <tr key={r.id}>
+                  <td className="px-4 py-3 text-gray-900">{r.requester?.email || 'Unknown'}</td>
+                  <td className="px-4 py-3 text-gray-700">{leaveTypeName(r.details?.leave_type_id)}</td>
+                  <td className="px-4 py-3 text-gray-700">{r.details?.start_date} → {r.details?.end_date}</td>
+                  <td className="px-4 py-3 text-gray-700">{r.details?.days}</td>
+                  <td className="px-4 py-3 text-gray-700">{r.details?.relief_officer_id ? (emailFor(r.details.relief_officer_id) || 'Unknown') : '—'}</td>
+                  <td className="px-4 py-3 text-gray-700">{r.leave_allowance_amount != null ? `₦${Number(r.leave_allowance_amount).toLocaleString()}` : '—'}</td>
+                  <td className="px-4 py-3 text-gray-700 capitalize">{r.status}</td>
                 </tr>
               ))}
             </tbody>

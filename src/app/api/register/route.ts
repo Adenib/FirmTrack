@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { DEFAULT_ACCOUNTS } from '@/lib/accounttrack/default-accounts'
+import { DEFAULT_LEAVE_TYPES } from '@/lib/hrtrack/default-leave-types'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -56,6 +57,9 @@ export async function POST(request: Request) {
 
     const accountRows = DEFAULT_ACCOUNTS.map((a) => ({ tenant_id: org.id, ...a }))
     await supabaseAdmin.from('chart_of_accounts').insert(accountRows)
+
+    const leaveTypeRows = DEFAULT_LEAVE_TYPES.map((lt) => ({ tenant_id: org.id, ...lt }))
+    await supabaseAdmin.from('leave_types').insert(leaveTypeRows)
 
     return NextResponse.json({ success: true, organizationId: org.id })
   } catch (err) {
