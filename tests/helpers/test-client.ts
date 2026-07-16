@@ -147,7 +147,13 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     'office_locations',
     'performance_evaluations',
     'tasks',
+    // requests.paid_in_payroll_run_id -> payroll_runs, so requests must be
+    // deleted before payroll_runs; payroll_line_items before payroll_runs
+    // (its own FK) too.
     'requests',
+    'payroll_line_items',
+    'payroll_runs',
+    'payroll_salaries',
     'leave_types',
     'journal_lines',
     'journal_entries',
