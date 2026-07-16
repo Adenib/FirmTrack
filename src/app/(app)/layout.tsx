@@ -23,6 +23,7 @@ const HR_GROUP_ITEMS = [
   { key: 'hrtrack', label: 'Attendance', icon: 'ti-clock', href: '/hrtrack/attendance' },
   { key: 'movementtrack', label: 'Movement', icon: 'ti-map-pin', href: '/hrtrack/movement' },
   { key: 'tasktrack', label: 'Performance', icon: 'ti-checklist', href: '/hrtrack/performance' },
+  { key: 'hrtrack', label: 'Requests', icon: 'ti-file-description', href: '/hrtrack/requests' },
   { key: 'hrtrack', label: 'Reports', icon: 'ti-report', href: '/hrtrack/reports' },
 ]
 
