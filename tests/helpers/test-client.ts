@@ -128,6 +128,8 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     'billtrack_settings',
     'attendance_records',
     'office_locations',
+    'performance_evaluations',
+    'tasks',
     'journal_lines',
     'journal_entries',
     'accounting_periods',
