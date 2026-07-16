@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getCreatorContext } from '@/lib/get-creator-context'
+import { canAccessCreatorPage } from '@/lib/creator-permissions'
 
 export default async function CreatorLayout({ children }: { children: React.ReactNode }) {
   const { admin } = await getCreatorContext()
@@ -17,18 +18,24 @@ export default async function CreatorLayout({ children }: { children: React.Reac
             <i className="ti ti-dashboard" style={{ fontSize: 18 }} />
             Overview
           </Link>
-          <Link href="/creator/organizations" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
-            <i className="ti ti-building" style={{ fontSize: 18 }} />
-            Organizations
-          </Link>
-          <Link href="/creator/revenue" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
-            <i className="ti ti-chart-line" style={{ fontSize: 18 }} />
-            Revenue
-          </Link>
-          <Link href="/creator/staff" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
-            <i className="ti ti-users" style={{ fontSize: 18 }} />
-            Platform Staff
-          </Link>
+          {canAccessCreatorPage(admin.role, 'organizations') && (
+            <Link href="/creator/organizations" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
+              <i className="ti ti-building" style={{ fontSize: 18 }} />
+              Organizations
+            </Link>
+          )}
+          {canAccessCreatorPage(admin.role, 'revenue') && (
+            <Link href="/creator/revenue" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
+              <i className="ti ti-chart-line" style={{ fontSize: 18 }} />
+              Revenue
+            </Link>
+          )}
+          {canAccessCreatorPage(admin.role, 'staff') && (
+            <Link href="/creator/staff" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
+              <i className="ti ti-users" style={{ fontSize: 18 }} />
+              Platform Staff
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-gray-700">

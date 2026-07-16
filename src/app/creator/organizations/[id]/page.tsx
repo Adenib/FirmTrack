@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { getCreatorContext } from '@/lib/get-creator-context'
+import { requireCreatorPageAccess } from '@/lib/get-creator-context'
 import OrgManager from './org-manager'
 
 const supabaseAdmin = createClient(
@@ -12,7 +12,7 @@ export default async function OrgDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  await getCreatorContext()
+  await requireCreatorPageAccess('organizations')
   const { id } = await params
 
   const { data: org } = await supabaseAdmin

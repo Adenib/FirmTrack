@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { getCreatorContext } from '@/lib/get-creator-context'
+import { requireCreatorPageAccess } from '@/lib/get-creator-context'
 import Link from 'next/link'
 
 const supabaseAdmin = createClient(
@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 )
 
 export default async function CreatorOrganizationsPage() {
-  await getCreatorContext()
+  await requireCreatorPageAccess('organizations')
 
   const { data: orgs } = await supabaseAdmin
     .from('organizations')

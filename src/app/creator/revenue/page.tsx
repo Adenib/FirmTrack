@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { getCreatorContext } from '@/lib/get-creator-context'
+import { requireCreatorPageAccess } from '@/lib/get-creator-context'
 import RevenueClient from './revenue-client'
 
 const supabaseAdmin = createClient(
@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 )
 
 export default async function RevenuePage() {
-  await getCreatorContext()
+  await requireCreatorPageAccess('revenue')
 
   const { data: subscriptions } = await supabaseAdmin
     .from('subscriptions')

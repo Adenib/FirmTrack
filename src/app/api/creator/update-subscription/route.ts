@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { canAccessCreatorPage } from '@/lib/creator-permissions'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,11 +15,13 @@ export async function POST(request: Request) {
 
   const { data: admin } = await supabaseAdmin
     .from('platform_admins')
-    .select('role')
+    .select('role, status')
     .eq('user_id', user.id)
     .single()
 
-  if (!admin) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+  if (!admin || admin.status === 'inactive' || !canAccessCreatorPage(admin.role, 'organizations')) {
+    return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+  }
 
   const { orgId, module, is_active, tier } = await request.json()
 
