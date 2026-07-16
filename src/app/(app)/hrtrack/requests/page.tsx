@@ -48,6 +48,8 @@ export default function HRTrackRequestsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [reviewNotes, setReviewNotes] = useState({})
   const [reviewAllowance, setReviewAllowance] = useState({})
+  const [evidenceFile, setEvidenceFile] = useState(null)
+  const [evidenceError, setEvidenceError] = useState('')
 
   const isPrivileged = REVIEW_PRIVILEGED.includes(role)
 
@@ -95,9 +97,42 @@ export default function HRTrackRequestsPage() {
       setSubmitting(false)
       return false
     }
+
+    if (evidenceFile) {
+      const form = new FormData()
+      form.append('request_id', result.request.id)
+      form.append('file', evidenceFile)
+      const uploadRes = await fetch('/api/hrtrack/requests/attachment', { method: 'POST', body: form })
+      if (!uploadRes.ok) {
+        const uploadResult = await uploadRes.json()
+        setError(`Request submitted, but the evidence file could not be attached: ${uploadResult.error || 'unknown error'}`)
+      }
+      setEvidenceFile(null)
+    }
+
     setSubmitting(false)
     await load()
     return true
+  }
+
+  const viewEvidence = async (requestId) => {
+    setEvidenceError('')
+    const res = await fetch(`/api/hrtrack/requests/attachment?request_id=${requestId}`)
+    const result = await res.json()
+    if (!res.ok) {
+      setEvidenceError(result.error || 'Could not open evidence')
+      return
+    }
+    // A synthetic anchor click, not window.open() -- window.open() called
+    // after this await is unreliably popup-blocked in some browsers since
+    // it's no longer directly inside the click's user-gesture context,
+    // and passing 'noopener' to window.open() makes it return null anyway
+    // (nothing to navigate later even if it weren't blocked).
+    const link = document.createElement('a')
+    link.href = result.url
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    link.click()
   }
 
   const handleLeaveSubmit = async (e) => {
@@ -179,6 +214,9 @@ export default function HRTrackRequestsPage() {
               <p className="text-xs text-gray-500 mt-1">Leave allowance: ₦{Number(r.leave_allowance_amount).toLocaleString()}</p>
             )}
             {r.reviewer_notes && <p className="text-xs text-gray-500 mt-1">Reviewer notes: {r.reviewer_notes}</p>}
+            {r.attachment && (
+              <button type="button" onClick={() => viewEvidence(r.id)} className="text-xs text-blue-600 hover:underline mt-1 block">View evidence: {r.attachment.filename}</button>
+            )}
             {r.status === 'pending' && (
               <button type="button" onClick={() => handleWithdraw(r.id)} className="text-xs text-red-500 hover:underline mt-2">Withdraw</button>
             )}
@@ -201,7 +239,7 @@ export default function HRTrackRequestsPage() {
           <button
             key={t.key}
             type="button"
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); setEvidenceFile(null); setEvidenceError('') }}
             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             {t.label}
@@ -210,6 +248,7 @@ export default function HRTrackRequestsPage() {
       </div>
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {evidenceError && <p className="text-red-600 text-sm mb-4">{evidenceError}</p>}
 
       {loading ? (
         <p className="text-gray-500">Loading...</p>
@@ -241,6 +280,10 @@ export default function HRTrackRequestsPage() {
                   {users.filter((u) => u.email !== me?.email).map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
                 </select>
                 <textarea placeholder="Reason (optional)" value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-md text-sm" />
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Evidence/proof (optional — PDF, Word, or JPEG, max 10MB)</label>
+                  <input type="file" accept=".pdf,.doc,.docx,.jpeg,.jpg" onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)} className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-gray-100 file:text-sm file:text-gray-700 hover:file:bg-gray-200" />
+                </div>
                 <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50">
                   {submitting ? 'Submitting...' : 'Request leave'}
                 </button>
@@ -255,6 +298,10 @@ export default function HRTrackRequestsPage() {
                 <input type="text" placeholder="Current assignment (optional)" value={currentAssignment} onChange={(e) => setCurrentAssignment(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
                 <input type="text" required placeholder="Requested assignment" value={requestedAssignment} onChange={(e) => setRequestedAssignment(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
                 <textarea placeholder="Reason" value={redeploymentReason} onChange={(e) => setRedeploymentReason(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-md text-sm" />
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Evidence/proof (optional — PDF, Word, or JPEG, max 10MB)</label>
+                  <input type="file" accept=".pdf,.doc,.docx,.jpeg,.jpg" onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)} className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-gray-100 file:text-sm file:text-gray-700 hover:file:bg-gray-200" />
+                </div>
                 <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50">
                   {submitting ? 'Submitting...' : 'Request redeployment'}
                 </button>
@@ -269,6 +316,10 @@ export default function HRTrackRequestsPage() {
               <form onSubmit={handleGrievanceSubmit} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 max-w-lg mb-6">
                 <input type="text" required placeholder="Subject" value={grievanceSubject} onChange={(e) => setGrievanceSubject(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
                 <textarea required placeholder="Description" value={grievanceDescription} onChange={(e) => setGrievanceDescription(e.target.value)} rows={3} className="w-full px-3 py-2 border rounded-md text-sm" />
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Evidence/proof (optional — PDF, Word, or JPEG, max 10MB)</label>
+                  <input type="file" accept=".pdf,.doc,.docx,.jpeg,.jpg" onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)} className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-gray-100 file:text-sm file:text-gray-700 hover:file:bg-gray-200" />
+                </div>
                 <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50">
                   {submitting ? 'Submitting...' : 'Raise grievance'}
                 </button>
@@ -282,6 +333,10 @@ export default function HRTrackRequestsPage() {
               <form onSubmit={handleExitSubmit} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 max-w-lg mb-6">
                 <input type="date" required value={lastWorkingDay} onChange={(e) => setLastWorkingDay(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
                 <textarea placeholder="Reason (optional)" value={exitReason} onChange={(e) => setExitReason(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-md text-sm" />
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Evidence/proof (optional — PDF, Word, or JPEG, max 10MB)</label>
+                  <input type="file" accept=".pdf,.doc,.docx,.jpeg,.jpg" onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)} className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-gray-100 file:text-sm file:text-gray-700 hover:file:bg-gray-200" />
+                </div>
                 <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50">
                   {submitting ? 'Submitting...' : 'Submit exit request'}
                 </button>
@@ -314,6 +369,9 @@ export default function HRTrackRequestsPage() {
                           )}
                           {type === 'leave' && r.details.relief_officer_id && (
                             <p className="text-xs text-gray-500 mt-1">Relief officer: {emailFor(r.details.relief_officer_id) || 'Unknown'}</p>
+                          )}
+                          {r.attachment && (
+                            <button type="button" onClick={() => viewEvidence(r.id)} className="text-xs text-blue-600 hover:underline mt-1 block">View evidence: {r.attachment.filename}</button>
                           )}
                           <input
                             type="text"

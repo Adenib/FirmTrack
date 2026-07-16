@@ -55,6 +55,17 @@ export default function HRTrackReportsPage() {
   const leaveTypeName = (id) => leaveTypes.find((lt) => lt.id === id)?.name || 'Unknown'
   const emailFor = (id) => users.find((u) => u.id === id)?.email || null
 
+  const viewEvidence = async (requestId) => {
+    const res = await fetch(`/api/hrtrack/requests/attachment?request_id=${requestId}`)
+    const result = await res.json()
+    if (!res.ok) return
+    const link = document.createElement('a')
+    link.href = result.url
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    link.click()
+  }
+
   const byStaff = {}
   for (const r of records) {
     const email = r.users?.email || 'Unknown'
@@ -148,6 +159,7 @@ export default function HRTrackReportsPage() {
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">Days</th>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">Relief Officer</th>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">Allowance</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Evidence</th>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
               </tr>
             </thead>
@@ -160,6 +172,11 @@ export default function HRTrackReportsPage() {
                   <td className="px-4 py-3 text-gray-700">{r.details?.days}</td>
                   <td className="px-4 py-3 text-gray-700">{r.details?.relief_officer_id ? (emailFor(r.details.relief_officer_id) || 'Unknown') : '—'}</td>
                   <td className="px-4 py-3 text-gray-700">{r.leave_allowance_amount != null ? `₦${Number(r.leave_allowance_amount).toLocaleString()}` : '—'}</td>
+                  <td className="px-4 py-3 text-gray-700">
+                    {r.attachment ? (
+                      <button type="button" onClick={() => viewEvidence(r.id)} className="text-blue-600 hover:underline">View</button>
+                    ) : '—'}
+                  </td>
                   <td className="px-4 py-3 text-gray-700 capitalize">{r.status}</td>
                 </tr>
               ))}

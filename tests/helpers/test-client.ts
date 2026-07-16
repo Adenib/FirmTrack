@@ -38,7 +38,10 @@ async function loginAs(email: string, password: string) {
     fetch(`${APP_URL}${path}`, {
       ...init,
       headers: {
-        'content-type': 'application/json',
+        // A FormData body needs fetch to compute its own multipart
+        // boundary in the content-type header -- forcing json here would
+        // break every attachment-upload test.
+        ...(init.body instanceof FormData ? {} : { 'content-type': 'application/json' }),
         ...(init.headers || {}),
         cookie: cookieHeader,
       },
@@ -120,8 +123,22 @@ export async function createTestUser(
 // relying solely on `on delete cascade` from organizations — the
 // pre-migration tables (matters, clients, time_entries, lawyers) predate
 // this repo's migration history and their cascade behavior isn't confirmed.
+// Attachments live under request-attachments/{tenantId}/{requestId}/{file}
+// -- storage.list() is one level at a time, so the requestId subfolders
+// have to be listed before their files can be removed.
+async function destroyTestAttachments(tenantId: string) {
+  const { data: requestDirs } = await supabaseAdmin.storage.from('request-attachments').list(tenantId)
+  for (const dir of requestDirs || []) {
+    const { data: files } = await supabaseAdmin.storage.from('request-attachments').list(`${tenantId}/${dir.name}`)
+    const paths = (files || []).map((f) => `${tenantId}/${dir.name}/${f.name}`)
+    if (paths.length) await supabaseAdmin.storage.from('request-attachments').remove(paths)
+  }
+}
+
 export async function destroyTestTenant(tenant: { tenantId: string; userId: string }, extraUserIds: string[] = []) {
   const { tenantId, userId } = tenant
+
+  await destroyTestAttachments(tenantId)
 
   const tablesInOrder = [
     'invoice_reminders',
