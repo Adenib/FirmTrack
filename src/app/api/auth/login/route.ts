@@ -1,7 +1,8 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import { logSecurityEvent } from '@/lib/audit-log'
+import { logSecurityEvent, getClientIp } from '@/lib/audit-log'
+import { checkRateLimit, LOGIN_RATE_LIMIT } from '@/lib/rate-limit'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,6 +15,26 @@ export async function POST(request: Request) {
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
+    }
+
+    // Checked before Supabase Auth is even called -- a locked-out
+    // attempt shouldn't get a real password check, both so the lockout
+    // is airtight even if the password happens to be correct, and to
+    // avoid needlessly hammering Supabase Auth during an attack.
+    const rateLimit = await checkRateLimit({
+      eventType: 'login_failure',
+      email,
+      ip: getClientIp(request),
+      ...LOGIN_RATE_LIMIT,
+    })
+    if (rateLimit.limited) {
+      await logSecurityEvent({
+        eventType: 'login_failure',
+        email,
+        request,
+        metadata: { reason: 'rate_limited', scope: rateLimit.scope },
+      })
+      return NextResponse.json({ error: 'Too many failed login attempts. Please try again later.' }, { status: 429 })
     }
 
     const supabase = await createServerClient()

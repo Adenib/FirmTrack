@@ -25,7 +25,7 @@ export type LogSecurityEventInput = {
   metadata?: Record<string, unknown>
 }
 
-function getClientIp(request: Request): string | null {
+export function getClientIp(request: Request): string | null {
   // Vercel/most proxies put the real client IP first in x-forwarded-for.
   const forwardedFor = request.headers.get('x-forwarded-for')
   if (forwardedFor) return forwardedFor.split(',')[0].trim()
