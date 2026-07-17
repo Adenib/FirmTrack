@@ -170,6 +170,9 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     'invoices',
     'trust_ledger_entries',
     'chart_of_accounts',
+    // security_audit_log.user_id -> users, no cascade, so it must be
+    // cleared before 'users' below or the user delete is blocked.
+    'security_audit_log',
     'agent_api_keys',
     'accounts_staff',
     'accounts_categories',

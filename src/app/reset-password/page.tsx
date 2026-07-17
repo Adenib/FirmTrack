@@ -93,6 +93,7 @@ export default function ResetPasswordPage() {
       return
     }
     setDone(true)
+    fetch('/api/auth/reset-password-completed', { method: 'POST' }).catch(() => {})
   }
 
   return (

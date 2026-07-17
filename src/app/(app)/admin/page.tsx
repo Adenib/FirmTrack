@@ -47,6 +47,12 @@ export default async function AdminPage() {
       description: 'View plan pricing and estimate costs.',
       icon: 'ti-credit-card',
     },
+    {
+      href: '/admin/security-log',
+      title: 'Security Log',
+      description: 'Login attempts, logouts, password resets, and user management actions.',
+      icon: 'ti-shield-lock',
+    },
   ]
 
   return (

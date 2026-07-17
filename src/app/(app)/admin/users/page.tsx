@@ -19,6 +19,8 @@ export default function UsersPage() {
   const [role, setRole] = useState('staff')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [me, setMe] = useState<{ id: string } | null>(null)
+  const [savingRoleFor, setSavingRoleFor] = useState<string | null>(null)
 
   const loadUsers = async () => {
     setLoading(true)
@@ -35,7 +37,35 @@ export default function UsersPage() {
 
   useEffect(() => {
     loadUsers()
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => setMe(data.user ? { id: data.user.id } : null))
   }, [])
+
+  const handleRoleChange = async (id: string, newRole: string) => {
+    setSavingRoleFor(id)
+    setError('')
+    const response = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, role: newRole }),
+    })
+    const result = await response.json()
+    if (!response.ok) setError(result.error || 'Could not change role')
+    setSavingRoleFor(null)
+    await loadUsers()
+  }
+
+  const handleToggleActive = async (id: string, currentlyActive: boolean) => {
+    setError('')
+    const response = await fetch('/api/admin/users', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, reactivate: !currentlyActive }),
+    })
+    const result = await response.json()
+    if (!response.ok) setError(result.error || 'Could not update status')
+    await loadUsers()
+  }
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -112,17 +142,47 @@ export default function UsersPage() {
         <p className="text-gray-500">Loading...</p>
       ) : (
         <div className="space-y-2">
-          {users.map((u) => (
-            <div key={u.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium text-gray-900">{u.email}</p>
-                <p className="text-xs text-gray-500 capitalize">{u.role}</p>
+          {users.map((u) => {
+            const isSelf = u.id === me?.id
+            const isOwner = u.role === 'owner'
+            const locked = isSelf || isOwner
+            return (
+              <div key={u.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium text-gray-900">{u.email}</p>
+                  {locked ? (
+                    <p className="text-xs text-gray-500 capitalize">{u.role}{isSelf ? ' (you)' : ''}</p>
+                  ) : (
+                    <select
+                      value={u.role}
+                      disabled={savingRoleFor === u.id}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      className="text-xs px-2 py-1 border rounded-md mt-1 capitalize"
+                    >
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                      <option value="accounts">Accounts</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {u.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                  {!locked && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(u.id, u.is_active)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      {u.is_active ? 'Deactivate' : 'Reactivate'}
+                    </button>
+                  )}
+                </div>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                {u.is_active ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
