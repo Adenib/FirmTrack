@@ -15,6 +15,7 @@ export type SecurityEventType =
   | 'user_role_changed'
   | 'user_deactivated'
   | 'user_reactivated'
+  | 'session_revoked'
 
 export type LogSecurityEventInput = {
   tenantId?: string | null

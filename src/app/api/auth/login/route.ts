@@ -83,6 +83,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This account has been deactivated' }, { status: 401 })
     }
 
+    // A fresh token's iat is always after any past revocation moment
+    // anyway, so leaving this set wouldn't let a stale session back in --
+    // clearing it just keeps the column meaningful to read at a glance
+    // (e.g. on the Users page) rather than showing a permanently-stale
+    // "revoked" timestamp after the user has legitimately logged back in.
+    await supabaseAdmin.from('users').update({ sessions_revoked_at: null }).eq('id', data.user.id)
+
     await logSecurityEvent({
       eventType: 'login_success',
       email,

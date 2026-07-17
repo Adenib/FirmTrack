@@ -67,6 +67,17 @@ export default function UsersPage() {
     await loadUsers()
   }
 
+  const handleRevokeSessions = async (id: string) => {
+    setError('')
+    const response = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, revokeSessions: true }),
+    })
+    const result = await response.json()
+    if (!response.ok) setError(result.error || 'Could not sign the user out')
+  }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -179,6 +190,13 @@ export default function UsersPage() {
                       {u.is_active ? 'Deactivate' : 'Reactivate'}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => handleRevokeSessions(u.id)}
+                    className="text-xs text-gray-600 hover:underline"
+                  >
+                    Sign out everywhere
+                  </button>
                 </div>
               </div>
             )

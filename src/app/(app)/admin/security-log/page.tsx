@@ -13,6 +13,7 @@ const EVENT_TYPES = [
   'user_role_changed',
   'user_deactivated',
   'user_reactivated',
+  'session_revoked',
 ]
 
 const eventColor: Record<string, string> = {
@@ -23,6 +24,7 @@ const eventColor: Record<string, string> = {
   password_reset_completed: 'bg-amber-100 text-amber-700',
   user_created: 'bg-blue-100 text-blue-700',
   user_role_changed: 'bg-blue-100 text-blue-700',
+  session_revoked: 'bg-red-100 text-red-600',
   user_deactivated: 'bg-red-100 text-red-600',
   user_reactivated: 'bg-green-100 text-green-700',
 }

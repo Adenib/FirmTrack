@@ -85,7 +85,38 @@ export async function PATCH(request: Request) {
   if ('error' in auth) return auth.error
   const { user, requesterProfile } = auth
 
-  const { id, role } = await request.json()
+  const body = await request.json()
+  const { id } = body
+
+  // Sign-out-everywhere -- unlike role change/deactivation this isn't
+  // destructive (the user can just log back in immediately), so there's
+  // no self/owner lockout risk to guard against here.
+  if (body.revokeSessions) {
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+    const { data: target } = await supabaseAdmin
+      .from('users')
+      .select('id, email')
+      .eq('id', id)
+      .eq('tenant_id', requesterProfile.tenant_id)
+      .single()
+    if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    const { error } = await supabaseAdmin.from('users').update({ sessions_revoked_at: new Date().toISOString() }).eq('id', id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    await logSecurityEvent({
+      eventType: 'session_revoked',
+      email: target.email,
+      userId: user.id,
+      tenantId: requesterProfile.tenant_id,
+      request,
+      metadata: { targetUserId: id },
+    })
+
+    return NextResponse.json({ success: true })
+  }
+
+  const { role } = body
   if (!id || !role) return NextResponse.json({ error: 'id and role are required' }, { status: 400 })
   if (!ASSIGNABLE_ROLES.includes(role)) {
     return NextResponse.json({ error: `role must be one of: ${ASSIGNABLE_ROLES.join(', ')}` }, { status: 400 })
