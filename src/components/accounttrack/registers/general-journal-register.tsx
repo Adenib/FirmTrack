@@ -19,7 +19,7 @@ type JournalEntry = {
 }
 
 function fmtUsd(n: number) {
-  return `$${Number(n || 0).toFixed(2)}`
+  return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export default function GeneralJournalRegister() {

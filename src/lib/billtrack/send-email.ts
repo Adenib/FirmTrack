@@ -63,7 +63,7 @@ function caseName(inv: InvoiceForEmail): string {
 }
 
 function buildSubjectAndBody(inv: InvoiceForEmail, kind: 'initial' | 'reminder'): { subject: string; html: string } {
-  const amount = Number(inv.total_amount_usd || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  const amount = '₦' + Number(inv.total_amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const due = inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'on receipt'
 
   if (kind === 'initial') {

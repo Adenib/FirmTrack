@@ -56,7 +56,7 @@ export default function TrustRegister() {
               <td className="px-3 py-2 text-gray-700 capitalize">{e.ledger_type}</td>
               <td className="px-3 py-2 text-gray-700">{e.description || '—'}</td>
               <td className={`px-3 py-2 ${Number(e.amount_usd) < 0 ? 'text-red-600' : 'text-green-700'}`}>
-                ${Number(e.amount_usd || 0).toFixed(2)}
+                ₦{Number(e.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
           ))}

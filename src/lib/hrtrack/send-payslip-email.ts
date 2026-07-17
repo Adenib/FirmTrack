@@ -76,7 +76,7 @@ export async function sendPayslipEmail(
     .single()
 
   const net = netPayUsd(lineItem as PayrollLineItemRow)
-  const netFormatted = net.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  const netFormatted = '₦' + net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const subject = `Payslip: ${run?.period_start || ''} to ${run?.period_end || ''}`
   const html = `<p>Your payslip for the period <strong>${run?.period_start || ''}</strong> to <strong>${run?.period_end || ''}</strong> is attached.</p>
 <p>Net pay: <strong>${netFormatted}</strong></p>`

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
 function fmtUsd(n) {
-  return `$${Number(n || 0).toFixed(2)}`
+  return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function fmtHours(n) {
@@ -202,7 +202,7 @@ export default function LawyerOverviewPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Target Revenue (USD)</label>
+                    <label className="block text-xs text-gray-500 mb-1">Target Revenue (₦)</label>
                     <input
                       type="number"
                       step="0.01"

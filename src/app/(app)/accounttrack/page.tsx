@@ -7,7 +7,7 @@ import MatterSearchInput from '@/components/timetrack/matter-search-input'
 import MatterSummaryCard from '@/components/timetrack/matter-summary-card'
 
 function fmtUsd(n) {
-  return `$${Number(n || 0).toFixed(2)}`
+  return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export default function AccountTrackPage() {
@@ -308,7 +308,7 @@ export default function AccountTrackPage() {
             {editingBudget && (
               <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-end gap-2">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Budget ceiling (USD)</label>
+                  <label className="block text-xs text-gray-500 mb-1">Budget ceiling (₦)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -451,7 +451,7 @@ export default function AccountTrackPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Amount (USD)</label>
+                <label className="block text-xs text-gray-500 mb-1">Amount (₦)</label>
                 <input
                   type="number"
                   step="0.01"

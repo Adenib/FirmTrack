@@ -7,7 +7,7 @@ import Link from 'next/link'
 const PAYROLL_PRIVILEGED = ['owner', 'admin']
 
 function fmtUsd(n) {
-  return Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  return '₦' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function deductionsTotal(deductions) {
@@ -269,7 +269,7 @@ export default function HRTrackPayrollPage() {
                   <option value="">Employee...</option>
                   {users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
                 </select>
-                <input type="number" required min="0" step="0.01" placeholder="Monthly salary (USD)" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
+                <input type="number" required min="0" step="0.01" placeholder="Monthly salary (₦)" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
                 <input type="date" required value={salaryEffectiveFrom} onChange={(e) => setSalaryEffectiveFrom(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
                 <button type="submit" disabled={savingSalary} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50">
                   {savingSalary ? 'Saving...' : 'Set salary'}

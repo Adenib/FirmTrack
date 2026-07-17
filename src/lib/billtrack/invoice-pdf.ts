@@ -6,7 +6,7 @@ const supabaseAdmin = createClient(
 )
 
 function fmtUsd(n: number): string {
-  return Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  return '₦' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function fmtDate(d: string | null): string {

@@ -57,7 +57,7 @@ export default function ExpenseRegister() {
               <td className="px-3 py-2 text-gray-700">{d.matters?.matter_id || '—'}</td>
               <td className="px-3 py-2 text-gray-700">{d.lawyers?.nickname || '—'}</td>
               <td className="px-3 py-2 text-gray-700">{d.description || '—'}</td>
-              <td className="px-3 py-2 text-gray-700">${Number(d.amount_usd || 0).toFixed(2)}</td>
+              <td className="px-3 py-2 text-gray-700">₦{Number(d.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td className="px-3 py-2 text-gray-500">{d.billed ? 'Yes' : 'No'}</td>
             </tr>
           ))}
