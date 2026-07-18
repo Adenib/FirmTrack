@@ -78,6 +78,17 @@ export default function UsersPage() {
     if (!response.ok) setError(result.error || 'Could not sign the user out')
   }
 
+  const handleResetMfa = async (id: string) => {
+    setError('')
+    const response = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, resetMfa: true }),
+    })
+    const result = await response.json()
+    if (!response.ok) setError(result.error || 'Could not reset MFA for this user')
+  }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -196,6 +207,13 @@ export default function UsersPage() {
                     className="text-xs text-gray-600 hover:underline"
                   >
                     Sign out everywhere
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleResetMfa(u.id)}
+                    className="text-xs text-gray-600 hover:underline"
+                  >
+                    Reset MFA
                   </button>
                 </div>
               </div>

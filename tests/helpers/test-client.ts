@@ -173,6 +173,9 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     // security_audit_log.user_id -> users, no cascade, so it must be
     // cleared before 'users' below or the user delete is blocked.
     'security_audit_log',
+    // mfa_backup_codes.user_id -> users, on delete cascade -- listed
+    // explicitly anyway for symmetry with the rest of this ordered cleanup.
+    'mfa_backup_codes',
     'agent_api_keys',
     'accounts_staff',
     'accounts_categories',

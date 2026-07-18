@@ -116,6 +116,37 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: true })
   }
 
+  // Admin-assisted MFA reset -- the everyone-else half of the recovery
+  // model (owner/admin have self-service backup codes instead). Removes
+  // the target's TOTP factor(s) via the admin API so they re-enroll fresh
+  // on next login; not destructive (no lockout), so no self/owner guard.
+  if (body.resetMfa) {
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+    const { data: target } = await supabaseAdmin
+      .from('users')
+      .select('id, email')
+      .eq('id', id)
+      .eq('tenant_id', requesterProfile.tenant_id)
+      .single()
+    if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    const { data: factors } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: id })
+    for (const factor of factors?.factors || []) {
+      await supabaseAdmin.auth.admin.mfa.deleteFactor({ userId: id, id: factor.id })
+    }
+
+    await logSecurityEvent({
+      eventType: 'mfa_reset',
+      email: target.email,
+      userId: user.id,
+      tenantId: requesterProfile.tenant_id,
+      request,
+      metadata: { targetUserId: id, method: 'admin' },
+    })
+
+    return NextResponse.json({ success: true })
+  }
+
   const { role } = body
   if (!id || !role) return NextResponse.json({ error: 'id and role are required' }, { status: 400 })
   if (!ASSIGNABLE_ROLES.includes(role)) {

@@ -28,7 +28,13 @@ export default function LoginPage() {
       return
     }
 
-    window.location.href = '/dashboard'
+    if (result.mfaStep === 'challenge') {
+      window.location.href = '/mfa/challenge'
+    } else if (result.mfaStep === 'enroll') {
+      window.location.href = '/mfa/enroll'
+    } else {
+      window.location.href = '/dashboard'
+    }
   }
 
   return (

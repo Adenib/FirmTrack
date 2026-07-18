@@ -98,6 +98,27 @@ export async function POST(request: Request) {
       request,
     })
 
+    // Password was correct and the account is active -- but that's only
+    // aal1. Check whether a second factor still needs completing (or
+    // enrolling for the first time) before this counts as fully logged
+    // in; middleware.ts enforces this same check on every subsequent
+    // request, so this is just what tells the login page where to send
+    // the browser next, not the actual enforcement.
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') {
+      return NextResponse.json({ success: true, mfaStep: 'challenge' })
+    }
+    if (aal && aal.nextLevel === 'aal1') {
+      const { data: org } = await supabaseAdmin
+        .from('organizations')
+        .select('mfa_required')
+        .eq('id', profile?.tenant_id)
+        .single()
+      if (org?.mfa_required) {
+        return NextResponse.json({ success: true, mfaStep: 'enroll' })
+      }
+    }
+
     return NextResponse.json({ success: true })
   } catch (err) {
     return NextResponse.json({ error: 'Unexpected error: ' + (err as Error).message }, { status: 500 })

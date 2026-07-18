@@ -1,6 +1,20 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import { decodeJwtIssuedAt } from '@/lib/jwt'
+
+// Service-role, used only for the organizations.mfa_required lookup below
+// -- unlike users.sessions_revoked_at (a self-select policy already
+// proven to work via the session-scoped client elsewhere in this app),
+// there's no confirmed RLS select policy on organizations for a regular
+// tenant member. Reading it through the session-scoped client and having
+// RLS silently return no row would make mfa_required look falsy and fail
+// OPEN (skip enrollment enforcement entirely) -- reading it via the
+// admin client guarantees the real value either way.
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -46,12 +60,18 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  if ((!user || sessionRevoked) && !request.nextUrl.pathname.startsWith('/api') &&
-      !request.nextUrl.pathname.startsWith('/login') &&
-      !request.nextUrl.pathname.startsWith('/register') &&
-      !request.nextUrl.pathname.startsWith('/auth/callback') &&
-      !request.nextUrl.pathname.startsWith('/forgot-password') &&
-      !request.nextUrl.pathname.startsWith('/reset-password')) {
+  const path = request.nextUrl.pathname
+  const exemptFromAuthRedirect =
+    path.startsWith('/api') ||
+    path.startsWith('/login') ||
+    path.startsWith('/register') ||
+    path.startsWith('/auth/callback') ||
+    path.startsWith('/forgot-password') ||
+    path.startsWith('/reset-password') ||
+    path.startsWith('/mfa/enroll') ||
+    path.startsWith('/mfa/challenge')
+
+  if ((!user || sessionRevoked) && !exemptFromAuthRedirect) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     const redirectResponse = NextResponse.redirect(url)
@@ -64,6 +84,32 @@ export async function middleware(request: NextRequest) {
       redirectResponse.cookies.set(cookie)
     }
     return redirectResponse
+  }
+
+  // MFA gate: a valid, non-revoked session that hasn't completed its
+  // second factor yet (or hasn't enrolled one, where the tenant requires
+  // it) is sent to /mfa/challenge or /mfa/enroll instead of the app --
+  // this is what actually enforces MFA; the login route's own mfaStep
+  // response only tells the browser where to go first.
+  if (user && !sessionRevoked && !exemptFromAuthRedirect) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    let mfaRedirectPath: string | null = null
+
+    if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') {
+      mfaRedirectPath = '/mfa/challenge'
+    } else if (aal && aal.nextLevel === 'aal1') {
+      const { data: profile } = await supabase.from('users').select('tenant_id').eq('id', user.id).single()
+      const { data: org } = await supabase.from('organizations').select('mfa_required').eq('id', profile?.tenant_id).single()
+      if (org?.mfa_required) {
+        mfaRedirectPath = '/mfa/enroll'
+      }
+    }
+
+    if (mfaRedirectPath) {
+      const url = request.nextUrl.clone()
+      url.pathname = mfaRedirectPath
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

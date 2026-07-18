@@ -53,6 +53,12 @@ export default async function AdminPage() {
       description: 'Login attempts, logouts, password resets, and user management actions.',
       icon: 'ti-shield-lock',
     },
+    {
+      href: '/admin/security-settings',
+      title: 'Security Settings',
+      description: 'Require multi-factor authentication for everyone in your organization.',
+      icon: 'ti-lock',
+    },
   ]
 
   return (
