@@ -7,6 +7,10 @@ const slugify = (text: string) =>
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  // Where to send an already-provisioned user once the code exchange
+  // succeeds -- e.g. /account, when this is a "Connect Google/Microsoft"
+  // linkIdentity() round-trip rather than a fresh sign-in.
+  const next = searchParams.get('next') || '/dashboard'
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`)
@@ -32,10 +36,18 @@ export async function GET(request: Request) {
     .single()
 
   if (existingProfile) {
-    return NextResponse.redirect(`${origin}/dashboard`)
+    return NextResponse.redirect(`${origin}${next}`)
   }
 
-  const orgName = (user.user_metadata?.org_name as string) || 'My Organization'
+  // No profile yet and no org name to work with (the OAuth sign-in/sign-up
+  // flow -- Google/Microsoft's consent screen happens before we can ask
+  // for one) -- send them to collect it instead of silently creating an
+  // org with a placeholder name.
+  if (!user.user_metadata?.org_name) {
+    return NextResponse.redirect(`${origin}/complete-signup`)
+  }
+
+  const orgName = user.user_metadata.org_name as string
   const slug = slugify(orgName) + '-' + Math.random().toString(36).slice(2, 7)
 
   const { data: org, error: orgError } = await supabase

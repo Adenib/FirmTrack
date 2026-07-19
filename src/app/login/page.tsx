@@ -1,13 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import SsoButtons from '@/components/auth/sso-buttons'
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  missing_code: 'Something went wrong signing you in. Please try again.',
+  confirmation_failed: 'That sign-in link has expired or already been used. Please try again.',
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const errorCode = params.get('error')
+    if (errorCode) {
+      setError(OAUTH_ERROR_MESSAGES[errorCode] || 'Sign-in failed. Please try again.')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -80,6 +95,22 @@ export default function LoginPage() {
             {loading ? 'Logging in...' : 'Log in'}
           </button>
         </form>
+
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 border-t border-gray-200" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="flex-1 border-t border-gray-200" />
+        </div>
+
+        <SsoButtons
+          onSelect={(provider) => {
+            const supabase = createClient()
+            return supabase.auth.signInWithOAuth({
+              provider,
+              options: { redirectTo: `${window.location.origin}/auth/callback` },
+            })
+          }}
+        />
 
         <p className="text-sm text-center mt-4">
           Don't have an account?{' '}

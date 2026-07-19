@@ -191,6 +191,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           )}
           <p className="text-sm font-medium text-gray-900 truncate">{profile?.email || ''}</p>
           <p className="text-xs text-gray-500 capitalize">{profile?.role || ''}</p>
+          <Link href="/account" className="text-xs text-blue-600 hover:underline mt-1 inline-block mr-3">
+            My Account
+          </Link>
           <a href="/auth/signout" className="text-xs text-blue-600 hover:underline mt-1 inline-block">
             Sign out
           </a>

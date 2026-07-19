@@ -68,6 +68,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/auth/callback') ||
     path.startsWith('/forgot-password') ||
     path.startsWith('/reset-password') ||
+    path.startsWith('/complete-signup') ||
     path.startsWith('/mfa/enroll') ||
     path.startsWith('/mfa/challenge')
 

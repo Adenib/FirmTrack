@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import SsoButtons from '@/components/auth/sso-buttons'
 
 export default function RegisterPage() {
   const [orgName, setOrgName] = useState('')
@@ -102,6 +103,23 @@ export default function RegisterPage() {
             {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
+
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 border-t border-gray-200" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="flex-1 border-t border-gray-200" />
+        </div>
+
+        <SsoButtons
+          label="Sign up with"
+          onSelect={(provider) => {
+            const supabase = createClient()
+            return supabase.auth.signInWithOAuth({
+              provider,
+              options: { redirectTo: `${window.location.origin}/auth/callback` },
+            })
+          }}
+        />
 
         <p className="text-sm text-center mt-4">
           Already have an account?{' '}
