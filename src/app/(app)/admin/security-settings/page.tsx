@@ -67,9 +67,12 @@ export default function SecuritySettingsPage() {
             <div>
               <p className="text-sm font-medium text-gray-900">Require multi-factor authentication</p>
               <p className="text-xs text-gray-500 mt-1">
-                When on, every user must set up an authenticator app after their next login. Turn this
-                off only if your organization already enforces MFA at the identity-provider level (e.g.
-                Microsoft Conditional Access).
+                When on, every user must set up an authenticator app after their next login -- whether
+                they sign in with a password or with Microsoft/Google. Only turn this off if your
+                organization has confirmed its own identity provider already enforces MFA for every
+                user who could sign in to FirmTrack (e.g. Microsoft Entra Conditional Access, or Google
+                Workspace 2-Step Verification enforcement) -- FirmTrack has no way to verify that from
+                the sign-in itself, so this is a decision only your organization can make.
               </p>
             </div>
             <button
