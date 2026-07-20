@@ -13,7 +13,15 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') || '/dashboard'
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=missing_code`)
+    // Supabase forwards the provider/GoTrue error here instead of a code
+    // when the OAuth round-trip fails (denied consent, misconfigured
+    // provider, redirect URI mismatch, etc.) -- surface it instead of a
+    // generic "missing_code" so a failure is actually diagnosable.
+    const oauthError = searchParams.get('error_description') || searchParams.get('error')
+    console.error('auth/callback: no code param', { oauthError, url: request.url })
+    return NextResponse.redirect(
+      `${origin}/login?error=oauth_failed${oauthError ? `&detail=${encodeURIComponent(oauthError)}` : ''}`
+    )
   }
 
   const supabase = await createClient()
@@ -22,7 +30,10 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code)
 
   if (sessionError || !sessionData.user) {
-    return NextResponse.redirect(`${origin}/login?error=confirmation_failed`)
+    console.error('auth/callback: exchangeCodeForSession failed', sessionError)
+    return NextResponse.redirect(
+      `${origin}/login?error=oauth_failed${sessionError ? `&detail=${encodeURIComponent(sessionError.message)}` : ''}`
+    )
   }
 
   const user = sessionData.user

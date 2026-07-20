@@ -18,7 +18,14 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const errorCode = params.get('error')
-    if (errorCode) {
+    const detail = params.get('detail')
+    if (errorCode === 'oauth_failed' && detail) {
+      // Surfaces whatever Supabase/the provider actually said went wrong
+      // (denied consent, misconfigured provider, redirect URI mismatch,
+      // etc.) instead of a generic message -- see src/app/auth/callback/route.ts.
+      setError(`Sign-in failed: ${detail}`)
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (errorCode) {
       setError(OAUTH_ERROR_MESSAGES[errorCode] || 'Sign-in failed. Please try again.')
       window.history.replaceState({}, '', window.location.pathname)
     }
