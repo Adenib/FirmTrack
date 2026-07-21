@@ -62,6 +62,7 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
   const exemptFromAuthRedirect =
+    path === '/' ||
     path.startsWith('/api') ||
     path.startsWith('/login') ||
     path.startsWith('/register') ||
