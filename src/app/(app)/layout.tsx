@@ -71,7 +71,16 @@ const MODULES: ModuleEntry[] = [
       { key: 'accounttrack', label: 'Lawyer Overview', href: '/accounttrack/lawyer-overview' },
     ],
   },
-  { key: 'doctrack', label: 'DocTrack', href: '/doctrack', icon: FileCheckIcon },
+  {
+    key: 'doctrack',
+    label: 'DocTrack',
+    href: '/doctrack',
+    icon: FileCheckIcon,
+    subItems: [
+      { key: 'doctrack', label: 'Documents', href: '/doctrack' },
+      { key: 'doctrack', label: 'Settings', href: '/doctrack/settings' },
+    ],
+  },
   {
     key: 'hrtrack',
     label: 'HRTrack',

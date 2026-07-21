@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/billtrack-daily",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/doctrack-retention",
+      "schedule": "0 7 * * *"
     }
   ]
 }

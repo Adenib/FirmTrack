@@ -135,14 +135,34 @@ async function destroyTestAttachments(tenantId: string) {
   }
 }
 
+// Same shape as destroyTestAttachments -- documents/{tenantId}/{documentId}/{versionedFile}.
+async function destroyTestDocuments(tenantId: string) {
+  const { data: documentDirs } = await supabaseAdmin.storage.from('documents').list(tenantId)
+  for (const dir of documentDirs || []) {
+    const { data: files } = await supabaseAdmin.storage.from('documents').list(`${tenantId}/${dir.name}`)
+    const paths = (files || []).map((f) => `${tenantId}/${dir.name}/${f.name}`)
+    if (paths.length) await supabaseAdmin.storage.from('documents').remove(paths)
+  }
+}
+
 export async function destroyTestTenant(tenant: { tenantId: string; userId: string }, extraUserIds: string[] = []) {
   const { tenantId, userId } = tenant
 
   await destroyTestAttachments(tenantId)
+  await destroyTestDocuments(tenantId)
 
   const tablesInOrder = [
     'invoice_reminders',
     'billtrack_settings',
+    // document_versions and document_events are deliberately NOT listed
+    // here -- both have UPDATE/DELETE revoked from service_role at the DB
+    // level (they're meant to be genuinely tamper-proof, not just by app
+    // convention), so a direct delete attempt here would silently no-op.
+    // Both clean up automatically via ON DELETE CASCADE once 'documents'
+    // is deleted below -- FK cascade actions run with the constraint's
+    // own privileges, not the invoking role's grants, so the revoke
+    // doesn't block that.
+    'doctrack_settings',
     'attendance_records',
     'office_locations',
     'performance_evaluations',
@@ -183,6 +203,7 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     'lawyers',
     'lawyer_categories',
     'conflict_checks',
+    'documents',
     'matters',
     'clients',
     'subscriptions',
