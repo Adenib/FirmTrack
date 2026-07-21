@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { challengeAndVerifyWithRetry } from '@/lib/mfa-verify'
+import AuthCard from '@/components/auth/auth-card'
 
 export default function MfaChallengePage() {
   const [factorId, setFactorId] = useState('')
@@ -70,61 +71,59 @@ export default function MfaChallengePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow">
-        <h1 className="text-2xl font-bold mb-2">Two-factor verification</h1>
-        <p className="text-sm text-gray-600 mb-6">
-          {usingBackupCode
-            ? 'Enter one of your backup codes.'
-            : 'Enter the 6-digit code from your authenticator app.'}
-        </p>
+    <AuthCard>
+      <h1 className="text-2xl font-bold mb-2 text-center">Two-factor verification</h1>
+      <p className="text-sm text-gray-600 mb-6">
+        {usingBackupCode
+          ? 'Enter one of your backup codes.'
+          : 'Enter the 6-digit code from your authenticator app.'}
+      </p>
 
-        {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
-        ) : (
-          <form onSubmit={usingBackupCode ? handleRedeemBackupCode : handleVerify} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                {usingBackupCode ? 'Backup code' : '6-digit code'}
-              </label>
-              <input
-                type="text"
-                inputMode={usingBackupCode ? 'text' : 'numeric'}
-                required
-                autoFocus
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md tracking-widest text-center"
-                maxLength={usingBackupCode ? 11 : 6}
-              />
-            </div>
+      {loading ? (
+        <p className="text-sm text-gray-500">Loading...</p>
+      ) : (
+        <form onSubmit={usingBackupCode ? handleRedeemBackupCode : handleVerify} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {usingBackupCode ? 'Backup code' : '6-digit code'}
+            </label>
+            <input
+              type="text"
+              inputMode={usingBackupCode ? 'text' : 'numeric'}
+              required
+              autoFocus
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md tracking-widest text-center"
+              maxLength={usingBackupCode ? 11 : 6}
+            />
+          </div>
 
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-red-600 text-sm">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={verifying}
-              className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-            >
-              {verifying ? 'Verifying...' : 'Verify'}
-            </button>
-          </form>
-        )}
-
-        {!loading && canUseBackupCode && (
           <button
-            type="button"
-            onClick={() => {
-              setUsingBackupCode(!usingBackupCode)
-              setCode('')
-              setError('')
-            }}
-            className="w-full text-sm text-blue-600 hover:underline mt-4"
+            type="submit"
+            disabled={verifying}
+            className="w-full bg-brand-blue text-white py-2 rounded-md hover:bg-brand-blue-hover disabled:opacity-50"
           >
-            {usingBackupCode ? 'Use my authenticator app instead' : 'Use a backup code instead'}
+            {verifying ? 'Verifying...' : 'Verify'}
           </button>
-        )}
-      </div>
-    </div>
+        </form>
+      )}
+
+      {!loading && canUseBackupCode && (
+        <button
+          type="button"
+          onClick={() => {
+            setUsingBackupCode(!usingBackupCode)
+            setCode('')
+            setError('')
+          }}
+          className="w-full text-sm text-brand-blue hover:underline mt-4"
+        >
+          {usingBackupCode ? 'Use my authenticator app instead' : 'Use a backup code instead'}
+        </button>
+      )}
+    </AuthCard>
   )
 }

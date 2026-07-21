@@ -1,7 +1,19 @@
+import Link from 'next/link'
+import Logo from '@/components/brand/logo'
+
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-6 py-12 bg-white">
+        <div className="flex items-center justify-between mb-10">
+          <Link href="/">
+            <Logo size="sm" />
+          </Link>
+          <Link href="/" className="text-sm text-brand-blue hover:underline">
+            ← Back to home
+          </Link>
+        </div>
+
         <h1 className="text-3xl font-bold text-gray-900 mb-2">FirmTrack User Agreement</h1>
         <p className="text-sm text-gray-500 mb-10">Last updated: [DATE]</p>
 

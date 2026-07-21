@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import SsoButtons from '@/components/auth/sso-buttons'
+import AuthCard from '@/components/auth/auth-card'
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   missing_code: 'Something went wrong signing you in. Please try again.',
@@ -60,72 +61,70 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow">
-        <h1 className="text-2xl font-bold mb-6">Log in to FirmTrack</h1>
+    <AuthCard tagline>
+      <h1 className="text-2xl font-bold mb-6 text-center">Log in</h1>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium">Password</label>
-              <a href="/forgot-password" className="text-sm text-blue-600 hover:underline">
-                Forgot password?
-              </a>
-            </div>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md"
-            />
-          </div>
-
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Logging in...' : 'Log in'}
-          </button>
-        </form>
-
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 border-t border-gray-200" />
-          <span className="text-xs text-gray-400">or</span>
-          <div className="flex-1 border-t border-gray-200" />
+      <form onSubmit={handleLogin} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Email</label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md"
+          />
         </div>
 
-        <SsoButtons
-          onSelect={(provider) => {
-            const supabase = createClient()
-            return supabase.auth.signInWithOAuth({
-              provider,
-              options: { redirectTo: `${window.location.origin}/auth/callback` },
-            })
-          }}
-        />
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium">Password</label>
+            <a href="/forgot-password" className="text-sm text-brand-blue hover:underline">
+              Forgot password?
+            </a>
+          </div>
+          <input
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md"
+          />
+        </div>
 
-        <p className="text-sm text-center mt-4">
-          Don't have an account?{' '}
-          <a href="/register" className="text-blue-600 hover:underline">
-            Sign up
-          </a>
-        </p>
+        {error && <p className="text-red-600 text-sm">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-brand-blue text-white py-2 rounded-md hover:bg-brand-blue-hover disabled:opacity-50"
+        >
+          {loading ? 'Logging in...' : 'Log in'}
+        </button>
+      </form>
+
+      <div className="flex items-center gap-3 my-4">
+        <div className="flex-1 border-t border-gray-200" />
+        <span className="text-xs text-gray-400">or</span>
+        <div className="flex-1 border-t border-gray-200" />
       </div>
-    </div>
+
+      <SsoButtons
+        onSelect={(provider) => {
+          const supabase = createClient()
+          return supabase.auth.signInWithOAuth({
+            provider,
+            options: { redirectTo: `${window.location.origin}/auth/callback` },
+          })
+        }}
+      />
+
+      <p className="text-sm text-center mt-4">
+        Don't have an account?{' '}
+        <a href="/register" className="text-brand-blue hover:underline">
+          Sign up
+        </a>
+      </p>
+    </AuthCard>
   )
 }

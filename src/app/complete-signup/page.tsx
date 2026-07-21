@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import AuthCard from '@/components/auth/auth-card'
 
 export default function CompleteSignupPage() {
   const [orgName, setOrgName] = useState('')
@@ -57,59 +58,57 @@ export default function CompleteSignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow">
-        <h1 className="text-2xl font-bold mb-2">One more step</h1>
-        <p className="text-sm text-gray-600 mb-6">
-          You're signed in as {email || '...'}. What's your organization called?
-        </p>
+    <AuthCard>
+      <h1 className="text-2xl font-bold mb-2 text-center">One more step</h1>
+      <p className="text-sm text-gray-600 mb-6 text-center">
+        You're signed in as {email || '...'}. What's your organization called?
+      </p>
 
-        {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Organization name</label>
-              <input
-                type="text"
-                required
-                autoFocus
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="e.g. Compnet Systems"
-              />
-            </div>
+      {loading ? (
+        <p className="text-sm text-gray-500">Loading...</p>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Organization name</label>
+            <input
+              type="text"
+              required
+              autoFocus
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="e.g. Compnet Systems"
+            />
+          </div>
 
-            <label className="flex items-start gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                required
-                checked={agreementAccepted}
-                onChange={(e) => setAgreementAccepted(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                I have read and agree to the{' '}
-                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                  User Agreement
-                </a>
-                , including the Security Guaranty.
-              </span>
-            </label>
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              required
+              checked={agreementAccepted}
+              onChange={(e) => setAgreementAccepted(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              I have read and agree to the{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-brand-blue hover:underline">
+                User Agreement
+              </a>
+              , including the Security Guaranty.
+            </span>
+          </label>
 
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-red-600 text-sm">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting || !agreementAccepted}
-              className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-            >
-              {submitting ? 'Creating account...' : 'Continue'}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+          <button
+            type="submit"
+            disabled={submitting || !agreementAccepted}
+            className="w-full bg-brand-blue text-white py-2 rounded-md hover:bg-brand-blue-hover disabled:opacity-50"
+          >
+            {submitting ? 'Creating account...' : 'Continue'}
+          </button>
+        </form>
+      )}
+    </AuthCard>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import AuthCard from '@/components/auth/auth-card'
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
@@ -97,61 +98,59 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow">
-        <h1 className="text-2xl font-bold mb-6">Set a new password</h1>
+    <AuthCard>
+      <h1 className="text-2xl font-bold mb-6 text-center">Set a new password</h1>
 
-        {done ? (
-          <>
-            <p className="text-sm text-gray-700 mb-4">Your password has been updated.</p>
-            <a href="/dashboard" className="text-blue-600 hover:underline text-sm">
-              Continue to dashboard →
-            </a>
-          </>
-        ) : ready ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">New password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Confirm new password</label>
-              <input
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
+      {done ? (
+        <>
+          <p className="text-sm text-gray-700 mb-4">Your password has been updated.</p>
+          <a href="/dashboard" className="text-brand-blue hover:underline text-sm">
+            Continue to dashboard →
+          </a>
+        </>
+      ) : ready ? (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">New password</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Confirm new password</label>
+            <input
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+            />
+          </div>
 
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-red-600 text-sm">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-            >
-              {submitting ? 'Saving...' : 'Set new password'}
-            </button>
-          </form>
-        ) : error ? (
-          <>
-            <p className="text-red-600 text-sm mb-4">{error}</p>
-            <a href="/forgot-password" className="text-blue-600 hover:underline text-sm">
-              Request a new reset link →
-            </a>
-          </>
-        ) : (
-          <p className="text-sm text-gray-500">Verifying reset link...</p>
-        )}
-      </div>
-    </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-brand-blue text-white py-2 rounded-md hover:bg-brand-blue-hover disabled:opacity-50"
+          >
+            {submitting ? 'Saving...' : 'Set new password'}
+          </button>
+        </form>
+      ) : error ? (
+        <>
+          <p className="text-red-600 text-sm mb-4">{error}</p>
+          <a href="/forgot-password" className="text-brand-blue hover:underline text-sm">
+            Request a new reset link →
+          </a>
+        </>
+      ) : (
+        <p className="text-sm text-gray-500">Verifying reset link...</p>
+      )}
+    </AuthCard>
   )
 }
