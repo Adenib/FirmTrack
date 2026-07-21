@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { challengeAndVerifyWithRetry } from '@/lib/mfa-verify'
 
 export default function MfaChallengePage() {
   const [factorId, setFactorId] = useState('')
@@ -39,7 +40,7 @@ export default function MfaChallengePage() {
     setError('')
 
     const supabase = createClient()
-    const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({ factorId, code })
+    const { error: verifyError } = await challengeAndVerifyWithRetry(supabase, factorId, code)
     if (verifyError) {
       setError(verifyError.message)
       setVerifying(false)

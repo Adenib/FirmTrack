@@ -2,6 +2,7 @@ import { beforeAll, afterAll, describe, it, expect } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 import * as otpauth from 'otpauth'
 import { createTestTenant, destroyTestTenant, createTestUser, supabaseAdmin, type TestTenant } from '../helpers/test-client'
+import { challengeAndVerifyWithRetry } from '@/lib/mfa-verify'
 
 const TEST_PASSWORD = 'TestPassword123!'
 const APP_URL = 'http://localhost:3000'
@@ -21,6 +22,13 @@ function generateTotpCode(secret: string): string {
 function anonClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 }
+
+// challengeAndVerifyWithRetry (src/lib/mfa-verify.ts, shared with the real
+// /mfa/enroll and /mfa/challenge pages) retries once on Supabase's
+// documented-but-flaky-under-concurrency mfa_ip_address_mismatch error --
+// see that file for the full investigation. Using the same helper here
+// exercises the exact code path production uses, rather than a
+// test-only duplicate.
 
 function extractCookieHeader(res: Response): string {
   const getSetCookie = (res.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie
@@ -91,7 +99,7 @@ describe('MFA (TOTP)', () => {
     const { error: wrongErr } = await client.auth.mfa.challengeAndVerify({ factorId: enrollData!.id, code: '000000' })
     expect(wrongErr).not.toBeNull()
 
-    const { error: verifyErr } = await client.auth.mfa.challengeAndVerify({ factorId: enrollData!.id, code: generateTotpCode(ownerSecret) })
+    const { error: verifyErr } = await challengeAndVerifyWithRetry(client, enrollData!.id, generateTotpCode(ownerSecret))
     expect(verifyErr).toBeNull()
   })
 
@@ -107,7 +115,7 @@ describe('MFA (TOTP)', () => {
     expect(factorsErr).toBeNull()
     const factorId = factorsData!.totp[0].id
 
-    const { error: verifyErr } = await client.auth.mfa.challengeAndVerify({ factorId, code: generateTotpCode(ownerSecret) })
+    const { error: verifyErr } = await challengeAndVerifyWithRetry(client, factorId, generateTotpCode(ownerSecret))
     expect(verifyErr).toBeNull()
 
     const { data: aal } = await client.auth.mfa.getAuthenticatorAssuranceLevel()
@@ -152,7 +160,7 @@ describe('MFA (TOTP)', () => {
 
     const { data: enrollData, error: enrollErr } = await staffClient.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Authenticator' })
     expect(enrollErr).toBeNull()
-    const { error: verifyErr } = await staffClient.auth.mfa.challengeAndVerify({ factorId: enrollData!.id, code: generateTotpCode(enrollData!.totp.secret) })
+    const { error: verifyErr } = await challengeAndVerifyWithRetry(staffClient, enrollData!.id, generateTotpCode(enrollData!.totp.secret))
     expect(verifyErr).toBeNull()
 
     const { fetch: adminFetch } = await loginFetch(tenant.email, TEST_PASSWORD)
