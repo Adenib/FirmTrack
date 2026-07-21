@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import SsoButtons from '@/components/auth/sso-buttons'
 import AuthCard from '@/components/auth/auth-card'
+import { oauthScopesFor } from '@/lib/microsoft-graph/scopes'
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   missing_code: 'Something went wrong signing you in. Please try again.',
@@ -114,7 +115,7 @@ export default function LoginPage() {
           const supabase = createClient()
           return supabase.auth.signInWithOAuth({
             provider,
-            options: { redirectTo: `${window.location.origin}/auth/callback` },
+            options: { redirectTo: `${window.location.origin}/auth/callback`, scopes: oauthScopesFor(provider) },
           })
         }}
       />

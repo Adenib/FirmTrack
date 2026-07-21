@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { UserIdentity } from '@supabase/supabase-js'
+import { oauthScopesFor } from '@/lib/microsoft-graph/scopes'
 
 const PROVIDER_LABELS: Record<string, string> = {
   email: 'Email and password',
@@ -15,6 +16,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [pending, setPending] = useState<string | null>(null)
+  const [hasFileAccess, setHasFileAccess] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -23,6 +25,10 @@ export default function AccountPage() {
     const { data, error: identitiesError } = await supabase.auth.getUserIdentities()
     if (identitiesError) setError(identitiesError.message)
     else setIdentities(data?.identities || [])
+
+    const statusRes = await fetch('/api/doctrack/microsoft/status')
+    if (statusRes.ok) setHasFileAccess((await statusRes.json()).hasFileAccess)
+
     setLoading(false)
   }
 
@@ -36,7 +42,10 @@ export default function AccountPage() {
     const supabase = createClient()
     const { error: linkError } = await supabase.auth.linkIdentity({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/account` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/account`,
+        scopes: oauthScopesFor(provider),
+      },
     })
     if (linkError) {
       setError(linkError.message)
@@ -71,18 +80,35 @@ export default function AccountPage() {
 
           {identities.map((identity) => (
             <div key={identity.id} className="flex items-center justify-between gap-3 py-2 border-b border-gray-100 last:border-0">
-              <span className="text-sm text-gray-700">{PROVIDER_LABELS[identity.provider] || identity.provider}</span>
-              {identity.provider !== 'email' && (
-                <button
-                  type="button"
-                  disabled={pending === identity.provider || identities.length < 2}
-                  onClick={() => handleDisconnect(identity)}
-                  className="text-xs text-red-600 hover:underline disabled:opacity-50 disabled:no-underline"
-                  title={identities.length < 2 ? "Can't disconnect your only sign-in method" : undefined}
-                >
-                  {pending === identity.provider ? 'Disconnecting...' : 'Disconnect'}
-                </button>
-              )}
+              <div>
+                <span className="text-sm text-gray-700">{PROVIDER_LABELS[identity.provider] || identity.provider}</span>
+                {identity.provider === 'azure' && !hasFileAccess && (
+                  <p className="text-xs text-amber-600 mt-0.5">File linking (DocTrack) not enabled for this connection</p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {identity.provider === 'azure' && !hasFileAccess && (
+                  <button
+                    type="button"
+                    disabled={pending === 'azure'}
+                    onClick={() => handleConnect('azure')}
+                    className="text-xs text-brand-blue hover:underline disabled:opacity-50"
+                  >
+                    {pending === 'azure' ? 'Redirecting...' : 'Reconnect'}
+                  </button>
+                )}
+                {identity.provider !== 'email' && (
+                  <button
+                    type="button"
+                    disabled={pending === identity.provider || identities.length < 2}
+                    onClick={() => handleDisconnect(identity)}
+                    className="text-xs text-red-600 hover:underline disabled:opacity-50 disabled:no-underline"
+                    title={identities.length < 2 ? "Can't disconnect your only sign-in method" : undefined}
+                  >
+                    {pending === identity.provider ? 'Disconnecting...' : 'Disconnect'}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
 

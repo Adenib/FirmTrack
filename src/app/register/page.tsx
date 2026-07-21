@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import SsoButtons from '@/components/auth/sso-buttons'
 import AuthCard from '@/components/auth/auth-card'
+import { oauthScopesFor } from '@/lib/microsoft-graph/scopes'
 
 export default function RegisterPage() {
   const [orgName, setOrgName] = useState('')
@@ -135,7 +136,7 @@ export default function RegisterPage() {
           const supabase = createClient()
           return supabase.auth.signInWithOAuth({
             provider,
-            options: { redirectTo: `${window.location.origin}/auth/callback` },
+            options: { redirectTo: `${window.location.origin}/auth/callback`, scopes: oauthScopesFor(provider) },
           })
         }}
       />

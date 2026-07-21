@@ -1,5 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { MICROSOFT_GRAPH_SCOPES } from '@/lib/microsoft-graph/scopes'
+
+const supabaseAdmin = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 const slugify = (text: string) =>
   text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
@@ -37,6 +44,27 @@ export async function GET(request: Request) {
   }
 
   const user = sessionData.user
+
+  // Capture the Microsoft Graph token at the moment it's issued --
+  // Supabase exposes provider_token/provider_refresh_token only on this
+  // initial exchange and never refreshes them itself, so this is the
+  // only chance to store them for later use (browsing OneDrive isn't
+  // something that only happens at login time). Fires for both a fresh
+  // Microsoft sign-in and a "Connect Microsoft" linkIdentity() round-trip.
+  if (
+    user.app_metadata?.provider === 'azure' &&
+    sessionData.session.provider_token &&
+    sessionData.session.provider_refresh_token
+  ) {
+    await supabaseAdmin.from('microsoft_graph_tokens').upsert({
+      user_id: user.id,
+      access_token: sessionData.session.provider_token,
+      refresh_token: sessionData.session.provider_refresh_token,
+      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Microsoft access tokens are ~1hr; refreshed proactively via getValidGraphToken
+      scope: MICROSOFT_GRAPH_SCOPES,
+      updated_at: new Date().toISOString(),
+    })
+  }
 
   // Check if this user already has a profile (avoids duplicate org creation
   // if they click the confirmation link twice)
