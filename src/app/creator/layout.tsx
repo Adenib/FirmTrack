@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getCreatorContext } from '@/lib/get-creator-context'
 import { canAccessCreatorPage } from '@/lib/creator-permissions'
+import { HomeIcon, BuildingIcon, ChartBarIcon, UsersIcon } from '@/components/brand/icons'
 
 export default async function CreatorLayout({ children }: { children: React.ReactNode }) {
   const { admin } = await getCreatorContext()
@@ -15,24 +16,24 @@ export default async function CreatorLayout({ children }: { children: React.Reac
 
         <nav className="flex-1 overflow-y-auto py-2">
           <Link href="/creator" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
-            <i className="ti ti-dashboard" style={{ fontSize: 18 }} />
+            <HomeIcon className="w-[18px] h-[18px]" />
             Overview
           </Link>
           {canAccessCreatorPage(admin.role, 'organizations') && (
             <Link href="/creator/organizations" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
-              <i className="ti ti-building" style={{ fontSize: 18 }} />
+              <BuildingIcon className="w-[18px] h-[18px]" />
               Organizations
             </Link>
           )}
           {canAccessCreatorPage(admin.role, 'revenue') && (
             <Link href="/creator/revenue" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
-              <i className="ti ti-chart-line" style={{ fontSize: 18 }} />
+              <ChartBarIcon className="w-[18px] h-[18px]" />
               Revenue
             </Link>
           )}
           {canAccessCreatorPage(admin.role, 'staff') && (
             <Link href="/creator/staff" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
-              <i className="ti ti-users" style={{ fontSize: 18 }} />
+              <UsersIcon className="w-[18px] h-[18px]" />
               Platform Staff
             </Link>
           )}

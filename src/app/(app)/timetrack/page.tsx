@@ -7,6 +7,7 @@ import MatterSearchInput from '@/components/timetrack/matter-search-input'
 import MatterSummaryCard from '@/components/timetrack/matter-summary-card'
 import CalendarEventPicker from '@/components/timetrack/calendar-event-picker'
 import useTimetrackLookups, { lawyerRateFor } from '@/components/timetrack/use-timetrack-lookups'
+import { PlayIcon, PauseIcon } from '@/components/brand/icons'
 
 const DRAFT_KEY = 'firmtrack-timesheet-draft'
 
@@ -335,7 +336,11 @@ export default function TimeTrackPage() {
                         : 'w-full text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 whitespace-nowrap'
                     }
                   >
-                    <i className={`ti ${row.timerRunning ? 'ti-player-pause' : 'ti-player-play'}`} />{' '}
+                    {row.timerRunning ? (
+                      <PauseIcon className="inline w-3 h-3 mb-0.5" />
+                    ) : (
+                      <PlayIcon className="inline w-3 h-3 mb-0.5" />
+                    )}{' '}
                     {formatTimer(row.timerSeconds)}
                   </button>
                 </Field>

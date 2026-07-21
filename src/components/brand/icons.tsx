@@ -132,3 +132,76 @@ export function ChevronRightIcon({ className = base }: IconProps) {
     </svg>
   )
 }
+
+export function BriefcaseIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <rect x="3" y="8" width="18" height="12" rx="1.5" />
+      <path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2M3 13h18" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function CalculatorIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <rect x="5" y="3" width="14" height="18" rx="1.5" />
+      <path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 18h.01M12 18h.01M16 18h.01" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function FileUploadIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <path d="M7 3h7l4 4v14H7z" strokeLinejoin="round" />
+      <path d="M12 18v-6M9.5 14.5L12 12l2.5 2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function CreditCardIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <rect x="3" y="6" width="18" height="13" rx="1.5" />
+      <path d="M3 10.5h18M7 15h4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function MapPinIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <path d="M12 21s7-6.5 7-11.5a7 7 0 10-14 0C5 14.5 12 21 12 21z" strokeLinejoin="round" />
+      <circle cx="12" cy="9.5" r="2.3" />
+    </svg>
+  )
+}
+
+export function ChecklistIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <path d="M4 6l1.5 1.5L8 5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 12l1.5 1.5L8 11" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 18l1.5 1.5L8 17" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M11 6h9M11 12h9M11 18h9" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function PlayIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M7 4.5v15l14-7.5z" />
+    </svg>
+  )
+}
+
+export function PauseIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <rect x="6" y="4.5" width="4.5" height="15" />
+      <rect x="13.5" y="4.5" width="4.5" height="15" />
+    </svg>
+  )
+}

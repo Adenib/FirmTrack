@@ -1,10 +1,11 @@
 import Link from 'next/link'
+import { ClockIcon, MapPinIcon, ChecklistIcon, ChartBarIcon } from '@/components/brand/icons'
 
 const SECTIONS = [
-  { href: '/hrtrack/attendance', icon: 'ti-clock', label: 'Attendance', description: 'Clock in/out, location, and attendance log.' },
-  { href: '/hrtrack/movement', icon: 'ti-map-pin', label: 'Movement', description: 'Log and approve staff out-of-office movements.' },
-  { href: '/hrtrack/performance', icon: 'ti-checklist', label: 'Performance', description: 'Tasks and performance tracking.' },
-  { href: '/hrtrack/reports', icon: 'ti-report', label: 'Reports', description: 'Attendance summaries across the firm.' },
+  { href: '/hrtrack/attendance', icon: ClockIcon, label: 'Attendance', description: 'Clock in/out, location, and attendance log.' },
+  { href: '/hrtrack/movement', icon: MapPinIcon, label: 'Movement', description: 'Log and approve staff out-of-office movements.' },
+  { href: '/hrtrack/performance', icon: ChecklistIcon, label: 'Performance', description: 'Tasks and performance tracking.' },
+  { href: '/hrtrack/reports', icon: ChartBarIcon, label: 'Reports', description: 'Attendance summaries across the firm.' },
 ]
 
 export default function HRTrackHubPage() {
@@ -21,7 +22,7 @@ export default function HRTrackHubPage() {
             className="bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-300 hover:shadow-sm transition"
           >
             <div className="flex items-center gap-2 mb-1">
-              <i className={`ti ${s.icon}`} style={{ fontSize: 20 }} />
+              <s.icon className="w-5 h-5 text-gray-600" />
               <p className="font-semibold text-gray-900">{s.label}</p>
             </div>
             <p className="text-sm text-gray-500">{s.description}</p>

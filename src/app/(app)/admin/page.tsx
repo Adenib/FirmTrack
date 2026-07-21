@@ -1,5 +1,16 @@
 import Link from 'next/link'
 import { getUserContext } from '@/lib/get-user-context'
+import {
+  UsersIcon,
+  BriefcaseIcon,
+  CalculatorIcon,
+  FilePlusIcon,
+  BuildingIcon,
+  FileUploadIcon,
+  CreditCardIcon,
+  ShieldLockIcon,
+  LockIcon,
+} from '@/components/brand/icons'
 
 export default async function AdminPage() {
   const { profile } = await getUserContext()
@@ -9,55 +20,55 @@ export default async function AdminPage() {
       href: '/admin/users',
       title: 'Users',
       description: 'Manage your team members and their roles.',
-      icon: 'ti-users',
+      icon: UsersIcon,
     },
     {
       href: '/admin/lawyers',
       title: 'Lawyers',
       description: 'Manage lawyers, categories and billing rates.',
-      icon: 'ti-briefcase',
+      icon: BriefcaseIcon,
     },
     {
       href: '/admin/accounts-staff',
       title: 'Accounts Staff',
       description: 'Manage accounts-role staff and their tiers.',
-      icon: 'ti-calculator',
+      icon: CalculatorIcon,
     },
     {
       href: '/admin/matters',
       title: 'New Matter',
       description: 'Open a new matter for an existing or new client.',
-      icon: 'ti-file-plus',
+      icon: FilePlusIcon,
     },
     {
       href: '/admin/clients',
       title: 'Clients',
       description: 'Manage clients your organization works with.',
-      icon: 'ti-building',
+      icon: BuildingIcon,
     },
     {
       href: '/admin/import',
       title: 'Import Data',
       description: 'Bulk import clients or employees from a CSV file.',
-      icon: 'ti-file-upload',
+      icon: FileUploadIcon,
     },
     {
       href: '/admin/billing/pricing',
       title: 'Billing & Pricing',
       description: 'View plan pricing and estimate costs.',
-      icon: 'ti-credit-card',
+      icon: CreditCardIcon,
     },
     {
       href: '/admin/security-log',
       title: 'Security Log',
       description: 'Login attempts, logouts, password resets, and user management actions.',
-      icon: 'ti-shield-lock',
+      icon: ShieldLockIcon,
     },
     {
       href: '/admin/security-settings',
       title: 'Security Settings',
       description: 'Require multi-factor authentication for everyone in your organization.',
-      icon: 'ti-lock',
+      icon: LockIcon,
     },
   ]
 
@@ -78,7 +89,7 @@ export default async function AdminPage() {
             href={card.href}
             className="bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-300 hover:shadow-sm transition"
           >
-            <i className={`ti ${card.icon}`} style={{ fontSize: 22, color: '#4b5563' }} />
+            <card.icon className="w-6 h-6 text-gray-600" />
             <p className="font-semibold text-gray-900 mt-3">{card.title}</p>
             <p className="text-sm text-gray-500 mt-1">{card.description}</p>
           </Link>
