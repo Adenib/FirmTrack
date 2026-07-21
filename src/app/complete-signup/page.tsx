@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 
 export default function CompleteSignupPage() {
   const [orgName, setOrgName] = useState('')
+  const [agreementAccepted, setAgreementAccepted] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -41,7 +42,7 @@ export default function CompleteSignupPage() {
     const response = await fetch('/api/register', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ userId, email, orgName }),
+      body: JSON.stringify({ userId, email, orgName, agreementAccepted }),
     })
 
     const result = await response.json()
@@ -80,11 +81,28 @@ export default function CompleteSignupPage() {
               />
             </div>
 
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                required
+                checked={agreementAccepted}
+                onChange={(e) => setAgreementAccepted(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                I have read and agree to the{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  User Agreement
+                </a>
+                , including the Security Guaranty.
+              </span>
+            </label>
+
             {error && <p className="text-red-600 text-sm">{error}</p>}
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !agreementAccepted}
               className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
               {submitting ? 'Creating account...' : 'Continue'}

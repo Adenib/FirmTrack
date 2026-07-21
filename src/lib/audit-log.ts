@@ -18,6 +18,7 @@ export type SecurityEventType =
   | 'session_revoked'
   | 'mfa_enrolled'
   | 'mfa_reset'
+  | 'terms_accepted'
 
 export type LogSecurityEventInput = {
   tenantId?: string | null

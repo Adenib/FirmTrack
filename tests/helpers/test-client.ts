@@ -72,7 +72,7 @@ export async function createTestTenant(namePrefix: string): Promise<TestTenant> 
   const registerRes = await fetch(`${APP_URL}/api/register`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ userId, email, orgName }),
+    body: JSON.stringify({ userId, email, orgName, agreementAccepted: true }),
   })
   const registerBody = await registerRes.json()
   if (!registerRes.ok) {

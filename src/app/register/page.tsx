@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [agreementAccepted, setAgreementAccepted] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -38,6 +39,7 @@ export default function RegisterPage() {
         userId: authData.user.id,
         email,
         orgName,
+        agreementAccepted,
       }),
     })
 
@@ -93,11 +95,28 @@ export default function RegisterPage() {
             />
           </div>
 
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              required
+              checked={agreementAccepted}
+              onChange={(e) => setAgreementAccepted(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              I have read and agree to the{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                User Agreement
+              </a>
+              , including the Security Guaranty.
+            </span>
+          </label>
+
           {error && <p className="text-red-600 text-sm">{error}</p>}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !agreementAccepted}
             className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Create account'}
