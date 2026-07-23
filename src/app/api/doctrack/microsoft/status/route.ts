@@ -23,5 +23,6 @@ export async function GET() {
   return NextResponse.json({
     hasFileAccess: !!row?.scope.includes('Files.Read'),
     hasMailAccess: !!row?.scope.includes('Mail.Read'),
+    hasSitesAccess: !!row?.scope.includes('Sites.Read.All'),
   })
 }

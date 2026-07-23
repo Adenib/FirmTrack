@@ -138,3 +138,67 @@ export async function downloadMessageAttachment(
 export async function downloadMessageRaw(accessToken: string, messageId: string): Promise<Buffer> {
   return graphFetchBinary(accessToken, `/me/messages/${messageId}/$value`)
 }
+
+export type SharePointSite = {
+  id: string
+  name: string
+  webUrl: string
+}
+
+function toSharePointSite(data: Record<string, unknown>): SharePointSite {
+  return {
+    id: data.id as string,
+    name: (data.displayName as string) || (data.name as string) || 'Untitled site',
+    webUrl: data.webUrl as string,
+  }
+}
+
+// Default "recent" list, same role $orderby plays for Outlook when
+// there's no search term -- a firm may belong to many sites, so this
+// avoids requiring a search term just to see anything.
+export async function listFollowedSharePointSites(accessToken: string): Promise<SharePointSite[]> {
+  const data = await graphFetch(accessToken, '/me/followedSites')
+  return (data.value || []).map(toSharePointSite)
+}
+
+export async function searchSharePointSites(accessToken: string, query: string): Promise<SharePointSite[]> {
+  const params = new URLSearchParams()
+  params.set('search', query)
+  const data = await graphFetch(accessToken, `/sites?${params.toString()}`)
+  return (data.value || []).map(toSharePointSite)
+}
+
+// v1 scope: a site's default document library only, not every library
+// a site might have -- enumerating multiple libraries per site is a
+// separate follow-up if needed.
+export async function getSiteDefaultDrive(accessToken: string, siteId: string): Promise<{ id: string }> {
+  const data = await graphFetch(accessToken, `/sites/${siteId}/drive`)
+  return { id: data.id }
+}
+
+// A SharePoint document library item has the identical Graph shape as
+// a OneDrive item -- reuses OneDriveItem/OneDriveItemMetadata rather
+// than duplicating them, just addressed via /drives/{driveId}/... (a
+// site's document library) instead of /me/drive/... (the signed-in
+// user's own drive).
+export async function listDriveChildren(accessToken: string, driveId: string, folderId?: string): Promise<OneDriveItem[]> {
+  const path = folderId ? `/drives/${driveId}/items/${folderId}/children` : `/drives/${driveId}/root/children`
+  const data = await graphFetch(accessToken, path)
+  return (data.value || []).map((item: Record<string, unknown>) => ({
+    id: item.id,
+    name: item.name,
+    isFolder: !!item.folder,
+    size: item.size || 0,
+  }))
+}
+
+export async function getDriveItemMetadata(accessToken: string, driveId: string, itemId: string): Promise<OneDriveItemMetadata> {
+  const data = await graphFetch(accessToken, `/drives/${driveId}/items/${itemId}`)
+  return {
+    name: data.name,
+    size: data.size || 0,
+    webUrl: data.webUrl,
+    lastModifiedDateTime: data.lastModifiedDateTime,
+    mimeType: data.file?.mimeType || null,
+  }
+}

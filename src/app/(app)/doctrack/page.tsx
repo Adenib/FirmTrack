@@ -29,8 +29,9 @@ type OutlookMessage = {
   webLink: string
 }
 type OutlookAttachment = { id: string; name: string; contentType: string; size: number }
+type SharePointSite = { id: string; name: string; webUrl: string }
 
-const EXTERNAL_SOURCE_LABELS: Record<string, string> = { onedrive: 'OneDrive', outlook: 'Outlook' }
+const EXTERNAL_SOURCE_LABELS: Record<string, string> = { onedrive: 'OneDrive', outlook: 'Outlook', sharepoint: 'SharePoint' }
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -83,6 +84,22 @@ export default function DocTrackPage() {
   const [outlookMatterQuery, setOutlookMatterQuery] = useState('')
   const [outlookMatter, setOutlookMatter] = useState<MatterResult | null>(null)
   const [outlookLinking, setOutlookLinking] = useState(false)
+
+  // SharePoint link panel
+  const [showSpPanel, setShowSpPanel] = useState(false)
+  const [spSiteSearch, setSpSiteSearch] = useState('')
+  const [spSites, setSpSites] = useState<SharePointSite[]>([])
+  const [spSiteLoading, setSpSiteLoading] = useState(false)
+  const [spSelectedSite, setSpSelectedSite] = useState<SharePointSite | null>(null)
+  const [spFolderStack, setSpFolderStack] = useState<{ id: string | undefined; name: string }[]>([])
+  const [spItems, setSpItems] = useState<OneDriveItem[]>([])
+  const [spLoading, setSpLoading] = useState(false)
+  const [spError, setSpError] = useState('')
+  const [spSelectedFile, setSpSelectedFile] = useState<OneDriveItem | null>(null)
+  const [spTitle, setSpTitle] = useState('')
+  const [spMatterQuery, setSpMatterQuery] = useState('')
+  const [spMatter, setSpMatter] = useState<MatterResult | null>(null)
+  const [spLinking, setSpLinking] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -319,6 +336,98 @@ export default function DocTrackPage() {
     await load()
   }
 
+  const searchSpSites = useCallback(async (search: string) => {
+    setSpSiteLoading(true)
+    setSpError('')
+    const params = search ? `?q=${encodeURIComponent(search)}` : ''
+    const res = await fetch(`/api/doctrack/microsoft/sharepoint/sites${params}`)
+    const result = await res.json()
+    if (!res.ok) setSpError(result.error || 'Could not browse SharePoint sites')
+    else setSpSites(result.sites || [])
+    setSpSiteLoading(false)
+  }, [])
+
+  const openSpPanel = () => {
+    setShowSpPanel(true)
+    setSpSelectedSite(null)
+    setSpSelectedFile(null)
+    setSpSiteSearch('')
+    searchSpSites('')
+  }
+
+  const browseSp = async (siteId: string, folderId: string | undefined) => {
+    setSpLoading(true)
+    setSpError('')
+    const params = new URLSearchParams({ site_id: siteId })
+    if (folderId) params.set('folder_id', folderId)
+    const res = await fetch(`/api/doctrack/microsoft/sharepoint/browse?${params.toString()}`)
+    const result = await res.json()
+    if (!res.ok) setSpError(result.error || 'Could not browse SharePoint')
+    else setSpItems(result.items || [])
+    setSpLoading(false)
+  }
+
+  const selectSpSite = (site: SharePointSite) => {
+    setSpSelectedSite(site)
+    setSpFolderStack([{ id: undefined, name: site.name }])
+    browseSp(site.id, undefined)
+  }
+
+  const openSpFolder = (item: OneDriveItem) => {
+    if (!spSelectedSite) return
+    setSpFolderStack((prev) => [...prev, { id: item.id, name: item.name }])
+    browseSp(spSelectedSite.id, item.id)
+  }
+
+  const backSpFolder = () => {
+    if (!spSelectedSite) return
+    if (spFolderStack.length <= 1) {
+      setSpSelectedSite(null)
+      return
+    }
+    const next = spFolderStack.slice(0, -1)
+    setSpFolderStack(next)
+    browseSp(spSelectedSite.id, next[next.length - 1]?.id)
+  }
+
+  const selectSpFile = (item: OneDriveItem) => {
+    setSpSelectedFile(item)
+    setSpTitle(item.name)
+  }
+
+  const handleLinkSpFile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!spSelectedSite || !spSelectedFile) return
+    setSpLinking(true)
+    setSpError('')
+
+    const res = await fetch('/api/doctrack/microsoft/sharepoint/link', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        site_id: spSelectedSite.id,
+        item_id: spSelectedFile.id,
+        title: spTitle,
+        matter_id: spMatter?.id,
+      }),
+    })
+    const result = await res.json()
+    if (!res.ok) {
+      setSpError(result.error || 'Could not link file')
+      setSpLinking(false)
+      return
+    }
+
+    setShowSpPanel(false)
+    setSpSelectedSite(null)
+    setSpSelectedFile(null)
+    setSpTitle('')
+    setSpMatter(null)
+    setSpMatterQuery('')
+    setSpLinking(false)
+    await load()
+  }
+
   return (
     <div className="p-8 max-w-5xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">DocTrack</h1>
@@ -382,6 +491,13 @@ export default function DocTrackPage() {
             className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50"
           >
             Link from Outlook
+          </button>
+          <button
+            type="button"
+            onClick={openSpPanel}
+            className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50"
+          >
+            Link from SharePoint
           </button>
         </div>
       </form>
@@ -564,6 +680,115 @@ export default function DocTrackPage() {
                 </button>
                 <button type="button" onClick={() => setSelectedMessage(null)} className="text-sm text-gray-500 hover:underline">
                   Choose a different email
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {showSpPanel && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-gray-900">Link a file from SharePoint</p>
+            <button type="button" onClick={() => setShowSpPanel(false)} className="text-sm text-gray-500 hover:underline">
+              Close
+            </button>
+          </div>
+
+          {spError ? (
+            <p className="text-red-600 text-sm">{spError}</p>
+          ) : !spSelectedSite ? (
+            <>
+              <input
+                type="text"
+                placeholder="Search sites..."
+                value={spSiteSearch}
+                onChange={(e) => setSpSiteSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    searchSpSites(spSiteSearch)
+                  }
+                }}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+              {spSiteLoading ? (
+                <p className="text-gray-500 text-sm">Loading...</p>
+              ) : (
+                <div className="border border-gray-100 rounded divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                  {spSites.length === 0 && <p className="text-sm text-gray-400 p-3">No sites found.</p>}
+                  {spSites.map((site) => (
+                    <button
+                      key={site.id}
+                      type="button"
+                      onClick={() => selectSpSite(site)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                    >
+                      {site.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : !spSelectedFile ? (
+            <>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <button type="button" onClick={backSpFolder} className="text-brand-blue hover:underline">
+                  ← Back
+                </button>
+                <span>{spFolderStack[spFolderStack.length - 1]?.name}</span>
+              </div>
+
+              {spLoading ? (
+                <p className="text-gray-500 text-sm">Loading...</p>
+              ) : (
+                <div className="border border-gray-100 rounded divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                  {spItems.length === 0 && <p className="text-sm text-gray-400 p-3">Empty folder.</p>}
+                  {spItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => (item.isFolder ? openSpFolder(item) : selectSpFile(item))}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between"
+                    >
+                      <span>{item.isFolder ? '📁 ' : '📄 '}{item.name}</span>
+                      {!item.isFolder && <span className="text-xs text-gray-400">{formatSize(item.size)}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <form onSubmit={handleLinkSpFile} className="space-y-3">
+              <p className="text-sm text-gray-600">Linking: {spSelectedFile.name}</p>
+              <input
+                type="text"
+                required
+                placeholder="Title"
+                value={spTitle}
+                onChange={(e) => setSpTitle(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+              <MatterSearchInput
+                value={spMatter ? `${spMatter.matter_id} · ${spMatter.case_name}` : spMatterQuery}
+                onChange={(v) => {
+                  setSpMatterQuery(v)
+                  setSpMatter(null)
+                }}
+                onSelect={setSpMatter}
+                placeholder="Link to a matter (optional -- leave blank for a firm-wide document)"
+              />
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={spLinking}
+                  className="bg-brand-blue text-white px-4 py-2 rounded-md text-sm hover:bg-brand-blue-hover disabled:opacity-50"
+                >
+                  {spLinking ? 'Linking...' : 'Link file'}
+                </button>
+                <button type="button" onClick={() => setSpSelectedFile(null)} className="text-sm text-gray-500 hover:underline">
+                  Choose a different file
                 </button>
               </div>
             </form>
