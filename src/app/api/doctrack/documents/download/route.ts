@@ -36,16 +36,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Not authorized to download this document' }, { status: 403 })
   }
 
-  // Linked (OneDrive) documents have no bytes and no version rows of
-  // our own -- OneDrive is the authority, so this just hands back the
-  // link to open it there.
-  if (document.external_source === 'onedrive') {
+  // Linked (OneDrive/Outlook) documents have no bytes and no version
+  // rows of our own -- the external system is the authority, so this
+  // just hands back the link to open it there.
+  if (document.external_source) {
     await supabaseAdmin.from('document_events').insert({
       tenant_id: profile.tenant_id,
       document_id: documentId,
       user_id: user.id,
       event_type: 'downloaded',
-      metadata: { source: 'onedrive' },
+      metadata: { source: document.external_source },
     })
     return NextResponse.json({ url: document.external_web_url, filename: document.external_filename })
   }

@@ -20,5 +20,8 @@ export async function GET() {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  return NextResponse.json({ hasFileAccess: !!row?.scope.includes('Files.Read') })
+  return NextResponse.json({
+    hasFileAccess: !!row?.scope.includes('Files.Read'),
+    hasMailAccess: !!row?.scope.includes('Mail.Read'),
+  })
 }

@@ -17,6 +17,7 @@ export default function AccountPage() {
   const [error, setError] = useState('')
   const [pending, setPending] = useState<string | null>(null)
   const [hasFileAccess, setHasFileAccess] = useState(false)
+  const [hasMailAccess, setHasMailAccess] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -27,7 +28,11 @@ export default function AccountPage() {
     else setIdentities(data?.identities || [])
 
     const statusRes = await fetch('/api/doctrack/microsoft/status')
-    if (statusRes.ok) setHasFileAccess((await statusRes.json()).hasFileAccess)
+    if (statusRes.ok) {
+      const status = await statusRes.json()
+      setHasFileAccess(status.hasFileAccess)
+      setHasMailAccess(status.hasMailAccess)
+    }
 
     setLoading(false)
   }
@@ -85,9 +90,12 @@ export default function AccountPage() {
                 {identity.provider === 'azure' && !hasFileAccess && (
                   <p className="text-xs text-amber-600 mt-0.5">File linking (DocTrack) not enabled for this connection</p>
                 )}
+                {identity.provider === 'azure' && hasFileAccess && !hasMailAccess && (
+                  <p className="text-xs text-amber-600 mt-0.5">Email linking (DocTrack) not enabled for this connection</p>
+                )}
               </div>
               <div className="flex items-center gap-3">
-                {identity.provider === 'azure' && !hasFileAccess && (
+                {identity.provider === 'azure' && (!hasFileAccess || !hasMailAccess) && (
                   <button
                     type="button"
                     disabled={pending === 'azure'}

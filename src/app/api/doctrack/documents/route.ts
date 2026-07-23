@@ -3,7 +3,8 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
 import { canAccessMatterDocument } from '@/lib/doctrack/permissions'
-import { DOCUMENTS_BUCKET, MAX_DOCUMENT_SIZE, ALLOWED_DOCUMENT_TYPES } from '@/lib/doctrack/constants'
+import { MAX_DOCUMENT_SIZE, ALLOWED_DOCUMENT_TYPES } from '@/lib/doctrack/constants'
+import { createDocumentWithFile, CreateDocumentError } from '@/lib/doctrack/create-document'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -117,50 +118,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'File must be 25MB or smaller' }, { status: 400 })
   }
 
-  const { data: document, error: docError } = await supabaseAdmin
-    .from('documents')
-    .insert({
-      tenant_id: profile.tenant_id,
-      matter_id: matter?.id || null,
+  const fileBuffer = Buffer.from(await file.arrayBuffer())
+
+  try {
+    const { document, version } = await createDocumentWithFile({
+      tenantId: profile.tenant_id,
+      matterId: matter?.id || null,
       title: title.trim(),
       category: typeof category === 'string' && category.trim() ? category.trim() : null,
-      created_by: user.id,
-    })
-    .select()
-    .single()
-  if (docError || !document) return NextResponse.json({ error: docError?.message || 'Could not create document' }, { status: 500 })
-
-  const path = `${profile.tenant_id}/${document.id}/1-${file.name}`
-  const { error: uploadError } = await supabaseAdmin.storage
-    .from(DOCUMENTS_BUCKET)
-    .upload(path, file, { contentType: file.type })
-  if (uploadError) {
-    await supabaseAdmin.from('documents').delete().eq('id', document.id)
-    return NextResponse.json({ error: uploadError.message }, { status: 500 })
-  }
-
-  const { data: version, error: versionError } = await supabaseAdmin
-    .from('document_versions')
-    .insert({
-      document_id: document.id,
-      version_number: 1,
-      storage_path: path,
+      createdBy: user.id,
+      fileBuffer,
       filename: file.name,
-      mime_type: file.type,
-      size_bytes: file.size,
-      uploaded_by: user.id,
+      mimeType: file.type,
+      sizeBytes: file.size,
     })
-    .select()
-    .single()
-  if (versionError) return NextResponse.json({ error: versionError.message }, { status: 500 })
-
-  await supabaseAdmin.from('document_events').insert({
-    tenant_id: profile.tenant_id,
-    document_id: document.id,
-    user_id: user.id,
-    event_type: 'created',
-    metadata: { filename: file.name },
-  })
-
-  return NextResponse.json({ document: { ...document, latest_version: version } })
+    return NextResponse.json({ document: { ...document, latest_version: version } })
+  } catch (err) {
+    const status = err instanceof CreateDocumentError ? err.status : 500
+    const message = err instanceof Error ? err.message : 'Could not create document'
+    return NextResponse.json({ error: message }, { status })
+  }
 }

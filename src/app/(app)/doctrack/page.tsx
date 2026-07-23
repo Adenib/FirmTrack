@@ -20,6 +20,17 @@ type DocumentRow = {
 }
 
 type OneDriveItem = { id: string; name: string; isFolder: boolean; size: number }
+type OutlookMessage = {
+  id: string
+  subject: string
+  from: string | null
+  receivedDateTime: string
+  hasAttachments: boolean
+  webLink: string
+}
+type OutlookAttachment = { id: string; name: string; contentType: string; size: number }
+
+const EXTERNAL_SOURCE_LABELS: Record<string, string> = { onedrive: 'OneDrive', outlook: 'Outlook' }
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -57,6 +68,21 @@ export default function DocTrackPage() {
   const [msMatterQuery, setMsMatterQuery] = useState('')
   const [msMatter, setMsMatter] = useState<MatterResult | null>(null)
   const [msLinking, setMsLinking] = useState(false)
+
+  // Outlook link panel
+  const [showOutlookPanel, setShowOutlookPanel] = useState(false)
+  const [outlookSearch, setOutlookSearch] = useState('')
+  const [outlookMessages, setOutlookMessages] = useState<OutlookMessage[]>([])
+  const [outlookLoading, setOutlookLoading] = useState(false)
+  const [outlookError, setOutlookError] = useState('')
+  const [selectedMessage, setSelectedMessage] = useState<OutlookMessage | null>(null)
+  const [messageAttachments, setMessageAttachments] = useState<OutlookAttachment[]>([])
+  const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<Set<string>>(new Set())
+  const [saveEmailCopy, setSaveEmailCopy] = useState(false)
+  const [outlookTitle, setOutlookTitle] = useState('')
+  const [outlookMatterQuery, setOutlookMatterQuery] = useState('')
+  const [outlookMatter, setOutlookMatter] = useState<MatterResult | null>(null)
+  const [outlookLinking, setOutlookLinking] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -219,6 +245,80 @@ export default function DocTrackPage() {
     await load()
   }
 
+  const searchOutlook = useCallback(async (search: string) => {
+    setOutlookLoading(true)
+    setOutlookError('')
+    const params = search ? `?q=${encodeURIComponent(search)}` : ''
+    const res = await fetch(`/api/doctrack/microsoft/messages${params}`)
+    const result = await res.json()
+    if (!res.ok) setOutlookError(result.error || 'Could not browse Outlook')
+    else setOutlookMessages(result.messages || [])
+    setOutlookLoading(false)
+  }, [])
+
+  const openOutlookPanel = () => {
+    setShowOutlookPanel(true)
+    setSelectedMessage(null)
+    setOutlookSearch('')
+    searchOutlook('')
+  }
+
+  const selectMessage = async (message: OutlookMessage) => {
+    setSelectedMessage(message)
+    setOutlookTitle(message.subject)
+    setSelectedAttachmentIds(new Set())
+    setSaveEmailCopy(false)
+    setMessageAttachments([])
+    if (!message.hasAttachments) return
+    const res = await fetch(`/api/doctrack/microsoft/messages/attachments?message_id=${message.id}`)
+    const result = await res.json()
+    if (res.ok) setMessageAttachments(result.attachments || [])
+  }
+
+  const toggleAttachment = (id: string) => {
+    setSelectedAttachmentIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleLinkEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedMessage) return
+    setOutlookLinking(true)
+    setOutlookError('')
+
+    const res = await fetch('/api/doctrack/microsoft/link-email', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        message_id: selectedMessage.id,
+        title: outlookTitle,
+        matter_id: outlookMatter?.id,
+        attachment_ids: Array.from(selectedAttachmentIds),
+        save_copy: saveEmailCopy,
+      }),
+    })
+    const result = await res.json()
+    if (!res.ok) {
+      setOutlookError(result.error || 'Could not link email')
+      setOutlookLinking(false)
+      return
+    }
+
+    setShowOutlookPanel(false)
+    setSelectedMessage(null)
+    setOutlookTitle('')
+    setOutlookMatter(null)
+    setOutlookMatterQuery('')
+    setSelectedAttachmentIds(new Set())
+    setSaveEmailCopy(false)
+    setOutlookLinking(false)
+    await load()
+  }
+
   return (
     <div className="p-8 max-w-5xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">DocTrack</h1>
@@ -274,7 +374,14 @@ export default function DocTrackPage() {
             onClick={openMsPanel}
             className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50"
           >
-            Link from Microsoft 365
+            Link from OneDrive
+          </button>
+          <button
+            type="button"
+            onClick={openOutlookPanel}
+            className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50"
+          >
+            Link from Outlook
           </button>
         </div>
       </form>
@@ -357,6 +464,113 @@ export default function DocTrackPage() {
         </div>
       )}
 
+      {showOutlookPanel && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-gray-900">Link an email from Outlook</p>
+            <button type="button" onClick={() => setShowOutlookPanel(false)} className="text-sm text-gray-500 hover:underline">
+              Close
+            </button>
+          </div>
+
+          {outlookError ? (
+            <p className="text-red-600 text-sm">{outlookError}</p>
+          ) : !selectedMessage ? (
+            <>
+              <input
+                type="text"
+                placeholder="Search subject/sender..."
+                value={outlookSearch}
+                onChange={(e) => setOutlookSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    searchOutlook(outlookSearch)
+                  }
+                }}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+              {outlookLoading ? (
+                <p className="text-gray-500 text-sm">Loading...</p>
+              ) : (
+                <div className="border border-gray-100 rounded divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                  {outlookMessages.length === 0 && <p className="text-sm text-gray-400 p-3">No messages found.</p>}
+                  {outlookMessages.map((message) => (
+                    <button
+                      key={message.id}
+                      type="button"
+                      onClick={() => selectMessage(message)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between gap-3"
+                    >
+                      <span className="truncate">
+                        {message.hasAttachments ? '📎 ' : ''}
+                        {message.subject}
+                        <span className="text-xs text-gray-400"> · {message.from}</span>
+                      </span>
+                      <span className="text-xs text-gray-400 shrink-0">
+                        {new Date(message.receivedDateTime).toLocaleDateString()}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <form onSubmit={handleLinkEmail} className="space-y-3">
+              <p className="text-sm text-gray-600">Linking: {selectedMessage.subject}</p>
+              <input
+                type="text"
+                required
+                placeholder="Title"
+                value={outlookTitle}
+                onChange={(e) => setOutlookTitle(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+              <MatterSearchInput
+                value={outlookMatter ? `${outlookMatter.matter_id} · ${outlookMatter.case_name}` : outlookMatterQuery}
+                onChange={(v) => {
+                  setOutlookMatterQuery(v)
+                  setOutlookMatter(null)
+                }}
+                onSelect={setOutlookMatter}
+                placeholder="Link to a matter (optional -- leave blank for a firm-wide document)"
+              />
+              {messageAttachments.length > 0 && (
+                <div className="border border-gray-100 rounded p-2 space-y-1">
+                  <p className="text-xs font-medium text-gray-700">Also import as stored documents:</p>
+                  {messageAttachments.map((att) => (
+                    <label key={att.id} className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={selectedAttachmentIds.has(att.id)}
+                        onChange={() => toggleAttachment(att.id)}
+                      />
+                      {att.name} <span className="text-xs text-gray-400">({formatSize(att.size)})</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" checked={saveEmailCopy} onChange={(e) => setSaveEmailCopy(e.target.checked)} />
+                Also save a permanent copy of this email
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={outlookLinking}
+                  className="bg-brand-blue text-white px-4 py-2 rounded-md text-sm hover:bg-brand-blue-hover disabled:opacity-50"
+                >
+                  {outlookLinking ? 'Linking...' : 'Link email'}
+                </button>
+                <button type="button" onClick={() => setSelectedMessage(null)} className="text-sm text-gray-500 hover:underline">
+                  Choose a different email
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3 mb-4">
         <input
           type="text"
@@ -405,12 +619,13 @@ export default function DocTrackPage() {
                     {doc.matters ? `${doc.matters.matter_id} · ${doc.matters.case_name}` : 'Firm-wide'}
                     {doc.category ? ` · ${doc.category}` : ''}
                   </p>
-                  {doc.external_source === 'onedrive' ? (
+                  {doc.external_source ? (
                     <p className="text-xs text-gray-400 mt-1">
                       <span className="inline-block bg-blue-50 text-brand-blue px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide mr-1">
-                        OneDrive
+                        {EXTERNAL_SOURCE_LABELS[doc.external_source] || doc.external_source}
                       </span>
-                      {doc.external_filename} · {formatSize(doc.external_size_bytes || 0)}
+                      {doc.external_filename}
+                      {doc.external_size_bytes ? ` · ${formatSize(doc.external_size_bytes)}` : ''}
                     </p>
                   ) : (
                     doc.latest_version && (
@@ -422,9 +637,9 @@ export default function DocTrackPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  {doc.external_source === 'onedrive' ? (
+                  {doc.external_source ? (
                     <button type="button" onClick={() => handleDownload(doc.id)} className="text-sm text-brand-blue hover:underline">
-                      View in OneDrive
+                      View in {EXTERNAL_SOURCE_LABELS[doc.external_source] || doc.external_source}
                     </button>
                   ) : (
                     <>
@@ -442,7 +657,7 @@ export default function DocTrackPage() {
                 </div>
               </div>
 
-              {doc.external_source !== 'onedrive' && expandedId === doc.id && doc.versions && (
+              {!doc.external_source && expandedId === doc.id && doc.versions && (
                 <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
                   {doc.versions.map((v) => (
                     <div key={v.id} className="flex items-center justify-between text-xs text-gray-500">
