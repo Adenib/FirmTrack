@@ -53,9 +53,9 @@ async function loginAs(email: string, password: string) {
 // than inserting fixture rows directly. Each test FILE should call this
 // once in beforeAll and destroyTestTenant in afterAll — full isolation,
 // no dependency on or pollution of any pre-existing tenant's data.
-export async function createTestTenant(namePrefix: string): Promise<TestTenant> {
+export async function createTestTenant(namePrefix: string, emailDomain = 'firmtrack-test.local'): Promise<TestTenant> {
   const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  const email = `test-${uniqueId}@firmtrack-test.local`
+  const email = `test-${uniqueId}@${emailDomain}`
   const password = 'TestPassword123!'
   const orgName = `${namePrefix} ${uniqueId}`
 

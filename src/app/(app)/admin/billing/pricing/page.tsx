@@ -1,26 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { MODULES, TIER_PRICES, moduleMonthlyPrice, type Tier } from '@/lib/billing/pricing'
 
-const MODULES = [
-  { key: 'timetrack', label: 'TimeTrack', free: true },
-  { key: 'movementtrack', label: 'MovementTrack', free: true },
-  { key: 'tasktrack', label: 'TaskTrack', free: true },
-  { key: 'billtrack', label: 'BillTrack', free: true },
-  { key: 'accounttrack', label: 'AccountTrack', free: false },
-  { key: 'doctrack', label: 'DocTrack', free: false },
-  { key: 'hrtrack', label: 'HRTrack', free: false },
-] as const
-
-const PRICES: Record<'basic' | 'standard' | 'elite', number> = {
-  basic: 1500,
-  standard: 2500,
-  elite: 4000,
-}
-
-const ADDON_PRICE_BASIC = 2000
-
-type Tier = 'basic' | 'standard' | 'elite'
 type Billing = 'monthly' | 'annual'
 
 export default function PricingCalculatorPage() {
@@ -30,6 +12,8 @@ export default function PricingCalculatorPage() {
   const [selectedModules, setSelectedModules] = useState<Set<string>>(
     new Set(MODULES.map((m) => m.key))
   )
+  const [subscribing, setSubscribing] = useState(false)
+  const [subscribeError, setSubscribeError] = useState('')
 
   const toggleModule = (key: string) => {
     setSelectedModules((prev) => {
@@ -45,11 +29,7 @@ export default function PricingCalculatorPage() {
 
     MODULES.forEach((mod) => {
       if (!selectedModules.has(mod.key)) return
-      if (tier === 'basic') {
-        perUserMonthly += mod.free ? PRICES.basic : ADDON_PRICE_BASIC
-      } else {
-        perUserMonthly += PRICES[tier]
-      }
+      perUserMonthly += moduleMonthlyPrice(tier, mod)
     })
 
     const isAnnual = billing === 'annual'
@@ -68,6 +48,28 @@ export default function PricingCalculatorPage() {
   }, [users, tier, billing, selectedModules])
 
   const fmt = (n: number) => '₦' + Math.round(n).toLocaleString()
+
+  const handleSubscribe = async () => {
+    setSubscribing(true)
+    setSubscribeError('')
+
+    const res = await fetch('/api/payments/initialize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ modules: Array.from(selectedModules), tier, currency: 'NGN' }),
+    })
+    const result = await res.json()
+
+    if (!res.ok) {
+      setSubscribeError(result.error || 'Failed to initialize payment')
+      setSubscribing(false)
+      return
+    }
+
+    window.location.href = result.authorization_url
+  }
+
+  const canSubscribe = billing === 'monthly' && selectedModules.size > 0
 
   return (
     <div className="p-8 max-w-3xl">
@@ -163,10 +165,35 @@ export default function PricingCalculatorPage() {
             <p className="text-xl font-semibold text-blue-700">{fmt(periodTotal)}</p>
           </div>
         </div>
+
+        <div className="pt-2 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={handleSubscribe}
+            disabled={!canSubscribe || subscribing}
+            className="bg-brand-blue text-white px-5 py-2.5 rounded-md text-sm font-medium hover:bg-brand-blue-hover disabled:opacity-50"
+          >
+            {subscribing ? 'Redirecting to payment...' : 'Subscribe now'}
+          </button>
+          <p className="text-xs text-gray-400 mt-2">
+            You&apos;ll be billed for your organization&apos;s actual active users, not the Team
+            size slider above (that&apos;s an estimator only).
+          </p>
+          {billing === 'annual' && (
+            <p className="text-xs text-amber-600 mt-1">
+              Annual billing isn&apos;t available for checkout yet — switch to Monthly to
+              subscribe.
+            </p>
+          )}
+          {selectedModules.size === 0 && (
+            <p className="text-xs text-amber-600 mt-1">Select at least one module to subscribe.</p>
+          )}
+          {subscribeError && <p className="text-red-600 text-xs mt-1">{subscribeError}</p>}
+        </div>
       </div>
 
       <p className="text-xs text-gray-400 mt-4">
-        Basic tier: core modules (TimeTrack, MovementTrack, TaskTrack, BillTrack) at ₦1,500/user/month.
+        Basic tier: core modules (TimeTrack, MovementTrack, TaskTrack, BillTrack) at ₦{TIER_PRICES.basic.toLocaleString()}/user/month.
         AccountTrack, DocTrack, and HRTrack are ₦2,000/user/month add-ons on Basic.
         Standard and Elite bundle all modules at a flat per-module rate.
       </p>

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { MODULES, isModuleKey, moduleMonthlyPrice, type Tier } from '@/lib/billing/pricing'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,33 +21,81 @@ export async function POST(request: Request) {
 
   if (!profile) return NextResponse.json({ error: 'No profile found' }, { status: 403 })
 
-  const { module, tier, currency = 'NGN' } = await request.json()
+  const { module, modules, tier, currency = 'NGN' } = await request.json()
 
-  if (!module || !tier) {
-    return NextResponse.json({ error: 'module and tier are required' }, { status: 400 })
+  if (!tier) {
+    return NextResponse.json({ error: 'tier is required' }, { status: 400 })
   }
 
-  // Get the Paystack plan code
-  const { data: plan } = await supabaseAdmin
-    .from('paystack_plans')
-    .select('plan_code, amount')
-    .eq('module', module)
-    .eq('tier', tier)
-    .eq('currency', currency)
-    .single()
-
-  if (!plan) {
-    return NextResponse.json({ error: 'Plan not found for this module/tier/currency combination' }, { status: 404 })
-  }
-
-  // Get seat count for this org
-  const { data: users } = await supabaseAdmin
+  // Real active seat count -- never the client's own estimate (e.g. a
+  // pricing-calculator slider), for either checkout shape below.
+  const { data: orgUsers } = await supabaseAdmin
     .from('users')
     .select('id')
     .eq('tenant_id', profile.tenant_id)
+  const seatCount = orgUsers?.length || 1
 
-  const seatCount = users?.length || 1
-  const totalAmount = plan.amount * seatCount * 100 // Paystack uses kobo
+  let totalAmount: number
+  let metadata: Record<string, unknown>
+  let paystackPlanCode: string | undefined
+
+  if (Array.isArray(modules)) {
+    // Bundle checkout (the pricing calculator) -- several modules in one
+    // Paystack transaction. Priced from the same shared formula the
+    // calculator itself displays, never from paystack_plans (whose
+    // per-tier amounts don't reflect the calculator's Basic-tier
+    // core/add-on distinction) -- so what's shown is what's charged.
+    if (modules.length === 0 || !modules.every(isModuleKey)) {
+      return NextResponse.json({ error: 'modules must be a non-empty array of known module keys' }, { status: 400 })
+    }
+    const tierKey = tier as Tier
+    const modulePrices: Record<string, number> = {}
+    let perUserMonthly = 0
+    for (const key of modules) {
+      const mod = MODULES.find((m) => m.key === key)!
+      const price = moduleMonthlyPrice(tierKey, mod)
+      modulePrices[key] = price
+      perUserMonthly += price
+    }
+    totalAmount = perUserMonthly * seatCount * 100 // Paystack uses kobo
+
+    metadata = {
+      tenant_id: profile.tenant_id,
+      user_id: user.id,
+      modules,
+      tier,
+      seat_count: seatCount,
+      module_prices: modulePrices,
+    }
+  } else {
+    // Legacy single-module checkout (the sidebar's "locked module" upsell).
+    if (!module) {
+      return NextResponse.json({ error: 'module and tier are required' }, { status: 400 })
+    }
+
+    const { data: plan } = await supabaseAdmin
+      .from('paystack_plans')
+      .select('plan_code, amount')
+      .eq('module', module)
+      .eq('tier', tier)
+      .eq('currency', currency)
+      .single()
+
+    if (!plan) {
+      return NextResponse.json({ error: 'Plan not found for this module/tier/currency combination' }, { status: 404 })
+    }
+
+    totalAmount = plan.amount * seatCount * 100
+    paystackPlanCode = plan.plan_code
+    metadata = {
+      tenant_id: profile.tenant_id,
+      user_id: user.id,
+      module,
+      tier,
+      seat_count: seatCount,
+      price_per_user: plan.amount,
+    }
+  }
 
   // Initialize Paystack transaction
   const response = await fetch('https://api.paystack.co/transaction/initialize', {
@@ -59,15 +108,8 @@ export async function POST(request: Request) {
       email: user.email,
       amount: totalAmount,
       currency,
-      plan: plan.plan_code,
-      metadata: {
-        tenant_id: profile.tenant_id,
-        user_id: user.id,
-        module,
-        tier,
-        seat_count: seatCount,
-        price_per_user: plan.amount,
-      },
+      ...(paystackPlanCode ? { plan: paystackPlanCode } : {}),
+      metadata,
       callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/payments/verify`,
     }),
   })
