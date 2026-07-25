@@ -10,6 +10,7 @@ import {
   CreditCardIcon,
   ShieldLockIcon,
   LockIcon,
+  RefreshIcon,
 } from '@/components/brand/icons'
 
 export default async function AdminPage() {
@@ -57,6 +58,12 @@ export default async function AdminPage() {
       title: 'Billing & Pricing',
       description: 'View plan pricing and estimate costs.',
       icon: CreditCardIcon,
+    },
+    {
+      href: '/admin/backup',
+      title: 'Backup & Restore',
+      description: 'Download a full data backup, or restore one into a new organization.',
+      icon: RefreshIcon,
     },
     {
       href: '/admin/security-log',
