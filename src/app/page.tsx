@@ -1,51 +1,13 @@
 import Link from 'next/link'
 import Logo from '@/components/brand/logo'
 import {
-  ClockIcon,
-  ReceiptIcon,
-  ChartBarIcon,
-  UsersIcon,
-  CalendarIcon,
-  SettingsIcon,
   ShieldLockIcon,
   FileCheckIcon,
   RefreshIcon,
   LockIcon,
   BuildingIcon,
 } from '@/components/brand/icons'
-
-const MODULES = [
-  {
-    title: 'TimeTrack',
-    icon: ClockIcon,
-    description: 'Log billable and non-billable time against matters, with quick-fee entry and firmwide activity reports.',
-  },
-  {
-    title: 'BillTrack',
-    icon: ReceiptIcon,
-    description: 'Turn unbilled time and disbursements into itemized invoices, with automated reminders and firmwide reports.',
-  },
-  {
-    title: 'AccountTrack',
-    icon: ChartBarIcon,
-    description: 'Chart of accounts, journal entries, trust ledgers, and financial statements built for legal practice accounting.',
-  },
-  {
-    title: 'HRTrack',
-    icon: UsersIcon,
-    description: 'Attendance, movement, performance evaluations, leave requests, and payroll for your whole team.',
-  },
-  {
-    title: 'CalenTrack',
-    icon: CalendarIcon,
-    description: 'A shared firm calendar with reporting, so nothing falls through the cracks.',
-  },
-  {
-    title: 'Admin',
-    icon: SettingsIcon,
-    description: 'Manage users, roles, clients, and matters, with full control over security and billing settings.',
-  },
-]
+import { MARKETING_MODULES } from '@/lib/marketing/modules'
 
 const TRUST_ITEMS = [
   { icon: ShieldLockIcon, label: 'Multi-factor authentication' },
@@ -109,14 +71,19 @@ export default function HomePage() {
         <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Everything your firm needs</h2>
         <p className="text-gray-600 text-center mb-12">One subscription, every module you need to run your practice.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {MODULES.map((mod) => (
-            <div key={mod.title} className="border border-gray-200 rounded-lg p-6 hover:border-brand-blue/40 hover:shadow-sm transition">
+          {MARKETING_MODULES.map((mod) => (
+            <Link
+              key={mod.slug}
+              href={`/modules/${mod.slug}`}
+              className="block border border-gray-200 rounded-lg p-6 hover:border-brand-blue/40 hover:shadow-sm transition"
+            >
               <div className="w-11 h-11 rounded-lg bg-blue-50 text-brand-blue flex items-center justify-center mb-4">
                 <mod.icon className="w-6 h-6" />
               </div>
               <p className="font-semibold text-gray-900 mb-1">{mod.title}</p>
-              <p className="text-sm text-gray-600">{mod.description}</p>
-            </div>
+              <p className="text-sm text-gray-600">{mod.tagline}</p>
+              <span className="text-sm text-brand-blue font-medium mt-3 inline-block">See features &rarr;</span>
+            </Link>
           ))}
         </div>
       </section>
