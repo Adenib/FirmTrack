@@ -23,6 +23,7 @@ type ModuleEntry = {
   key: string
   label: string
   href: string
+  description: string
   icon: React.ComponentType<{ className?: string }>
   // Modules with no sub-pages (e.g. DocTrack today) render as a single
   // flat link/button instead of a collapsible group.
@@ -38,6 +39,7 @@ const MODULES: ModuleEntry[] = [
     key: 'timetrack',
     label: 'TimeTrack',
     href: '/timetrack',
+    description: 'Log billable and non-billable time, track daily activity, and record quick fee entries.',
     icon: ClockIcon,
     subItems: [
       { key: 'timetrack', label: 'Overview', href: '/timetrack' },
@@ -50,6 +52,7 @@ const MODULES: ModuleEntry[] = [
     key: 'billtrack',
     label: 'BillTrack',
     href: '/billtrack',
+    description: 'Generate and send itemized invoices, track payment status, and manage reminder cadence.',
     icon: ReceiptIcon,
     subItems: [
       { key: 'billtrack', label: 'Overview', href: '/billtrack' },
@@ -61,6 +64,7 @@ const MODULES: ModuleEntry[] = [
     key: 'accounttrack',
     label: 'AccountTrack',
     href: '/accounttrack',
+    description: 'Double-entry accounting: chart of accounts, trust ledger, budgets, and financial statements.',
     icon: ChartBarIcon,
     subItems: [
       { key: 'accounttrack', label: 'Overview', href: '/accounttrack' },
@@ -75,6 +79,7 @@ const MODULES: ModuleEntry[] = [
     key: 'doctrack',
     label: 'DocTrack',
     href: '/doctrack',
+    description: 'Matter-linked document storage with version history, an audit trail, and Microsoft 365 linking.',
     icon: FileCheckIcon,
     subItems: [
       { key: 'doctrack', label: 'Documents', href: '/doctrack' },
@@ -85,6 +90,7 @@ const MODULES: ModuleEntry[] = [
     key: 'hrtrack',
     label: 'HRTrack',
     href: '/hrtrack',
+    description: 'Attendance, leave requests, performance reviews, and payroll for your team.',
     icon: UsersIcon,
     subItems: [
       { key: 'hrtrack', label: 'Attendance', href: '/hrtrack/attendance' },
@@ -99,6 +105,7 @@ const MODULES: ModuleEntry[] = [
     key: 'calentrack',
     label: 'CalenTrack',
     href: '/calentrack',
+    description: 'Firm calendar for deadlines, hearings, and appointments.',
     icon: CalendarIcon,
     subItems: [
       { key: 'calentrack', label: 'Overview', href: '/calentrack' },
@@ -109,6 +116,7 @@ const MODULES: ModuleEntry[] = [
     key: 'admin',
     label: 'Admin',
     href: '/admin',
+    description: 'Manage users, lawyers, clients, matters, billing, security, and data import/export/backup.',
     icon: SettingsIcon,
     subItems: [
       { key: 'admin', label: 'Overview', href: '/admin' },
@@ -140,6 +148,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   })
   const [upgradeModule, setUpgradeModule] = useState<string | null>(null)
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null)
+  // Hover-description side panel -- top is captured from the hovered row's
+  // own bounding rect so the panel lines up with whatever's being hovered,
+  // rather than sitting at a fixed position on the screen.
+  const [hovered, setHovered] = useState<{ label: string; description: string; top: number } | null>(null)
+  const showHoverPanel = (e: React.MouseEvent<HTMLElement>, label: string, description: string) => {
+    setHovered({ label, description, top: e.currentTarget.getBoundingClientRect().top })
+  }
+  const hideHoverPanel = () => setHovered(null)
   // Which module groups are expanded -- initialized once, below, to just
   // the group containing the current page. Plain component state (no
   // storage persistence): this layout instance persists across
@@ -209,6 +225,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto py-2">
           <Link
             href="/dashboard"
+            onMouseEnter={(e) => showHoverPanel(e, 'Dashboard', 'Overview of your organization, role, and active modules.')}
+            onMouseLeave={hideHoverPanel}
             className={`flex items-center gap-3 px-4 py-2 text-sm hover:bg-blue-50 ${
               pathname === '/dashboard' ? 'text-brand-blue font-medium bg-blue-50' : 'text-gray-700'
             }`}
@@ -218,6 +236,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
           <Link
             href="/admin/matters"
+            onMouseEnter={(e) => showHoverPanel(e, 'New Matter', 'Open a new matter for an existing or new client.')}
+            onMouseLeave={hideHoverPanel}
             className={`flex items-center gap-3 px-4 py-2 text-sm hover:bg-blue-50 ${
               pathname === '/admin/matters' ? 'text-brand-blue font-medium bg-blue-50' : 'text-gray-700'
             }`}
@@ -235,6 +255,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={mod.key}
                   href={mod.href}
+                  onMouseEnter={(e) => showHoverPanel(e, mod.label, mod.description)}
+                  onMouseLeave={hideHoverPanel}
                   className={`flex items-center justify-between gap-3 px-4 py-2 text-sm hover:bg-blue-50 ${
                     pathname.startsWith(mod.href) ? 'text-brand-blue font-medium bg-blue-50' : 'text-gray-700'
                   }`}
@@ -248,6 +270,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <button
                   key={mod.key}
                   onClick={() => setUpgradeModule(mod.key)}
+                  onMouseEnter={(e) => showHoverPanel(e, mod.label, mod.description)}
+                  onMouseLeave={hideHoverPanel}
                   className="w-full flex items-center justify-between gap-3 px-4 py-2 text-sm text-gray-400 hover:bg-gray-50"
                 >
                   <span className="flex items-center gap-3">
@@ -274,6 +298,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => toggleExpanded(mod.key)}
+                  onMouseEnter={(e) => showHoverPanel(e, mod.label, mod.description)}
+                  onMouseLeave={hideHoverPanel}
                   className="w-full flex items-center justify-between gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   <span className="flex items-center gap-3">
@@ -339,6 +365,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </a>
         </div>
       </aside>
+
+      {hovered && (
+        <div
+          className="fixed z-50 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 pointer-events-none"
+          style={{ left: '17rem', top: Math.min(hovered.top, window.innerHeight - 100) }}
+        >
+          <p className="text-sm font-semibold text-gray-900">{hovered.label}</p>
+          <p className="text-xs text-gray-600 mt-1">{hovered.description}</p>
+        </div>
+      )}
 
       <main className="flex-1 bg-gray-50 overflow-y-auto">{children}</main>
     </div>
