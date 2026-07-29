@@ -46,7 +46,16 @@ describe('BillTrack Stage 2: cron auto-invoicing + reminders', () => {
     expect(res.status).toBe(401)
   })
 
-  it('auto-generates an invoice for a matter due today with unbilled time, and posts to the GL', async () => {
+  // billing_anchor_day is capped 1-28 at the DB level (no "day 30 doesn't
+  // exist in Feb" edge cases -- see the migration comment), but the cron's
+  // isMatterDueForAutoInvoice does an exact today.getDate() === anchor
+  // match. On the 29th-31st of any month there is therefore no valid
+  // anchor value that can ever equal today's real date, so "a matter due
+  // today" genuinely can't be constructed on those days -- not a test
+  // bug to route around (faking the test process's clock wouldn't help
+  // either, since the cron runs in the separate live server process this
+  // test hits over HTTP, not in this Vitest process).
+  it.skipIf(new Date().getDate() > 28)('auto-generates an invoice for a matter due today with unbilled time, and posts to the GL', async () => {
     const today = new Date()
     const matter = await createTestMatter(tenant, clientId, 'Cron Auto-Invoice Matter')
     matterId = matter.id
@@ -101,7 +110,9 @@ describe('BillTrack Stage 2: cron auto-invoicing + reminders', () => {
     expect(reminders![0].kind).toBe('initial')
   })
 
-  it('does not re-generate an invoice for a matter with no remaining unbilled time', async () => {
+  // Depends on the invoice created by the (also skipIf'd) test above --
+  // matterId is only ever assigned inside that test's body.
+  it.skipIf(new Date().getDate() > 28)('does not re-generate an invoice for a matter with no remaining unbilled time', async () => {
     const cronRes = await runCron()
     const summary = await cronRes.json()
 

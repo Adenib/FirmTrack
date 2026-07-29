@@ -16,6 +16,8 @@ import {
   HomeIcon,
   FilePlusIcon,
   ChevronRightIcon,
+  MenuIcon,
+  XIcon,
 } from '@/components/brand/icons'
 
 type SubItem = { key: string; label: string; href: string }
@@ -148,6 +150,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   })
   const [upgradeModule, setUpgradeModule] = useState<string | null>(null)
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null)
+  // Off-canvas sidebar on narrow (phone) viewports -- closed by default,
+  // opened via the mobile top bar's hamburger button, and auto-closed on
+  // navigation below (a real page change is the only thing that should
+  // dismiss it; expanding a module group or opening the upgrade modal
+  // must not, so this can't just be "close on any click inside nav").
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   // Hover-description side panel -- top is captured from the hovered row's
   // own bounding rect so the panel lines up with whatever's being hovered,
   // rather than sitting at a fixed position on the screen.
@@ -186,6 +194,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [pathname])
+
   const { organization, profile, activeModules } = data
   // Owner/admin see every module (locked ones included, as an upsell surface).
   // Everyone else only sees modules their tenant currently subscribes to —
@@ -207,7 +219,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col sm:flex-row">
       {upgradeModule && (
         <UpgradeModal
           module={upgradeModule}
@@ -215,9 +227,44 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      <aside className="w-64 border-r border-gray-200 flex flex-col">
+      {/* Mobile-only top bar -- the sidebar itself is off-canvas below sm,
+          reachable via this hamburger button. */}
+      <div className="sm:hidden flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white sticky top-0 z-20">
+        <Logo size="sm" />
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Open menu"
+          className="p-1.5 -mr-1.5 text-gray-700"
+        >
+          <MenuIcon className="w-6 h-6" />
+        </button>
+      </div>
+
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 sm:hidden"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-200 ease-in-out sm:static sm:z-auto sm:translate-x-0 ${
+          mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="p-4 border-b border-gray-200">
-          <Logo size="sm" className="mb-3" />
+          <div className="flex items-center justify-between mb-3">
+            <Logo size="sm" />
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(false)}
+              aria-label="Close menu"
+              className="p-1 -mr-1 text-gray-500 sm:hidden"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+          </div>
           <p className="font-semibold text-gray-900 truncate">{organization?.name || '...'}</p>
           <p className="text-xs text-gray-500 capitalize">{organization?.plan || ''} plan</p>
         </div>
