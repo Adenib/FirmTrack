@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import Logo from '@/components/brand/logo'
 import {
@@ -15,6 +16,16 @@ const TRUST_ITEMS = [
   { icon: RefreshIcon, label: 'Sign out everywhere' },
   { icon: LockIcon, label: 'Encrypted in transit' },
   { icon: BuildingIcon, label: 'Tenant data isolation' },
+]
+
+const KEY_BENEFITS = [
+  'Matter management',
+  'Time tracking',
+  'Billing & invoicing',
+  'Trust accounting',
+  'Payroll',
+  'Secure document management',
+  'Reports & analytics',
 ]
 
 export default function HomePage() {
@@ -38,7 +49,7 @@ export default function HomePage() {
       </header>
 
       <section className="bg-brand-gradient text-white">
-        <div className="max-w-6xl mx-auto px-6 py-24 text-center">
+        <div className="max-w-6xl mx-auto px-6 py-14 sm:py-24 text-center">
           <p className="text-sm font-medium text-blue-200 mb-4 tracking-wide uppercase">
             Practice management for modern law firms
           </p>
@@ -46,23 +57,62 @@ export default function HomePage() {
             Track Performance,<br />
             <span className="text-blue-300">Grow Your Firm</span>
           </h1>
-          <p className="text-lg text-blue-100 max-w-2xl mx-auto mb-10">
-            TimeTrack, BillTrack, AccountTrack, HRTrack, and more — one platform built for legal
-            practices, from billing to payroll.
+          <p className="text-lg text-blue-100 max-w-2xl mx-auto mb-8">
+            Manage matters, billable time, billing, accounting, HR, payroll, documents, and client
+            relationships — all from one secure cloud platform.
           </p>
-          <div className="flex items-center justify-center gap-4">
+          <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mb-10 max-w-3xl mx-auto">
+            {KEY_BENEFITS.map((item) => (
+              <li key={item} className="flex items-center gap-1.5 text-sm text-blue-100">
+                <span className="text-green-300 font-semibold">&#10003;</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/register"
               className="bg-white text-brand-blue font-semibold px-6 py-3 rounded-md hover:bg-blue-50"
             >
               Get started free
             </Link>
+            <a
+              href="mailto:demo@firmtracks.com?subject=Book%20a%20FirmTrack%20demo"
+              className="border border-white/60 text-white font-semibold px-6 py-3 rounded-md hover:bg-white/10"
+            >
+              Book a demo
+            </a>
             <Link
               href="/login"
               className="border border-white/60 text-white font-semibold px-6 py-3 rounded-md hover:bg-white/10"
             >
               Log in
             </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-6 py-16">
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
+          <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden max-w-2xl w-full">
+            <Image
+              src="/marketing/screenshot-desktop.png"
+              alt="FirmTrack TimeTrack overview on desktop"
+              width={1440}
+              height={900}
+              priority
+              className="w-full h-auto"
+            />
+          </div>
+          <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden max-w-[220px] w-full shrink-0">
+            <Image
+              src="/marketing/screenshot-mobile.png"
+              alt="FirmTrack HRTrack attendance on mobile"
+              width={390}
+              height={844}
+              priority
+              className="w-full h-auto"
+            />
           </div>
         </div>
       </section>
