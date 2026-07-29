@@ -196,7 +196,7 @@ export default function AttendancePage() {
 
       <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
         <p className="font-semibold text-gray-900 mb-3">My Attendance</p>
-        <div className="grid grid-cols-3 gap-4 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Clock In</p>
             <p className="text-lg text-gray-900">{fmtTime(openRecord?.clock_in_at)}</p>
@@ -297,6 +297,7 @@ export default function AttendancePage() {
         ) : records.length === 0 ? (
           <p className="p-4 text-gray-500 text-sm">No attendance records yet.</p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -327,6 +328,7 @@ export default function AttendancePage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>
