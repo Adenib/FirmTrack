@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import MatterSearchInput from '@/components/timetrack/matter-search-input'
 
-const LAW_TYPES = ['Corporate','Litigation','Debt Recovery','Employment','Real Estate','Intellectual Property','Tax','Banking & Finance','Family','Criminal','Immigration','Other']
+const LAW_TYPES = ['Corporate','Litigation','Debt Recovery','Employment','Real Estate','Intellectual Property','Tax','Banking & Finance','Mergers & Acquisitions','Family','Criminal','Immigration','Other']
 const STATUS_OPTIONS = ['active','inactive','completed']
 const RATE_TYPES = ['A','B','C','D','E']
 const RATE_LABELS = { A: 'Standard', B: 'Negotiated', C: 'Retainer', D: 'Government', E: 'Pro Bono' }
