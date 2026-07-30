@@ -10,6 +10,7 @@ import useTimetrackLookups, { lawyerRateFor } from '@/components/timetrack/use-t
 import { PlayIcon, PauseIcon } from '@/components/brand/icons'
 
 const DRAFT_KEY = 'firmtrack-timesheet-draft'
+const AI_HIDDEN_KEY = 'firmtrack-ai-drafting-hidden'
 
 const today = () => new Date().toISOString().split('T')[0]
 
@@ -78,6 +79,31 @@ export default function TimeTrackPage() {
   const [filterMatterQuery, setFilterMatterQuery] = useState('')
   const [filterMatterId, setFilterMatterId] = useState('')
   const [loadingEntries, setLoadingEntries] = useState(false)
+
+  // AI-assisted drafting: off unless the firm has opted in (owner/admin,
+  // see /timetrack/settings) AND this user hasn't personally hidden it.
+  const [aiDraftingEnabled, setAiDraftingEnabled] = useState(false)
+  const [aiHiddenForMe, setAiHiddenForMe] = useState(false)
+  const [aiDraftingRowId, setAiDraftingRowId] = useState(null)
+  const [aiDraftError, setAiDraftError] = useState('')
+
+  useEffect(() => {
+    setAiHiddenForMe(localStorage.getItem(AI_HIDDEN_KEY) === 'true')
+    fetch('/api/timetrack/settings')
+      .then((r) => r.json())
+      .then((result) => setAiDraftingEnabled(!!result?.settings?.ai_drafting_enabled))
+      .catch(() => {})
+  }, [])
+
+  const toggleAiHiddenForMe = () => {
+    setAiHiddenForMe((prev) => {
+      const next = !prev
+      localStorage.setItem(AI_HIDDEN_KEY, String(next))
+      return next
+    })
+  }
+
+  const showAiDrafting = aiDraftingEnabled && !aiHiddenForMe
 
   // Load draft from localStorage on mount.
   useEffect(() => {
@@ -181,6 +207,36 @@ export default function TimeTrackPage() {
 
   const handleCalendarEventUnlink = (rowId) => {
     updateRow(rowId, { calendarEventId: '', calendarEventLabel: '' })
+  }
+
+  const handleAiDraft = async (rowId) => {
+    const row = rows.find((r) => r.rowId === rowId)
+    if (!row?.calendarEventId) return
+    setAiDraftingRowId(rowId)
+    setAiDraftError('')
+
+    const res = await fetch('/api/timetrack/ai-draft', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ calendar_event_id: row.calendarEventId }),
+    })
+    const result = await res.json()
+
+    if (!res.ok) {
+      setAiDraftError(result.error || 'AI drafting failed')
+      setAiDraftingRowId(null)
+      return
+    }
+
+    const matchedTaskCode = result.suggestedTaskCode
+      ? taskCodes.find((t) => t.code === result.suggestedTaskCode)
+      : null
+
+    updateRow(rowId, {
+      explanation: result.narrative,
+      ...(matchedTaskCode ? { taskCodeId: matchedTaskCode.id } : {}),
+    })
+    setAiDraftingRowId(null)
   }
 
   const handleLawyerChange = (rowId, lawyerId) => {
@@ -305,9 +361,27 @@ export default function TimeTrackPage() {
           <Link href="/timetrack/reports" className="text-sm text-blue-600 hover:underline">
             Reports →
           </Link>
+          <Link href="/timetrack/settings" className="text-sm text-blue-600 hover:underline">
+            Settings →
+          </Link>
         </div>
       </div>
-      <p className="text-gray-600 mb-6">Log billable time against matters.</p>
+      <p className="text-gray-600 mb-1">Log billable time against matters.</p>
+      {aiDraftingEnabled && (
+        <button
+          type="button"
+          onClick={toggleAiHiddenForMe}
+          className="text-xs text-gray-400 hover:text-gray-600 hover:underline mb-4 block"
+        >
+          {aiHiddenForMe ? 'Show "Draft with AI" for me' : 'Hide "Draft with AI" for me'}
+        </button>
+      )}
+      {!aiDraftingEnabled && <div className="mb-4" />}
+      {aiDraftError && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-700">
+          {aiDraftError}
+        </div>
+      )}
 
       <div className="space-y-3 mb-3">
         {rows.map((row) => {
@@ -452,12 +526,25 @@ export default function TimeTrackPage() {
                 </Field>
 
                 <Field label="Explanation" className="flex-1 min-w-[180px]">
-                  <input
-                    type="text"
-                    value={row.explanation}
-                    onChange={(e) => updateRow(row.rowId, { explanation: e.target.value })}
-                    className={inputClass}
-                  />
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={row.explanation}
+                      onChange={(e) => updateRow(row.rowId, { explanation: e.target.value })}
+                      className={inputClass}
+                    />
+                    {showAiDrafting && row.calendarEventId && (
+                      <button
+                        type="button"
+                        onClick={() => handleAiDraft(row.rowId)}
+                        disabled={aiDraftingRowId === row.rowId}
+                        title="Draft a billing narrative from the linked calendar event with AI"
+                        className="shrink-0 text-xs px-2 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {aiDraftingRowId === row.rowId ? 'Drafting...' : '✨ Draft with AI'}
+                      </button>
+                    )}
+                  </div>
                 </Field>
 
                 <Field label="Notes" className="flex-1 min-w-[160px]">
