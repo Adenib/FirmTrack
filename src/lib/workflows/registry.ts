@@ -2,6 +2,7 @@ import { LITIGATION_STAGES } from './litigation'
 import { CORPORATE_COMMERCIAL_STAGES } from './corporate-commercial'
 import { DEBT_RECOVERY_STAGES } from './debt-recovery'
 import { EMPLOYMENT_LAW_STAGES } from './employment-law'
+import { TAX_ADVISORY_STAGES } from './tax-advisory'
 import type { WorkflowStage } from './types'
 
 // Adding a future practice-area template (Real Estate, IP, etc.) is a
@@ -11,6 +12,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowStage[]> = {
   corporate_commercial: CORPORATE_COMMERCIAL_STAGES,
   debt_recovery: DEBT_RECOVERY_STAGES,
   employment_law: EMPLOYMENT_LAW_STAGES,
+  tax_advisory: TAX_ADVISORY_STAGES,
 }
 
 export const TEMPLATE_LABELS: Record<string, string> = {
@@ -18,13 +20,14 @@ export const TEMPLATE_LABELS: Record<string, string> = {
   corporate_commercial: 'Corporate Commercial',
   debt_recovery: 'Debt Recovery',
   employment_law: 'Employment Law',
+  tax_advisory: 'Tax Advisory',
 }
 
 // Maps a matter's existing `law_type` field (already collected at
 // matter-creation time, see LAW_TYPES in the New Matter form) to a
 // registered workflow template -- lets the detail page suggest the
 // right template without adding a new field. Practice areas with no
-// template yet (Real Estate, Tax, ...) resolve to null.
+// template yet (Real Estate, IP, ...) resolve to null.
 // "Debt Recovery" was not previously an option in LAW_TYPES -- added
 // there alongside this mapping since it's a distinct, common practice
 // area with its own template.
@@ -33,6 +36,7 @@ const LAW_TYPE_TO_TEMPLATE: Record<string, string> = {
   Corporate: 'corporate_commercial',
   'Debt Recovery': 'debt_recovery',
   Employment: 'employment_law',
+  Tax: 'tax_advisory',
 }
 
 export function getTemplateForLawType(lawType: string | null): string | null {
