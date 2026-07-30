@@ -13,7 +13,7 @@ describe('Corporate Commercial registry (pure)', () => {
   it('maps law_type to the right template', () => {
     expect(getTemplateForLawType('Litigation')).toBe('litigation')
     expect(getTemplateForLawType('Corporate')).toBe('corporate_commercial')
-    expect(getTemplateForLawType('Real Estate')).toBeNull()
+    expect(getTemplateForLawType('Intellectual Property')).toBeNull()
     expect(getTemplateForLawType(null)).toBeNull()
   })
 

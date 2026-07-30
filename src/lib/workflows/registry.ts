@@ -4,10 +4,11 @@ import { DEBT_RECOVERY_STAGES } from './debt-recovery'
 import { EMPLOYMENT_LAW_STAGES } from './employment-law'
 import { TAX_ADVISORY_STAGES } from './tax-advisory'
 import { BANKING_FINANCE_STAGES } from './banking-finance'
+import { REAL_ESTATE_STAGES } from './real-estate'
 import type { WorkflowStage } from './types'
 
-// Adding a future practice-area template (Real Estate, IP, etc.) is a
-// new stage file + one line here -- no schema or engine change needed.
+// Adding a future practice-area template (IP, M&A, etc.) is a new
+// stage file + one line here -- no schema or engine change needed.
 export const WORKFLOW_TEMPLATES: Record<string, WorkflowStage[]> = {
   litigation: LITIGATION_STAGES,
   corporate_commercial: CORPORATE_COMMERCIAL_STAGES,
@@ -15,6 +16,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowStage[]> = {
   employment_law: EMPLOYMENT_LAW_STAGES,
   tax_advisory: TAX_ADVISORY_STAGES,
   banking_finance: BANKING_FINANCE_STAGES,
+  real_estate: REAL_ESTATE_STAGES,
 }
 
 export const TEMPLATE_LABELS: Record<string, string> = {
@@ -24,13 +26,14 @@ export const TEMPLATE_LABELS: Record<string, string> = {
   employment_law: 'Employment Law',
   tax_advisory: 'Tax Advisory',
   banking_finance: 'Banking & Finance',
+  real_estate: 'Real Estate',
 }
 
 // Maps a matter's existing `law_type` field (already collected at
 // matter-creation time, see LAW_TYPES in the New Matter form) to a
 // registered workflow template -- lets the detail page suggest the
 // right template without adding a new field. Practice areas with no
-// template yet (Real Estate, IP, ...) resolve to null.
+// template yet (IP, M&A, ...) resolve to null.
 // "Debt Recovery" and "Banking & Finance" were not previously options
 // in LAW_TYPES -- added there alongside their mappings since each is a
 // distinct, common practice area with its own template.
@@ -41,6 +44,7 @@ const LAW_TYPE_TO_TEMPLATE: Record<string, string> = {
   Employment: 'employment_law',
   Tax: 'tax_advisory',
   'Banking & Finance': 'banking_finance',
+  'Real Estate': 'real_estate',
 }
 
 export function getTemplateForLawType(lawType: string | null): string | null {
