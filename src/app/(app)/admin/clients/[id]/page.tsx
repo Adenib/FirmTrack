@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 const RATE_TIERS = ['associate', 'senior_associate', 'partner']
-const LAW_TYPES = ['Corporate', 'Litigation', 'Debt Recovery', 'Employment', 'Real Estate', 'Intellectual Property', 'Tax', 'Family', 'Criminal', 'Immigration', 'Other']
+const LAW_TYPES = ['Corporate', 'Litigation', 'Debt Recovery', 'Employment', 'Real Estate', 'Intellectual Property', 'Tax', 'Banking & Finance', 'Family', 'Criminal', 'Immigration', 'Other']
 const STATUS_OPTIONS = ['active', 'inactive', 'completed']
 
 export default function ClientDetailPage() {
