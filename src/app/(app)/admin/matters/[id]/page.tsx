@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { getTemplateForLawType, TEMPLATE_LABELS } from '@/lib/workflows/registry'
 
 export default function MatterDetailPage() {
   const params = useParams()
@@ -42,13 +43,13 @@ export default function MatterDetailPage() {
     load()
   }, [matterId])
 
-  const startWorkflow = async () => {
+  const startWorkflow = async (template) => {
     setBusy(true)
     setError('')
     const res = await fetch('/api/admin/matters/workflow', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ matter_id: matterId, template: 'litigation' }),
+      body: JSON.stringify({ matter_id: matterId, template }),
     })
     const body = await res.json()
     if (!res.ok) setError(body.error || 'Failed to start workflow')
@@ -76,7 +77,9 @@ export default function MatterDetailPage() {
   const currentIndex = workflow?.stages
     ? workflow.stages.findIndex((s) => s.key === workflow.currentStage)
     : -1
-  const isOnAppeal = workflow?.currentStage === 'appeal'
+  const isOnLastStage = workflow?.stages?.length > 0 && currentIndex === workflow.stages.length - 1
+  const nextOptionalStage = workflow?.stages?.[currentIndex + 1]?.optional ? workflow.stages[currentIndex + 1] : null
+  const suggestedTemplate = getTemplateForLawType(matter?.law_type)
   const currentStageTasks = tasks.filter((t) =>
     workflow?.currentStage ? t.title.startsWith(
       workflow.stages.find((s) => s.key === workflow.currentStage)?.label + ':'
@@ -103,20 +106,30 @@ export default function MatterDetailPage() {
       {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-600">{error}</div>}
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Litigation Workflow</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          {workflow?.template ? `${TEMPLATE_LABELS[workflow.template] || workflow.template} Workflow` : 'Workflow'}
+        </h2>
 
         {!workflow?.template ? (
           <div>
-            <p className="text-sm text-gray-500 mb-3">
-              This matter has no workflow tracker started yet.
-            </p>
-            <button
-              onClick={startWorkflow}
-              disabled={busy}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
-            >
-              Start Litigation Workflow
-            </button>
+            {suggestedTemplate ? (
+              <>
+                <p className="text-sm text-gray-500 mb-3">
+                  This matter has no workflow tracker started yet.
+                </p>
+                <button
+                  onClick={() => startWorkflow(suggestedTemplate)}
+                  disabled={busy}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Start {TEMPLATE_LABELS[suggestedTemplate]} Workflow
+                </button>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">
+                No workflow template is available yet for {matter.law_type ? `"${matter.law_type}"` : 'this practice area'} matters.
+              </p>
+            )}
           </div>
         ) : (
           <>
@@ -146,18 +159,18 @@ export default function MatterDetailPage() {
             <div className="flex items-center gap-2 mb-5">
               <button
                 onClick={() => advance()}
-                disabled={busy || workflow.currentStage === 'matter_closed'}
+                disabled={busy || isOnLastStage}
                 className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
               >
                 Advance to next stage
               </button>
-              {isOnAppeal && (
+              {nextOptionalStage && (
                 <button
-                  onClick={() => advance('matter_closed')}
+                  onClick={() => advance(nextOptionalStage.key)}
                   disabled={busy}
                   className="text-sm text-gray-600 hover:underline"
                 >
-                  Skip Appeal
+                  Go to {nextOptionalStage.label} instead
                 </button>
               )}
             </div>
