@@ -31,6 +31,33 @@ async function generateMatterId(tenantId: string, clientId: string): Promise<str
   return `${year}-${clientSeq}-${nextMatterSeq}`
 }
 
+// Added for the matter detail page (/admin/matters/[id]) -- until now
+// this route had no way to fetch a single matter, only create (POST)
+// and change status (PATCH).
+export async function GET(request: Request) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users').select('tenant_id').eq('id', user.id).single()
+  if (!profile) return NextResponse.json({ error: 'No profile' }, { status: 403 })
+
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  const { data: matter, error } = await supabaseAdmin
+    .from('matters')
+    .select('*, clients(name, email)')
+    .eq('id', id)
+    .eq('tenant_id', profile.tenant_id)
+    .single()
+
+  if (error || !matter) return NextResponse.json({ error: 'Matter not found' }, { status: 404 })
+  return NextResponse.json({ matter })
+}
+
 export async function POST(request: Request) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()

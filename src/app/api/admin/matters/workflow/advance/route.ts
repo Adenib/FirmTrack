@@ -1,0 +1,50 @@
+import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+import { canAccessMatterDocument } from '@/lib/doctrack/permissions'
+import { getNextStage } from '@/lib/workflows/registry'
+import { applyStageEntry, type WorkflowMatter } from '@/lib/workflows/engine'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+const MATTER_SELECT =
+  'id, tenant_id, case_name, client_id, responsible_lawyer, assigned_lawyer, other_staff, workflow_template, workflow_stage'
+
+// to_stage lets staff explicitly target a stage (e.g. skipping the
+// optional Appeal stage straight to matter_closed) -- omitted, this
+// just advances to the next non-optional stage in template order.
+export async function POST(request: Request) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users').select('id, tenant_id, role').eq('id', user.id).single()
+  if (!profile) return NextResponse.json({ error: 'No profile' }, { status: 403 })
+
+  const { matter_id, to_stage } = await request.json()
+  if (!matter_id) return NextResponse.json({ error: 'matter_id is required' }, { status: 400 })
+
+  const { data: matter } = await supabaseAdmin
+    .from('matters').select(MATTER_SELECT).eq('id', matter_id).eq('tenant_id', profile.tenant_id).single()
+  if (!matter) return NextResponse.json({ error: 'Matter not found' }, { status: 404 })
+  if (!canAccessMatterDocument(profile, matter)) {
+    return NextResponse.json({ error: 'Not authorized for this matter' }, { status: 403 })
+  }
+  if (!matter.workflow_template) {
+    return NextResponse.json({ error: 'This matter has no workflow started' }, { status: 400 })
+  }
+
+  const nextStage = getNextStage(matter.workflow_template, matter.workflow_stage, to_stage)
+  if (!nextStage) {
+    return NextResponse.json({ error: 'No further stage to advance to' }, { status: 400 })
+  }
+
+  await supabaseAdmin.from('matters').update({ workflow_stage: nextStage.key }).eq('id', matter_id)
+  await applyStageEntry(matter as WorkflowMatter, nextStage, profile.id)
+
+  return NextResponse.json({ currentStage: nextStage.key })
+}

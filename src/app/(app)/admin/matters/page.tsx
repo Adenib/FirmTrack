@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import MatterSearchInput from '@/components/timetrack/matter-search-input'
 
 const LAW_TYPES = ['Corporate','Litigation','Employment','Real Estate','Intellectual Property','Tax','Family','Criminal','Immigration','Other']
 const STATUS_OPTIONS = ['active','inactive','completed']
@@ -61,6 +62,8 @@ export default function NewMatterPage() {
   const [conflictResults, setConflictResults] = useState(null)
   const [conflictConfirmed, setConflictConfirmed] = useState(false)
   const [conflictError, setConflictError] = useState('')
+
+  const [findMatterQuery, setFindMatterQuery] = useState('')
 
   const searchTimeout = useRef(null)
 
@@ -212,6 +215,16 @@ export default function NewMatterPage() {
     <div className='p-8 max-w-4xl'>
       <h1 className='text-2xl font-bold text-gray-900 mb-1'>New Matter</h1>
       <p className='text-gray-600 mb-6'>Open a new matter. Search for an existing client or create one inline.</p>
+
+      <div className='bg-white border border-gray-200 rounded-lg p-5 mb-6'>
+        <h2 className='font-semibold text-gray-900 mb-2'>Find an existing matter</h2>
+        <MatterSearchInput
+          value={findMatterQuery}
+          onChange={setFindMatterQuery}
+          onSelect={(m) => router.push('/admin/matters/' + m.id)}
+          placeholder='Search by matter ID or case name...'
+        />
+      </div>
 
       {error && <div className='bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-600'>{error}</div>}
 
