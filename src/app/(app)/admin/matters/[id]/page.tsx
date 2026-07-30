@@ -77,7 +77,13 @@ export default function MatterDetailPage() {
   const currentIndex = workflow?.stages
     ? workflow.stages.findIndex((s) => s.key === workflow.currentStage)
     : -1
-  const isOnLastStage = workflow?.stages?.length > 0 && currentIndex === workflow.stages.length - 1
+  // A plain "Advance" only succeeds if some later stage isn't optional
+  // -- array position alone isn't enough (e.g. Employment Law's last
+  // two stages, Decision then the optional Appeal, have nothing
+  // mandatory after Decision even though it isn't the last index).
+  const hasNextMandatoryStage = workflow?.stages
+    ? workflow.stages.slice(currentIndex + 1).some((s) => !s.optional)
+    : false
   const nextOptionalStage = workflow?.stages?.[currentIndex + 1]?.optional ? workflow.stages[currentIndex + 1] : null
   const suggestedTemplate = getTemplateForLawType(matter?.law_type)
   const currentStageTasks = tasks.filter((t) =>
@@ -159,7 +165,7 @@ export default function MatterDetailPage() {
             <div className="flex items-center gap-2 mb-5">
               <button
                 onClick={() => advance()}
-                disabled={busy || isOnLastStage}
+                disabled={busy || !hasNextMandatoryStage}
                 className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
               >
                 Advance to next stage
