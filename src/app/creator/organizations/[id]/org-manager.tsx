@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 const MODULES = [
   'timetrack', 'movementtrack', 'tasktrack',
-  'billtrack', 'accounttrack', 'doctrack', 'hrtrack', 'admin'
+  'billtrack', 'accounttrack', 'doctrack', 'hrtrack', 'admin', 'ai_support'
 ]
 
 const TIERS = ['free', 'basic', 'standard', 'elite']

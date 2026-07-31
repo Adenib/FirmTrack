@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import UpgradeModal from '@/components/ui/upgrade-modal'
+import SupportModal from '@/components/support/support-modal'
 import Logo from '@/components/brand/logo'
 import {
   ClockIcon,
@@ -149,6 +150,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     activeModules: [],
   })
   const [upgradeModule, setUpgradeModule] = useState<string | null>(null)
+  const [showSupportModal, setShowSupportModal] = useState(false)
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null)
   // Off-canvas sidebar on narrow (phone) viewports -- closed by default,
   // opened via the mobile top bar's hamburger button, and auto-closed on
@@ -224,6 +226,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <UpgradeModal
           module={upgradeModule}
           onClose={() => setUpgradeModule(null)}
+        />
+      )}
+
+      {showSupportModal && (
+        <SupportModal
+          aiSupportActive={activeModules.includes('ai_support')}
+          onClose={() => setShowSupportModal(false)}
         />
       )}
 
@@ -407,9 +416,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/account" className="text-xs text-brand-blue hover:underline mt-1 inline-block mr-3">
             My Account
           </Link>
-          <a href="/auth/signout" className="text-xs text-brand-blue hover:underline mt-1 inline-block">
+          <a href="/auth/signout" className="text-xs text-brand-blue hover:underline mt-1 inline-block mr-3">
             Sign out
           </a>
+          <button
+            type="button"
+            onClick={() => setShowSupportModal(true)}
+            className="text-xs text-brand-blue hover:underline mt-1 inline-block"
+          >
+            Get Support
+          </button>
         </div>
       </aside>
 

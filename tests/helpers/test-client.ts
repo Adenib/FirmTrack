@@ -278,3 +278,34 @@ export async function getChartOfAccounts(tenant: TestTenant) {
   if (!res.ok) throw new Error(`Failed to fetch chart of accounts: ${body.error}`)
   return body.accounts as { id: string; key: string | null; code: string; name: string; account_type: string }[]
 }
+
+// Creator Console staff aren't tied to any tenant -- platform_admins IS
+// the access grant (no separate `users` row), so this is a standalone
+// helper rather than an extension of createTestTenant/createTestUser.
+export type TestPlatformAdmin = { adminId: string; userId: string; email: string; fetch: TestTenant['fetch'] }
+
+export async function createTestPlatformAdmin(role: string = 'admin'): Promise<TestPlatformAdmin> {
+  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const email = `test-admin-${uniqueId}@firmtrack-test.local`
+  const password = 'TestPassword123!'
+
+  const { data: authUser, error } = await supabaseAdmin.auth.admin.createUser({
+    email, password, email_confirm: true,
+  })
+  if (error || !authUser.user) throw new Error(`Failed to create test platform admin auth user: ${error?.message}`)
+
+  const { data: admin, error: adminError } = await supabaseAdmin
+    .from('platform_admins')
+    .insert({ user_id: authUser.user.id, email, role, status: 'active' })
+    .select()
+    .single()
+  if (adminError) throw new Error(`Failed to create test platform admin row: ${adminError.message}`)
+
+  const authedFetch = await loginAs(email, password)
+  return { adminId: admin.id, userId: authUser.user.id, email, fetch: authedFetch }
+}
+
+export async function destroyTestPlatformAdmin(admin: TestPlatformAdmin) {
+  await supabaseAdmin.from('platform_admins').delete().eq('id', admin.adminId)
+  await supabaseAdmin.auth.admin.deleteUser(admin.userId).catch(() => {})
+}

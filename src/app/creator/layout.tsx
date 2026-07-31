@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getCreatorContext } from '@/lib/get-creator-context'
 import { canAccessCreatorPage } from '@/lib/creator-permissions'
-import { HomeIcon, BuildingIcon, ChartBarIcon, UsersIcon } from '@/components/brand/icons'
+import { HomeIcon, BuildingIcon, ChartBarIcon, UsersIcon, FileCheckIcon } from '@/components/brand/icons'
 
 export default async function CreatorLayout({ children }: { children: React.ReactNode }) {
   const { admin } = await getCreatorContext()
@@ -35,6 +35,12 @@ export default async function CreatorLayout({ children }: { children: React.Reac
             <Link href="/creator/staff" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
               <UsersIcon className="w-[18px] h-[18px]" />
               Platform Staff
+            </Link>
+          )}
+          {canAccessCreatorPage(admin.role, 'support') && (
+            <Link href="/creator/support" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800">
+              <FileCheckIcon className="w-[18px] h-[18px]" />
+              Support
             </Link>
           )}
         </nav>
