@@ -8,6 +8,7 @@ import {
   type TestTenant,
   type TestPlatformAdmin,
 } from '../helpers/test-client'
+import { MONTHLY_AI_MESSAGE_LIMIT } from '@/lib/ai/usage-limits'
 
 describe('Support requests API', () => {
   let tenant: TestTenant
@@ -74,16 +75,28 @@ describe('Support requests API', () => {
     const body = await res.json()
     expect(body.request.channel).toBe('ai_assisted')
 
-    // Messages thread on this AI-assisted request: no ANTHROPIC_API_KEY in
-    // this test environment, so the platform-level gate still applies even
-    // though the tenant-level subscription gate just passed -- confirms
-    // both layers are independently enforced, and no real API call is ever made.
+    // ANTHROPIC_API_KEY is genuinely configured in this environment (the
+    // feature is live in production too), so this makes one real, tiny
+    // paid API call -- a deliberate integration check, not mocked, to
+    // confirm the whole chain (subscription gate -> AI call -> reply ->
+    // usage logging) really works end-to-end, not just the gating logic.
     const msgRes = await tenant.fetch(`/api/support/requests/${body.request.id}/messages`, {
       method: 'POST',
       body: JSON.stringify({ body: 'How do I export a report?' }),
     })
-    expect(msgRes.status).toBe(503)
-    expect((await msgRes.json()).error).toMatch(/not configured/i)
+    expect(msgRes.status).toBe(200)
+    const msgBody = await msgRes.json()
+    expect(msgBody.message.sender_type).toBe('ai')
+    expect(msgBody.message.body.length).toBeGreaterThan(0)
+
+    const { data: usageLogs } = await supabaseAdmin
+      .from('ai_usage_log')
+      .select('*')
+      .eq('tenant_id', tenant.tenantId)
+      .eq('feature', 'support_chat')
+    expect(usageLogs?.length).toBeGreaterThan(0)
+    expect(usageLogs![0].input_tokens).toBeGreaterThan(0)
+    expect(usageLogs![0].output_tokens).toBeGreaterThan(0)
   })
 
   it('rejects posting a message to a standard-channel request', async () => {
@@ -121,6 +134,35 @@ describe('Support requests API', () => {
     expect(supportRes.status).toBe(200)
     const body = await supportRes.json()
     expect(body.requests.some((r: { tenant_id: string }) => r.tenant_id === tenant.tenantId)).toBe(true)
+  })
+
+  it('rejects an AI Assistant message once the monthly per-tenant usage limit is reached', async () => {
+    const createRes = await tenant.fetch('/api/support/requests', {
+      method: 'POST',
+      body: JSON.stringify({ subject: 'Quota test', description: 'x', channel: 'ai_assisted' }),
+    })
+    const { request } = await createRes.json()
+
+    // Simulate having already hit the monthly cap -- directly inserting
+    // MONTHLY_AI_MESSAGE_LIMIT synthetic 'user' messages this month is
+    // the only practical way to test this without MONTHLY_AI_MESSAGE_LIMIT
+    // real (paid) API round-trips.
+    await supabaseAdmin.from('support_messages').insert(
+      Array.from({ length: MONTHLY_AI_MESSAGE_LIMIT }, (_, i) => ({
+        tenant_id: tenant.tenantId,
+        request_id: request.id,
+        sender_type: 'user',
+        sender_user_id: tenant.userId,
+        body: `synthetic message ${i}`,
+      }))
+    )
+
+    const res = await tenant.fetch(`/api/support/requests/${request.id}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body: 'one more please' }),
+    })
+    expect(res.status).toBe(429)
+    expect((await res.json()).error).toMatch(/monthly AI Assistant usage limit/i)
   })
 
   it('creator can reply and update status', async () => {

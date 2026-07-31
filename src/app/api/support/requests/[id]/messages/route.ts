@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendSupportMessage, AiSupportError, type SupportChatMessage } from '@/lib/ai/support-chat'
+import { MAX_HISTORY_MESSAGES, MONTHLY_AI_MESSAGE_LIMIT } from '@/lib/ai/usage-limits'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +17,31 @@ async function loadOwnRequest(tenantId: string, requestId: string) {
     .eq('tenant_id', tenantId)
     .single()
   return data
+}
+
+// This tenant's user-sent AI Assistant messages so far this calendar
+// month, across every ai_assisted request -- the usage-cap check.
+async function monthlyAiMessageCount(tenantId: string): Promise<number> {
+  const { data: aiRequests } = await supabaseAdmin
+    .from('support_requests')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('channel', 'ai_assisted')
+  const requestIds = (aiRequests || []).map((r) => r.id)
+  if (requestIds.length === 0) return 0
+
+  const startOfMonth = new Date()
+  startOfMonth.setUTCDate(1)
+  startOfMonth.setUTCHours(0, 0, 0, 0)
+
+  const { count } = await supabaseAdmin
+    .from('support_messages')
+    .select('id', { count: 'exact', head: true })
+    .in('request_id', requestIds)
+    .eq('sender_type', 'user')
+    .gte('created_at', startOfMonth.toISOString())
+
+  return count || 0
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -60,6 +86,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { body } = await request.json()
   if (!body) return NextResponse.json({ error: 'body is required' }, { status: 400 })
 
+  // Checked before saving anything -- an over-quota message is rejected
+  // outright, not saved-then-unanswered.
+  const usedThisMonth = await monthlyAiMessageCount(profile.tenant_id)
+  if (usedThisMonth >= MONTHLY_AI_MESSAGE_LIMIT) {
+    return NextResponse.json({
+      error: `This firm has reached its monthly AI Assistant usage limit (${MONTHLY_AI_MESSAGE_LIMIT} messages). Please use the Standard channel, or try again next month.`,
+    }, { status: 429 })
+  }
+
   await supabaseAdmin.from('support_messages').insert({
     tenant_id: profile.tenant_id,
     request_id: id,
@@ -74,13 +109,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('request_id', id)
     .order('created_at', { ascending: true })
 
-  const history: SupportChatMessage[] = (allMessages || []).map((m) => ({
+  // Capped to the most recent turns -- sent as context on every call, so
+  // an unbounded thread would make cost grow with conversation length.
+  const recentMessages = (allMessages || []).slice(-MAX_HISTORY_MESSAGES)
+  const history: SupportChatMessage[] = recentMessages.map((m) => ({
     role: m.sender_type === 'user' ? 'user' : 'assistant',
     content: m.body,
   }))
 
   try {
-    const reply = await sendSupportMessage({
+    const { reply, usage } = await sendSupportMessage({
       subject: supportRequest.subject,
       description: supportRequest.description,
       history,
@@ -91,6 +129,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .select()
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    await supabaseAdmin.from('ai_usage_log').insert({
+      tenant_id: profile.tenant_id,
+      feature: 'support_chat',
+      input_tokens: usage.inputTokens,
+      output_tokens: usage.outputTokens,
+    })
+
     return NextResponse.json({ message: aiMessage })
   } catch (err) {
     if (err instanceof AiSupportError) {

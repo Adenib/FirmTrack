@@ -14,7 +14,12 @@ export type SupportChatInput = {
   history: SupportChatMessage[] // prior turns in this thread, oldest first
 }
 
-export type SendTransport = (input: SupportChatInput) => Promise<string>
+export type SupportChatResult = {
+  reply: string
+  usage: { inputTokens: number; outputTokens: number }
+}
+
+export type SendTransport = (input: SupportChatInput) => Promise<SupportChatResult>
 
 export class AiSupportError extends Error {}
 
@@ -67,13 +72,16 @@ const anthropicTransport: SendTransport = async (input) => {
   if (!textBlock || textBlock.type !== 'text') {
     throw new AiSupportError('AI support chat failed: no text response returned')
   }
-  return textBlock.text
+  return {
+    reply: textBlock.text,
+    usage: { inputTokens: res.usage.input_tokens, outputTokens: res.usage.output_tokens },
+  }
 }
 
 export async function sendSupportMessage(
   input: SupportChatInput,
   transport: SendTransport = anthropicTransport
-): Promise<string> {
+): Promise<SupportChatResult> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new AiSupportError('AI Support Assistant is not configured (ANTHROPIC_API_KEY is not set)')
   }

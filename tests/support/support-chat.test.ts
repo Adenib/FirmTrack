@@ -20,24 +20,25 @@ describe('sendSupportMessage (pure, transport injected)', () => {
     let called = false
     const stubTransport = async () => {
       called = true
-      return 'reply'
+      return { reply: 'reply', usage: { inputTokens: 0, outputTokens: 0 } }
     }
 
     await expect(sendSupportMessage(sampleInput, stubTransport)).rejects.toBeInstanceOf(AiSupportError)
     expect(called).toBe(false)
   })
 
-  it('passes input through to the transport and returns its result when configured', async () => {
+  it('passes input through to the transport and returns its result (reply + token usage) when configured', async () => {
     process.env.ANTHROPIC_API_KEY = 'test-key-not-real'
     let received: SupportChatInput | null = null
     const stubTransport = async (input: SupportChatInput) => {
       received = input
-      return 'Try refreshing -- subscriptions can take a minute to activate.'
+      return { reply: 'Try refreshing -- subscriptions can take a minute to activate.', usage: { inputTokens: 120, outputTokens: 18 } }
     }
 
     const result = await sendSupportMessage(sampleInput, stubTransport)
 
-    expect(result).toBe('Try refreshing -- subscriptions can take a minute to activate.')
+    expect(result.reply).toBe('Try refreshing -- subscriptions can take a minute to activate.')
+    expect(result.usage).toEqual({ inputTokens: 120, outputTokens: 18 })
     expect(received).toEqual(sampleInput)
   })
 })
