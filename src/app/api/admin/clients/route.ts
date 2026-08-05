@@ -31,6 +31,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'name is required' }, { status: 400 })
   }
 
+  let effectiveCurrency = billing_currency
+  if (!effectiveCurrency) {
+    const { data: org } = await supabaseAdmin
+      .from('organizations').select('base_currency').eq('id', profile.tenant_id).single()
+    effectiveCurrency = org?.base_currency || 'NGN'
+  }
+
   const { data: client, error } = await supabaseAdmin
     .from('clients')
     .insert({
@@ -40,6 +47,7 @@ export async function POST(request: Request) {
       phone: phone || null,
       company: company || null,
       notes: notes || null,
+      billing_currency: effectiveCurrency,
     })
     .select()
     .single()

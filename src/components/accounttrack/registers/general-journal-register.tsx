@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 
 type JournalLine = {
   id: string
-  debit_usd: number
-  credit_usd: number
+  debit: number
+  credit: number
   description: string | null
   chart_of_accounts: { code: string | null; name: string } | null
 }
@@ -18,7 +18,7 @@ type JournalEntry = {
   lines: JournalLine[]
 }
 
-function fmtUsd(n: number) {
+function fmtAmount(n: number) {
   return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
@@ -68,10 +68,10 @@ export default function GeneralJournalRegister() {
                     {line.chart_of_accounts?.name || '—'}
                   </td>
                   <td className="py-0.5 text-right text-gray-900 w-24">
-                    {Number(line.debit_usd) > 0 ? fmtUsd(line.debit_usd) : ''}
+                    {Number(line.debit) > 0 ? fmtAmount(line.debit) : ''}
                   </td>
                   <td className="py-0.5 text-right text-gray-900 w-24">
-                    {Number(line.credit_usd) > 0 ? fmtUsd(line.credit_usd) : ''}
+                    {Number(line.credit) > 0 ? fmtAmount(line.credit) : ''}
                   </td>
                 </tr>
               ))}

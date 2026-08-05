@@ -55,12 +55,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'AccountTrack is not active for this tenant' }, { status: 403 })
   }
 
-  const { matter_id, ledger_type, entry_date, amount_usd, transaction_type, description, reference } =
+  const { matter_id, ledger_type, entry_date, amount, transaction_type, description, reference } =
     await request.json()
 
-  if (!matter_id || !['trust', 'retainer'].includes(ledger_type) || !amount_usd) {
+  if (!matter_id || !['trust', 'retainer'].includes(ledger_type) || !amount) {
     return NextResponse.json(
-      { error: "matter_id, ledger_type ('trust'|'retainer'), and a non-zero amount_usd are required" },
+      { error: "matter_id, ledger_type ('trust'|'retainer'), and a non-zero amount are required" },
       { status: 400 }
     )
   }
@@ -74,6 +74,12 @@ export async function POST(request: Request) {
     throw err
   }
 
+  const [{ data: matter }, { data: org }] = await Promise.all([
+    supabaseAdmin.from('matters').select('billing_currency').eq('id', matter_id).eq('tenant_id', profile.tenant_id).single(),
+    supabaseAdmin.from('organizations').select('base_currency').eq('id', profile.tenant_id).single(),
+  ])
+  const ledgerCurrency = matter?.billing_currency || org?.base_currency || 'NGN'
+
   const { data: entry, error } = await supabaseAdmin
     .from('trust_ledger_entries')
     .insert({
@@ -81,7 +87,9 @@ export async function POST(request: Request) {
       matter_id,
       ledger_type,
       entry_date: effectiveDate,
-      amount_usd: Number(amount_usd),
+      amount: Number(amount),
+      currency: ledgerCurrency,
+      base_currency_amount: Number(amount),
       transaction_type: transaction_type || null,
       description: description || null,
       reference: reference || null,
@@ -92,8 +100,8 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const amount = Number(amount_usd)
-  const deposit = amount > 0
+  const numericAmount = Number(amount)
+  const deposit = numericAmount > 0
   const liabilityKey: AccountKey = ledger_type === 'trust' ? 'trust_liability' : 'retainer_liability'
   const sourceType = deposit
     ? (ledger_type === 'trust' ? 'trust_deposit' : 'retainer_deposit')
@@ -109,12 +117,12 @@ export async function POST(request: Request) {
       createdBy: user.id,
       lines: deposit
         ? [
-            { accountKey: 'trust_bank', matterId: matter_id, debitUsd: Math.abs(amount) },
-            { accountKey: liabilityKey, matterId: matter_id, creditUsd: Math.abs(amount) },
+            { accountKey: 'trust_bank', matterId: matter_id, debit: Math.abs(numericAmount) },
+            { accountKey: liabilityKey, matterId: matter_id, credit: Math.abs(numericAmount) },
           ]
         : [
-            { accountKey: liabilityKey, matterId: matter_id, debitUsd: Math.abs(amount) },
-            { accountKey: 'trust_bank', matterId: matter_id, creditUsd: Math.abs(amount) },
+            { accountKey: liabilityKey, matterId: matter_id, debit: Math.abs(numericAmount) },
+            { accountKey: 'trust_bank', matterId: matter_id, credit: Math.abs(numericAmount) },
           ],
     })
   } catch (err) {

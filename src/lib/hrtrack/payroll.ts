@@ -14,20 +14,20 @@ export class PayrollError extends Error {
   }
 }
 
-export type Deduction = { name: string; amount_usd: number }
+export type Deduction = { name: string; amount: number }
 
 export type PayrollLineItem = {
-  base_salary_usd: number
-  leave_allowance_usd: number
+  base_salary: number
+  leave_allowance: number
   deductions: Deduction[]
 }
 
 export function deductionsTotalUsd(deductions: Deduction[] | null | undefined): number {
-  return (deductions || []).reduce((sum, d) => sum + Number(d.amount_usd || 0), 0)
+  return (deductions || []).reduce((sum, d) => sum + Number(d.amount || 0), 0)
 }
 
 export function netPayUsd(lineItem: PayrollLineItem): number {
-  return Number(lineItem.base_salary_usd) + Number(lineItem.leave_allowance_usd) - deductionsTotalUsd(lineItem.deductions)
+  return Number(lineItem.base_salary) + Number(lineItem.leave_allowance) - deductionsTotalUsd(lineItem.deductions)
 }
 
 type LeaveDetails = { start_date?: string }
@@ -76,14 +76,14 @@ export type CreatePayrollRunInput = {
 export async function createPayrollRun(input: CreatePayrollRunInput) {
   const { data: salaryRows } = await supabaseAdmin
     .from('payroll_salaries')
-    .select('user_id, amount_usd, effective_from')
+    .select('user_id, amount, effective_from')
     .eq('tenant_id', input.tenantId)
     .lte('effective_from', input.periodEnd)
     .order('effective_from', { ascending: false })
 
   const currentSalaryByUser = new Map<string, number>()
   for (const row of salaryRows || []) {
-    if (!currentSalaryByUser.has(row.user_id)) currentSalaryByUser.set(row.user_id, Number(row.amount_usd))
+    if (!currentSalaryByUser.has(row.user_id)) currentSalaryByUser.set(row.user_id, Number(row.amount))
   }
   if (currentSalaryByUser.size === 0) {
     throw new PayrollError('No employees have a salary on record as of this period', 400)
@@ -113,8 +113,8 @@ export async function createPayrollRun(input: CreatePayrollRunInput) {
     tenant_id: input.tenantId,
     payroll_run_id: run.id,
     user_id: userId,
-    base_salary_usd: salary,
-    leave_allowance_usd: allowanceByUser.get(userId) || 0,
+    base_salary: salary,
+    leave_allowance: allowanceByUser.get(userId) || 0,
     deductions: [] as Deduction[],
   }))
 
@@ -172,16 +172,16 @@ export async function postPayrollRun(input: PostPayrollRunInput) {
     const leaveAllowanceUsd = unpaidLeave.reduce((sum, r) => sum + Number(r.leave_allowance_amount), 0)
 
     const deductionsTotal = deductionsTotalUsd(item.deductions as Deduction[])
-    const grossUsd = Number(item.base_salary_usd) + leaveAllowanceUsd
+    const grossUsd = Number(item.base_salary) + leaveAllowanceUsd
     const netUsd = grossUsd - deductionsTotal
     if (netUsd < 0) {
       throw new PayrollError(`Deductions (${deductionsTotal}) exceed gross pay (${grossUsd}) for one line item`, 400)
     }
 
     const lawyerId = lawyerIdByUser.get(item.user_id) || null
-    const lines: JournalLineInput[] = [{ accountKey: 'salaries_expense', lawyerId, debitUsd: grossUsd }]
-    if (deductionsTotal > 0) lines.push({ accountKey: 'payroll_liabilities', lawyerId, creditUsd: deductionsTotal })
-    lines.push({ accountKey: 'operating_cash', lawyerId, creditUsd: netUsd })
+    const lines: JournalLineInput[] = [{ accountKey: 'salaries_expense', lawyerId, debit: grossUsd }]
+    if (deductionsTotal > 0) lines.push({ accountKey: 'payroll_liabilities', lawyerId, credit: deductionsTotal })
+    lines.push({ accountKey: 'operating_cash', lawyerId, credit: netUsd })
 
     await postJournalEntry({
       tenantId: input.tenantId,
@@ -193,8 +193,8 @@ export async function postPayrollRun(input: PostPayrollRunInput) {
       lines,
     })
 
-    if (leaveAllowanceUsd !== Number(item.leave_allowance_usd)) {
-      await supabaseAdmin.from('payroll_line_items').update({ leave_allowance_usd: leaveAllowanceUsd }).eq('id', item.id)
+    if (leaveAllowanceUsd !== Number(item.leave_allowance)) {
+      await supabaseAdmin.from('payroll_line_items').update({ leave_allowance: leaveAllowanceUsd }).eq('id', item.id)
     }
     if (unpaidLeave.length > 0) {
       await supabaseAdmin.from('requests').update({ paid_in_payroll_run_id: run.id }).in('id', unpaidLeave.map((r) => r.id))

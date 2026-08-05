@@ -78,6 +78,48 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}${next}`)
   }
 
+  // No profile at this auth id -- but an admin may have pre-provisioned
+  // this person (e.g. a bulk staff import) under a placeholder id before
+  // their first real sign-in. OAuth issues its own auth id independent of
+  // that placeholder, so match by email instead of assuming this is a
+  // brand-new signup. If found, claim it: insert a fresh `users` row under
+  // the real auth id, repoint whatever the placeholder id could already
+  // have accumulated (lawyer/accounts-staff profiles, payroll records --
+  // nothing else is possible before a first login), then remove the
+  // placeholder. Order matters for FK correctness: the new row must exist
+  // before anything is repointed to it, and the placeholder can only be
+  // deleted once nothing references it anymore.
+  if (user.email) {
+    const { data: preProvisioned } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('email', user.email)
+      .maybeSingle()
+
+    if (preProvisioned && preProvisioned.id !== user.id) {
+      const oldId = preProvisioned.id
+      const { id: _oldId, ...profileRest } = preProvisioned
+      const { error: claimInsertError } = await supabaseAdmin
+        .from('users')
+        .insert({ ...profileRest, id: user.id })
+
+      if (claimInsertError) {
+        console.error('auth/callback: failed to claim pre-provisioned profile', claimInsertError)
+        return NextResponse.redirect(`${origin}/login?error=profile_creation_failed`)
+      }
+
+      await supabaseAdmin.from('lawyers').update({ user_id: user.id }).eq('user_id', oldId)
+      await supabaseAdmin.from('accounts_staff').update({ user_id: user.id }).eq('user_id', oldId)
+      await supabaseAdmin.from('payroll_salaries').update({ user_id: user.id }).eq('user_id', oldId)
+      await supabaseAdmin.from('payroll_salaries').update({ created_by: user.id }).eq('created_by', oldId)
+
+      await supabaseAdmin.from('users').delete().eq('id', oldId)
+      await supabaseAdmin.auth.admin.deleteUser(oldId).catch(() => {})
+
+      return NextResponse.redirect(`${origin}${next}`)
+    }
+  }
+
   // No profile yet and no org name to work with (the OAuth sign-in/sign-up
   // flow -- Google/Microsoft's consent screen happens before we can ask
   // for one) -- send them to collect it instead of silently creating an

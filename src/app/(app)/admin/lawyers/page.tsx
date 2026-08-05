@@ -17,7 +17,7 @@ type UserOption = {
 
 type LawyerRate = {
   rate_type: string
-  amount_usd: number
+  amount: number
   effective_from: string
 }
 
@@ -104,7 +104,7 @@ export default function LawyersPage() {
   }
 
   const getRateUsd = (lawyer: Lawyer, type: string) =>
-    lawyer.lawyer_rates?.find((r) => r.rate_type === type)?.amount_usd ?? null
+    lawyer.lawyer_rates?.find((r) => r.rate_type === type)?.amount ?? null
 
   const resetForm = () => {
     setUserId('')
@@ -125,7 +125,7 @@ export default function LawyersPage() {
 
     const rates = addedRates.map((r) => ({
       rate_type: r.type,
-      amount_usd: ngnToUsd(r.ngn),
+      amount: ngnToUsd(r.ngn),
     }))
 
     const response = await fetch('/api/admin/lawyers', {

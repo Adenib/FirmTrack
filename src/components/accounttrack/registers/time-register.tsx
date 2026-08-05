@@ -6,8 +6,8 @@ type Entry = {
   id: string
   entry_date: string
   hours: number
-  rate_usd: number
-  amount_usd: number
+  rate: number
+  amount: number
   billable: boolean
   status: string
   matters: { matter_id: string; case_name: string } | null
@@ -64,8 +64,8 @@ export default function TimeRegister() {
               <td className="px-3 py-2 text-gray-700">{e.lawyers?.nickname || '—'}</td>
               <td className="px-3 py-2 text-gray-700">{e.task_codes?.code || '—'}</td>
               <td className="px-3 py-2 text-gray-700">{Number(e.hours || 0).toFixed(2)}</td>
-              <td className="px-3 py-2 text-gray-700">{Number(e.rate_usd || 0).toFixed(2)}</td>
-              <td className="px-3 py-2 text-gray-700">{Number(e.amount_usd || 0).toFixed(2)}</td>
+              <td className="px-3 py-2 text-gray-700">{Number(e.rate || 0).toFixed(2)}</td>
+              <td className="px-3 py-2 text-gray-700">{Number(e.amount || 0).toFixed(2)}</td>
               <td className="px-3 py-2 text-gray-500">{e.billable === false ? 'No' : 'Yes'}</td>
               <td className="px-3 py-2">
                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full capitalize">

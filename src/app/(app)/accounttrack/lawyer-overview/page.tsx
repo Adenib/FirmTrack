@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-function fmtUsd(n) {
+function fmtAmount(n) {
   return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
@@ -56,7 +56,7 @@ export default function LawyerOverviewPage() {
     setEditingLawyerId(row.lawyer.id)
     setTargetHours(row.budget?.target_hours ?? '')
     setTargetBillableHours(row.budget?.target_billable_hours ?? '')
-    setTargetRevenue(row.budget?.target_revenue_usd ?? '')
+    setTargetRevenue(row.budget?.target_revenue ?? '')
   }
 
   const saveBudget = async (row) => {
@@ -68,7 +68,7 @@ export default function LawyerOverviewPage() {
           id: row.budget.id,
           target_hours: targetHours === '' ? null : Number(targetHours),
           target_billable_hours: targetBillableHours === '' ? null : Number(targetBillableHours),
-          target_revenue_usd: targetRevenue === '' ? null : Number(targetRevenue),
+          target_revenue: targetRevenue === '' ? null : Number(targetRevenue),
         }
       : {
           lawyer_id: row.lawyer.id,
@@ -76,7 +76,7 @@ export default function LawyerOverviewPage() {
           period_end: to,
           target_hours: targetHours === '' ? null : Number(targetHours),
           target_billable_hours: targetBillableHours === '' ? null : Number(targetBillableHours),
-          target_revenue_usd: targetRevenue === '' ? null : Number(targetRevenue),
+          target_revenue: targetRevenue === '' ? null : Number(targetRevenue),
         }
 
     const response = await fetch('/api/accounttrack/budgets', {
@@ -157,11 +157,11 @@ export default function LawyerOverviewPage() {
                 </div>
                 <div>
                   <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Revenue</p>
-                  <p className="text-sm text-gray-900">{fmtUsd(row.revenue)}</p>
+                  <p className="text-sm text-gray-900">{fmtAmount(row.revenue)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">WIP</p>
-                  <p className="text-sm text-gray-900">{fmtUsd(row.wip)}</p>
+                  <p className="text-sm text-gray-900">{fmtAmount(row.wip)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
@@ -175,7 +175,7 @@ export default function LawyerOverviewPage() {
                 <p className="text-xs text-gray-400 mt-2">
                   Target: {row.budget.target_hours ? `${row.budget.target_hours}h total` : ''}
                   {row.budget.target_billable_hours ? ` · ${row.budget.target_billable_hours}h billable` : ''}
-                  {row.budget.target_revenue_usd ? ` · ${fmtUsd(row.budget.target_revenue_usd)} revenue` : ''}
+                  {row.budget.target_revenue ? ` · ${fmtAmount(row.budget.target_revenue)} revenue` : ''}
                 </p>
               )}
 

@@ -37,7 +37,7 @@ describe('BillTrack Stage 3: reports aggregation', () => {
     // --- Bucket A (two months ago): one invoiced entry (sent) + one paid ---
     const oldEntryRes = await tenant.fetch('/api/timetrack/entries', {
       method: 'POST',
-      body: JSON.stringify({ entries: [{ matter_id: matterId, hours: 2, rate_usd: 100, amount_usd: 200, billable: true }] }),
+      body: JSON.stringify({ entries: [{ matter_id: matterId, hours: 2, rate: 100, amount: 200, billable: true }] }),
     })
     const { entries: oldEntries } = await oldEntryRes.json()
 
@@ -60,7 +60,7 @@ describe('BillTrack Stage 3: reports aggregation', () => {
 
     await tenant.fetch('/api/accounttrack/invoices', {
       method: 'PATCH',
-      body: JSON.stringify({ id: oldInvoice.id, payment_amount_usd: 200 }),
+      body: JSON.stringify({ id: oldInvoice.id, payment_amount: 200 }),
     })
     await supabaseAdmin
       .from('journal_entries')
@@ -72,14 +72,14 @@ describe('BillTrack Stage 3: reports aggregation', () => {
     // --- Bucket B (this month): one unbilled entry + one unbilled disbursement (pending/WIP) ---
     const newEntryRes = await tenant.fetch('/api/timetrack/entries', {
       method: 'POST',
-      body: JSON.stringify({ entries: [{ matter_id: matterId, hours: 1, rate_usd: 100, amount_usd: 100, billable: true }] }),
+      body: JSON.stringify({ entries: [{ matter_id: matterId, hours: 1, rate: 100, amount: 100, billable: true }] }),
     })
     const { entries: newEntries } = await newEntryRes.json()
     await supabaseAdmin.from('time_entries').update({ entry_date: thisMonth }).eq('id', newEntries[0].id)
 
     const disbRes = await tenant.fetch('/api/accounttrack/disbursements', {
       method: 'POST',
-      body: JSON.stringify({ matter_id: matterId, description: 'Filing fee', amount_usd: 50 }),
+      body: JSON.stringify({ matter_id: matterId, description: 'Filing fee', amount: 50 }),
     })
     const { disbursement } = await disbRes.json()
     await supabaseAdmin.from('disbursements').update({ disb_date: thisMonth }).eq('id', disbursement.id)

@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-function fmtUsd(n) {
+function fmtAmount(n) {
   return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
@@ -78,7 +78,7 @@ export default function BillTrackPage() {
     const res = await fetch('/api/accounttrack/invoices', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: invoice.id, payment_amount_usd: amount }),
+      body: JSON.stringify({ id: invoice.id, payment_amount: amount }),
     })
     const result = await res.json()
     if (!res.ok) setActionError((prev) => ({ ...prev, [invoice.id]: result.error }))
@@ -157,11 +157,11 @@ export default function BillTrackPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-3">
                   <div>
                     <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Total</p>
-                    <p className="text-sm text-gray-900">{fmtUsd(inv.total_amount_usd)}</p>
+                    <p className="text-sm text-gray-900">{fmtAmount(inv.total_amount)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Paid</p>
-                    <p className="text-sm text-gray-900">{fmtUsd(inv.paid_amount_usd)}</p>
+                    <p className="text-sm text-gray-900">{fmtAmount(inv.paid_amount)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Status</p>

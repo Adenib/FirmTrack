@@ -49,8 +49,8 @@ describe('Admin Backup & Restore', () => {
       matter_id: matterId,
       entry_date: new Date().toISOString().split('T')[0],
       hours: 2,
-      rate_usd: 100,
-      amount_usd: 200,
+      rate: 100,
+      amount: 200,
       created_by: tenant.userId,
     })
 
@@ -58,8 +58,8 @@ describe('Admin Backup & Restore', () => {
       tenant_id: tenant.tenantId,
       matter_id: matterId,
       invoice_number: 'BAK-0001',
-      fees_amount_usd: 200,
-      total_amount_usd: 200,
+      fees_amount: 200,
+      total_amount: 200,
       created_by: tenant.userId,
     })
 

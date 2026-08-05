@@ -6,7 +6,7 @@ type LedgerEntry = {
   id: string
   entry_date: string
   ledger_type: 'trust' | 'retainer'
-  amount_usd: number
+  amount: number
   description: string | null
   matters: { matter_id: string; case_name: string } | null
 }
@@ -55,8 +55,8 @@ export default function TrustRegister() {
               <td className="px-3 py-2 text-gray-700">{e.matters?.matter_id || '—'}</td>
               <td className="px-3 py-2 text-gray-700 capitalize">{e.ledger_type}</td>
               <td className="px-3 py-2 text-gray-700">{e.description || '—'}</td>
-              <td className={`px-3 py-2 ${Number(e.amount_usd) < 0 ? 'text-red-600' : 'text-green-700'}`}>
-                ₦{Number(e.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <td className={`px-3 py-2 ${Number(e.amount) < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                ₦{Number(e.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
           ))}

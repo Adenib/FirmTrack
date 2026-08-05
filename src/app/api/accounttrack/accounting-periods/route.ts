@@ -45,7 +45,7 @@ async function buildYearCloseLines(tenantId: string, periodStart: string, period
 
   const { data: lines } = await supabaseAdmin
     .from('journal_lines')
-    .select('account_id, debit_usd, credit_usd, journal_entries!inner(entry_date, tenant_id)')
+    .select('account_id, debit, credit, journal_entries!inner(entry_date, tenant_id)')
     .eq('tenant_id', tenantId)
     .in('account_id', accountIds)
     .gte('journal_entries.entry_date', periodStart)
@@ -54,10 +54,10 @@ async function buildYearCloseLines(tenantId: string, periodStart: string, period
   const byAccount = new Map<string, number>()
   for (const line of lines || []) {
     const current = byAccount.get(line.account_id) || 0
-    byAccount.set(line.account_id, current + Number(line.credit_usd || 0) - Number(line.debit_usd || 0))
+    byAccount.set(line.account_id, current + Number(line.credit || 0) - Number(line.debit || 0))
   }
 
-  const closingLines: { accountId: string; debitUsd?: number; creditUsd?: number; description: string }[] = []
+  const closingLines: { accountId: string; debit?: number; credit?: number; description: string }[] = []
   let netIncome = 0
 
   for (const account of accounts || []) {
@@ -68,9 +68,9 @@ async function buildYearCloseLines(tenantId: string, periodStart: string, period
     // with a debit. Expense accounts are debit-normal (netCredit < 0
     // typically, since debits exceed credits) — zero with a credit.
     if (netCredit > 0) {
-      closingLines.push({ accountId: account.id, debitUsd: netCredit, description: 'Year-end close' })
+      closingLines.push({ accountId: account.id, debit: netCredit, description: 'Year-end close' })
     } else {
-      closingLines.push({ accountId: account.id, creditUsd: -netCredit, description: 'Year-end close' })
+      closingLines.push({ accountId: account.id, credit: -netCredit, description: 'Year-end close' })
     }
   }
 
@@ -106,8 +106,8 @@ export async function POST(request: Request) {
       const fullLines = [
         ...lines,
         netIncome > 0
-          ? { accountKey: 'retained_earnings' as const, creditUsd: netIncome, description: 'Year-end close: net income' }
-          : { accountKey: 'retained_earnings' as const, debitUsd: -netIncome, description: 'Year-end close: net loss' },
+          ? { accountKey: 'retained_earnings' as const, credit: netIncome, description: 'Year-end close: net income' }
+          : { accountKey: 'retained_earnings' as const, debit: -netIncome, description: 'Year-end close: net loss' },
       ]
 
       try {
@@ -189,7 +189,7 @@ export async function PATCH(request: Request) {
   if (period.closing_entry_id) {
     const { data: originalLines } = await supabaseAdmin
       .from('journal_lines')
-      .select('account_id, matter_id, lawyer_id, debit_usd, credit_usd, description')
+      .select('account_id, matter_id, lawyer_id, debit, credit, description')
       .eq('journal_entry_id', period.closing_entry_id)
 
     try {
@@ -205,8 +205,8 @@ export async function PATCH(request: Request) {
           accountId: l.account_id,
           matterId: l.matter_id,
           lawyerId: l.lawyer_id,
-          debitUsd: Number(l.credit_usd || 0),
-          creditUsd: Number(l.debit_usd || 0),
+          debit: Number(l.credit || 0),
+          credit: Number(l.debit || 0),
           description: l.description || 'Reopen reversal',
         })),
       })

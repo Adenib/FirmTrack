@@ -62,23 +62,23 @@ export async function GET(request: Request) {
     : await Promise.all([
         supabaseAdmin
           .from('time_entries')
-          .select('hours, amount_usd, billable, status, matter_id')
+          .select('hours, amount, billable, status, matter_id')
           .eq('tenant_id', tenantId)
           .in('matter_id', matterIds),
         supabaseAdmin
           .from('disbursements')
-          .select('amount_usd, matter_id')
+          .select('amount, matter_id')
           .eq('tenant_id', tenantId)
           .eq('billed', false)
           .in('matter_id', matterIds),
         supabaseAdmin
           .from('trust_ledger_entries')
-          .select('ledger_type, amount_usd, matter_id')
+          .select('ledger_type, amount, matter_id')
           .eq('tenant_id', tenantId)
           .in('matter_id', matterIds),
         supabaseAdmin
           .from('invoices')
-          .select('total_amount_usd, paid_amount_usd, status, matter_id')
+          .select('total_amount, paid_amount, status, matter_id')
           .eq('tenant_id', tenantId)
           .neq('status', 'void')
           .in('matter_id', matterIds),
@@ -107,21 +107,21 @@ export async function GET(request: Request) {
 
     const unbilledEntries = entries.filter((e) => e.billable && ['draft', 'submitted'].includes(e.status))
     const unbilledHours = unbilledEntries.reduce((sum, e) => sum + Number(e.hours || 0), 0)
-    const unbilledFees = unbilledEntries.reduce((sum, e) => sum + Number(e.amount_usd || 0), 0)
+    const unbilledFees = unbilledEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0)
 
     const unbilledDisbursements = (disbursementsByMatter.get(matter.id) || [])
-      .reduce((sum, d) => sum + Number(d.amount_usd || 0), 0)
+      .reduce((sum, d) => sum + Number(d.amount || 0), 0)
 
     const ledger = ledgerByMatter.get(matter.id) || []
     const trustBalance = ledger
       .filter((l) => l.ledger_type === 'trust')
-      .reduce((sum, l) => sum + Number(l.amount_usd || 0), 0)
+      .reduce((sum, l) => sum + Number(l.amount || 0), 0)
     const retainerBalance = ledger
       .filter((l) => l.ledger_type === 'retainer')
-      .reduce((sum, l) => sum + Number(l.amount_usd || 0), 0)
+      .reduce((sum, l) => sum + Number(l.amount || 0), 0)
 
     const accountsReceivable = (invoicesByMatter.get(matter.id) || [])
-      .reduce((sum, inv) => sum + (Number(inv.total_amount_usd || 0) - Number(inv.paid_amount_usd || 0)), 0)
+      .reduce((sum, inv) => sum + (Number(inv.total_amount || 0) - Number(inv.paid_amount || 0)), 0)
 
     return {
       matter: {

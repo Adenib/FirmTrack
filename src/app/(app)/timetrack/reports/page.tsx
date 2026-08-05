@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-function fmtUsd(n) { return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
+function fmtAmount(n) { return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
 function pad(n) { return String(n).padStart(2, '0') }
 function iso(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 
@@ -47,9 +47,9 @@ export default function TimeTrackReportsPage() {
     totalHours += hours
     if (e.billable !== false) {
       byLawyer[name].billableHours += hours
-      byLawyer[name].amount += Number(e.amount_usd || 0)
+      byLawyer[name].amount += Number(e.amount || 0)
       totalBillable += hours
-      totalAmount += Number(e.amount_usd || 0)
+      totalAmount += Number(e.amount || 0)
     }
   }
   const rows = Object.entries(byLawyer).sort((a, b) => b[1].hours - a[1].hours)
@@ -99,7 +99,7 @@ export default function TimeTrackReportsPage() {
             </div>
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Billable Amount</p>
-              <p className="text-xl font-semibold text-gray-900">{fmtUsd(totalAmount)}</p>
+              <p className="text-xl font-semibold text-gray-900">{fmtAmount(totalAmount)}</p>
             </div>
           </div>
 
@@ -122,7 +122,7 @@ export default function TimeTrackReportsPage() {
                       <td className="px-4 py-3 text-gray-900">{name}</td>
                       <td className="px-4 py-3 text-gray-700">{stats.hours.toFixed(2)}h</td>
                       <td className="px-4 py-3 text-gray-700">{stats.billableHours.toFixed(2)}h</td>
-                      <td className="px-4 py-3 text-gray-700">{fmtUsd(stats.amount)}</td>
+                      <td className="px-4 py-3 text-gray-700">{fmtAmount(stats.amount)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -83,7 +83,7 @@ export default function QuickFeePage() {
         matter_id: r.matterId,
         lawyer_id: r.lawyerId || null,
         task_code_id: r.taskCodeId || null,
-        amount_usd: parseFloat(r.amount) || 0,
+        amount: parseFloat(r.amount) || 0,
         expl_code: r.explCode || null,
         explanation: r.explanation || null,
         hold: r.hold,

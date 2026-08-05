@@ -21,6 +21,7 @@ export default function ClientsPage() {
   const [phone, setPhone] = useState('')
   const [company, setCompany] = useState('')
   const [billingCurrency, setBillingCurrency] = useState('NGN')
+  const [currencyOptions, setCurrencyOptions] = useState(['NGN'])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -37,8 +38,18 @@ export default function ClientsPage() {
     setLoading(false)
   }
 
+  const loadCurrencyOptions = async () => {
+    const response = await fetch('/api/accounttrack/currency-settings')
+    if (!response.ok) return
+    const result = await response.json()
+    const options = [result.base_currency, ...(result.enabled_currencies || [])]
+    setCurrencyOptions(options)
+    setBillingCurrency(result.base_currency)
+  }
+
   useEffect(() => {
     loadClients()
+    loadCurrencyOptions()
   }, [])
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -64,7 +75,7 @@ export default function ClientsPage() {
     setEmail('')
     setPhone('')
     setCompany('')
-    setBillingCurrency('NGN')
+    setBillingCurrency(currencyOptions[0])
     setSubmitting(false)
     await loadClients()
   }
@@ -110,8 +121,9 @@ export default function ClientsPage() {
             onChange={(e) => setBillingCurrency(e.target.value)}
             className="px-3 py-2 border rounded-md text-sm"
           >
-            <option value="NGN">NGN (Nigerian Naira)</option>
-            <option value="USD">USD (US Dollar)</option>
+            {currencyOptions.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
           </select>
         </div>
         <button

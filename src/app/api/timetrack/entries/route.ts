@@ -65,8 +65,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'entries array is required' }, { status: 400 })
   }
 
-  const entryRows = rows
-    .filter((r) => r.matter_id && (Number(r.hours) > 0 || Number(r.amount_usd) > 0))
+  const candidateRows = rows.filter((r) => r.matter_id && (Number(r.hours) > 0 || Number(r.amount) > 0))
+  const matterIds = [...new Set(candidateRows.map((r) => r.matter_id))]
+
+  const [{ data: matters }, { data: org }] = await Promise.all([
+    matterIds.length > 0
+      ? supabaseAdmin.from('matters').select('id, billing_currency').eq('tenant_id', profile.tenant_id).in('id', matterIds)
+      : Promise.resolve({ data: [] as { id: string; billing_currency: string | null }[] }),
+    supabaseAdmin.from('organizations').select('base_currency').eq('id', profile.tenant_id).single(),
+  ])
+  const currencyByMatter = new Map((matters || []).map((m) => [m.id, m.billing_currency]))
+  const baseCurrency = org?.base_currency || 'NGN'
+
+  const entryRows = candidateRows
     .map((r) => ({
       tenant_id: profile.tenant_id,
       lawyer_id: r.lawyer_id || null,
@@ -74,8 +85,10 @@ export async function POST(request: Request) {
       task_code_id: r.task_code_id || null,
       entry_date: r.entry_date || new Date().toISOString().split('T')[0],
       hours: r.hours || null,
-      rate_usd: r.rate_usd || null,
-      amount_usd: r.amount_usd || null,
+      rate: r.rate || null,
+      amount: r.amount || null,
+      currency: currencyByMatter.get(r.matter_id) || baseCurrency,
+      base_currency_amount: r.amount || null,
       expl_code: r.expl_code || null,
       explanation: r.explanation || null,
       notes: r.notes || null,

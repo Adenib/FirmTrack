@@ -34,6 +34,8 @@ export type TableConfig = {
 export const RESTORE_ORDER: TableConfig[] = [
   { name: 'clients', idColumn: 'id' },
   { name: 'subscriptions', idColumn: 'id' },
+  { name: 'accounttrack_currency_settings', idColumn: null, fkColumns: { enabled_by: 'users' } },
+  { name: 'accounttrack_exchange_rates', idColumn: 'id', fkColumns: { created_by: 'users' } },
   { name: 'lawyer_categories', idColumn: 'id' },
   { name: 'lawyers', idColumn: 'id', fkColumns: { user_id: 'users', category_id: 'lawyer_categories' } },
   { name: 'lawyer_rates', idColumn: 'id', fkColumns: { lawyer_id: 'lawyers' } },

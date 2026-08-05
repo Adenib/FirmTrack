@@ -20,7 +20,7 @@ describe('Conflict of interest check', () => {
       method: 'POST',
       body: JSON.stringify({
         entries: [{
-          matter_id: matterId, hours: 1, rate_usd: 100, amount_usd: 100, billable: true,
+          matter_id: matterId, hours: 1, rate: 100, amount: 100, billable: true,
           explanation: 'Call with opposing counsel for Acme Holdings re: settlement terms',
         }],
       }),

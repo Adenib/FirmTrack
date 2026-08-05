@@ -49,10 +49,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'AccountTrack is not active for this tenant' }, { status: 403 })
   }
 
-  const { matter_id, lawyer_id, disb_date, description, amount_usd } = await request.json()
+  const { matter_id, lawyer_id, disb_date, description, amount } = await request.json()
 
-  if (!matter_id || !(Number(amount_usd) > 0)) {
-    return NextResponse.json({ error: 'matter_id and a positive amount_usd are required' }, { status: 400 })
+  if (!matter_id || !(Number(amount) > 0)) {
+    return NextResponse.json({ error: 'matter_id and a positive amount are required' }, { status: 400 })
   }
 
   const effectiveDate = disb_date || new Date().toISOString().split('T')[0]
@@ -64,6 +64,12 @@ export async function POST(request: Request) {
     throw err
   }
 
+  const [{ data: matter }, { data: org }] = await Promise.all([
+    supabaseAdmin.from('matters').select('billing_currency').eq('id', matter_id).eq('tenant_id', profile.tenant_id).single(),
+    supabaseAdmin.from('organizations').select('base_currency').eq('id', profile.tenant_id).single(),
+  ])
+  const disbCurrency = matter?.billing_currency || org?.base_currency || 'NGN'
+
   const { data: disbursement, error } = await supabaseAdmin
     .from('disbursements')
     .insert({
@@ -72,7 +78,9 @@ export async function POST(request: Request) {
       lawyer_id: lawyer_id || null,
       disb_date: effectiveDate,
       description: description || null,
-      amount_usd: Number(amount_usd),
+      amount: Number(amount),
+      currency: disbCurrency,
+      base_currency_amount: Number(amount),
       created_by: user.id,
     })
     .select()
@@ -89,8 +97,8 @@ export async function POST(request: Request) {
       sourceId: disbursement.id,
       createdBy: user.id,
       lines: [
-        { accountKey: 'client_costs_advanced', matterId: matter_id, lawyerId: lawyer_id || null, debitUsd: Number(amount_usd) },
-        { accountKey: 'operating_cash', matterId: matter_id, lawyerId: lawyer_id || null, creditUsd: Number(amount_usd) },
+        { accountKey: 'client_costs_advanced', matterId: matter_id, lawyerId: lawyer_id || null, debit: Number(amount) },
+        { accountKey: 'operating_cash', matterId: matter_id, lawyerId: lawyer_id || null, credit: Number(amount) },
       ],
     })
   } catch (err) {

@@ -5,14 +5,14 @@ import { useEffect, useState } from 'react'
 type Account = { id: string; code: string | null; name: string; account_type: string }
 type LedgerLine = {
   id: string
-  debit_usd: number
-  credit_usd: number
+  debit: number
+  credit: number
   description: string | null
   running_balance: number
   journal_entries: { entry_date: string; description: string | null; source_type: string }
 }
 
-function fmtUsd(n: number) {
+function fmtAmount(n: number) {
   return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
@@ -97,12 +97,12 @@ export default function LedgerRegister() {
                     {line.description || line.journal_entries.description || '—'}
                   </td>
                   <td className="px-3 py-2 text-gray-900">
-                    {Number(line.debit_usd) > 0 ? fmtUsd(line.debit_usd) : ''}
+                    {Number(line.debit) > 0 ? fmtAmount(line.debit) : ''}
                   </td>
                   <td className="px-3 py-2 text-gray-900">
-                    {Number(line.credit_usd) > 0 ? fmtUsd(line.credit_usd) : ''}
+                    {Number(line.credit) > 0 ? fmtAmount(line.credit) : ''}
                   </td>
-                  <td className="px-3 py-2 text-gray-900 font-medium">{fmtUsd(line.running_balance)}</td>
+                  <td className="px-3 py-2 text-gray-900 font-medium">{fmtAmount(line.running_balance)}</td>
                 </tr>
               ))}
             </tbody>

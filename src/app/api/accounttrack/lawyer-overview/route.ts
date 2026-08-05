@@ -45,14 +45,14 @@ export async function GET(request: Request) {
   const [entriesRes, budgetsRes] = await Promise.all([
     supabaseAdmin
       .from('time_entries')
-      .select('lawyer_id, hours, amount_usd, billable, status')
+      .select('lawyer_id, hours, amount, billable, status')
       .eq('tenant_id', tenantId)
       .in('lawyer_id', lawyerIds)
       .gte('entry_date', from)
       .lte('entry_date', to),
     supabaseAdmin
       .from('budgets')
-      .select('lawyer_id, period_start, period_end, target_hours, target_billable_hours, target_revenue_usd')
+      .select('lawyer_id, period_start, period_end, target_hours, target_billable_hours, target_revenue')
       .eq('tenant_id', tenantId)
       .in('lawyer_id', lawyerIds)
       .lte('period_start', to)
@@ -83,10 +83,10 @@ export async function GET(request: Request) {
     const entries = entriesByLawyer.get(lawyer.id) || []
     const billableHours = entries.filter((e) => e.billable).reduce((sum, e) => sum + Number(e.hours || 0), 0)
     const nonBillableHours = entries.filter((e) => !e.billable).reduce((sum, e) => sum + Number(e.hours || 0), 0)
-    const revenue = entries.filter((e) => e.billable).reduce((sum, e) => sum + Number(e.amount_usd || 0), 0)
+    const revenue = entries.filter((e) => e.billable).reduce((sum, e) => sum + Number(e.amount || 0), 0)
     const wip = entries
       .filter((e) => e.billable && ['draft', 'submitted'].includes(e.status))
-      .reduce((sum, e) => sum + Number(e.amount_usd || 0), 0)
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0)
 
     const budget = budgetByLawyer.get(lawyer.id) || null
     const totalHours = billableHours + nonBillableHours

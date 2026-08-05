@@ -6,8 +6,8 @@ type Invoice = {
   id: string
   invoice_number: string
   invoice_date: string
-  total_amount_usd: number
-  paid_amount_usd: number
+  total_amount: number
+  paid_amount: number
   status: string
   matters: { matter_id: string; case_name: string } | null
 }
@@ -56,8 +56,8 @@ export default function InvoiceRegister() {
               <td className="px-3 py-2 text-gray-700">{inv.invoice_number}</td>
               <td className="px-3 py-2 text-gray-700">{inv.invoice_date}</td>
               <td className="px-3 py-2 text-gray-700">{inv.matters?.matter_id || '—'}</td>
-              <td className="px-3 py-2 text-gray-700">₦{Number(inv.total_amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td className="px-3 py-2 text-gray-700">₦{Number(inv.paid_amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td className="px-3 py-2 text-gray-700">₦{Number(inv.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td className="px-3 py-2 text-gray-700">₦{Number(inv.paid_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td className="px-3 py-2">
                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full capitalize">
                   {inv.status.replace('_', ' ')}

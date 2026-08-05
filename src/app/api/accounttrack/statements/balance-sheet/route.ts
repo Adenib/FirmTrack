@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       : (() => {
           let q = supabaseAdmin
             .from('journal_lines')
-            .select('account_id, debit_usd, credit_usd, matter_id, journal_entries!inner(entry_date, tenant_id)')
+            .select('account_id, debit, credit, matter_id, journal_entries!inner(entry_date, tenant_id)')
             .eq('tenant_id', tenantId)
             .in('account_id', accountIds)
             .lte('journal_entries.entry_date', asOf)
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     (() => {
       let q = supabaseAdmin
         .from('journal_lines')
-        .select('account_id, debit_usd, credit_usd, matter_id, chart_of_accounts!inner(account_type, tenant_id), journal_entries!inner(entry_date, tenant_id)')
+        .select('account_id, debit, credit, matter_id, chart_of_accounts!inner(account_type, tenant_id), journal_entries!inner(entry_date, tenant_id)')
         .eq('tenant_id', tenantId)
         .in('chart_of_accounts.account_type', ['revenue', 'expense'])
         .gte('journal_entries.entry_date', yearStart)
@@ -66,18 +66,18 @@ export async function GET(request: Request) {
   const byAccount = new Map<string, number>()
   for (const line of balanceLinesRes.data || []) {
     const current = byAccount.get(line.account_id) || 0
-    byAccount.set(line.account_id, current + Number(line.debit_usd || 0) - Number(line.credit_usd || 0))
+    byAccount.set(line.account_id, current + Number(line.debit || 0) - Number(line.credit || 0))
   }
 
   const assets = (accounts || [])
     .filter((a) => a.account_type === 'asset')
-    .map((a) => ({ ...a, amount_usd: byAccount.get(a.id) || 0 }))
-    .filter((a) => a.amount_usd !== 0)
+    .map((a) => ({ ...a, amount: byAccount.get(a.id) || 0 }))
+    .filter((a) => a.amount !== 0)
 
   const liabilities = (accounts || [])
     .filter((a) => a.account_type === 'liability')
-    .map((a) => ({ ...a, amount_usd: -(byAccount.get(a.id) || 0) }))
-    .filter((a) => a.amount_usd !== 0)
+    .map((a) => ({ ...a, amount: -(byAccount.get(a.id) || 0) }))
+    .filter((a) => a.amount !== 0)
 
   const retainedEarningsAccount = (accounts || []).find((a) => a.key === 'retained_earnings')
   const retainedEarnings = retainedEarningsAccount
@@ -92,13 +92,13 @@ export async function GET(request: Request) {
   let currentYearExpense = 0
   for (const line of currentYearLinesRes.data || []) {
     const type = (line as unknown as { chart_of_accounts: { account_type: string } }).chart_of_accounts.account_type
-    if (type === 'revenue') currentYearRevenue += Number(line.credit_usd || 0) - Number(line.debit_usd || 0)
-    else currentYearExpense += Number(line.debit_usd || 0) - Number(line.credit_usd || 0)
+    if (type === 'revenue') currentYearRevenue += Number(line.credit || 0) - Number(line.debit || 0)
+    else currentYearExpense += Number(line.debit || 0) - Number(line.credit || 0)
   }
   const currentYearEarnings = currentYearRevenue - currentYearExpense
 
-  const totalAssets = assets.reduce((sum, a) => sum + a.amount_usd, 0)
-  const totalLiabilities = liabilities.reduce((sum, a) => sum + a.amount_usd, 0)
+  const totalAssets = assets.reduce((sum, a) => sum + a.amount, 0)
+  const totalLiabilities = liabilities.reduce((sum, a) => sum + a.amount, 0)
   const totalEquity = retainedEarnings + currentYearEarnings
 
   return NextResponse.json({

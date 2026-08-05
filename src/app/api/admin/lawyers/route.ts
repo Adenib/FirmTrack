@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       *,
       lawyer_categories(name),
       users(email),
-      lawyer_rates(rate_type, amount_usd, effective_from)
+      lawyer_rates(rate_type, amount, effective_from)
     `)
     .eq('tenant_id', profile.tenant_id)
     .order('full_name')
@@ -85,12 +85,12 @@ export async function POST(request: Request) {
   // Insert rates A-E
   if (rates && Array.isArray(rates)) {
     const rateRows = rates
-      .filter(r => r.amount_usd > 0)
+      .filter(r => r.amount > 0)
       .map(r => ({
         tenant_id: profile.tenant_id,
         lawyer_id: lawyer.id,
         rate_type: r.rate_type,
-        amount_usd: r.amount_usd,
+        amount: r.amount,
         effective_from: new Date().toISOString().split('T')[0],
       }))
     if (rateRows.length > 0) {

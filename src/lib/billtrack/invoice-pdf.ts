@@ -5,7 +5,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-function fmtUsd(n: number): string {
+function fmtAmount(n: number): string {
   return '₦' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
@@ -22,10 +22,10 @@ export type InvoiceRow = {
   invoice_number: string
   invoice_date: string
   due_date: string | null
-  fees_amount_usd: number
-  disbursements_amount_usd: number
-  total_amount_usd: number
-  paid_amount_usd: number
+  fees_amount: number
+  disbursements_amount: number
+  total_amount: number
+  paid_amount: number
   status: string
   matter_id: string
 }
@@ -40,13 +40,13 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
       .single(),
     supabaseAdmin
       .from('time_entries')
-      .select('entry_date, hours, rate_usd, amount_usd, explanation, task_codes(description)')
+      .select('entry_date, hours, rate, amount, explanation, task_codes(description)')
       .eq('tenant_id', tenantId)
       .eq('invoice_id', invoice.id)
       .order('entry_date'),
     supabaseAdmin
       .from('disbursements')
-      .select('disb_date, description, amount_usd')
+      .select('disb_date, description, amount')
       .eq('tenant_id', tenantId)
       .eq('invoice_id', invoice.id)
       .order('disb_date'),
@@ -66,8 +66,8 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
         <td>${fmtDate(e.entry_date)}</td>
         <td>${escapeHtml(desc)}</td>
         <td class="num">${Number(e.hours || 0).toFixed(2)}</td>
-        <td class="num">${fmtUsd(e.rate_usd)}</td>
-        <td class="num">${fmtUsd(e.amount_usd)}</td>
+        <td class="num">${fmtAmount(e.rate)}</td>
+        <td class="num">${fmtAmount(e.amount)}</td>
       </tr>`
     })
     .join('')
@@ -77,12 +77,12 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
       (d) => `<tr>
         <td>${fmtDate(d.disb_date)}</td>
         <td colspan="3">${escapeHtml(d.description || 'Disbursement')}</td>
-        <td class="num">${fmtUsd(d.amount_usd)}</td>
+        <td class="num">${fmtAmount(d.amount)}</td>
       </tr>`
     )
     .join('')
 
-  const balanceDue = Number(invoice.total_amount_usd || 0) - Number(invoice.paid_amount_usd || 0)
+  const balanceDue = Number(invoice.total_amount || 0) - Number(invoice.paid_amount || 0)
 
   return `<!doctype html>
 <html>
@@ -143,11 +143,11 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
   </table>` : ''}
 
   <div class="totals">
-    <div><span>Fees</span><span>${fmtUsd(invoice.fees_amount_usd)}</span></div>
-    <div><span>Disbursements</span><span>${fmtUsd(invoice.disbursements_amount_usd)}</span></div>
-    <div class="grand"><span>Total</span><span>${fmtUsd(invoice.total_amount_usd)}</span></div>
-    <div><span>Paid</span><span>${fmtUsd(invoice.paid_amount_usd)}</span></div>
-    <div class="due"><span>Balance Due</span><span>${fmtUsd(balanceDue)}</span></div>
+    <div><span>Fees</span><span>${fmtAmount(invoice.fees_amount)}</span></div>
+    <div><span>Disbursements</span><span>${fmtAmount(invoice.disbursements_amount)}</span></div>
+    <div class="grand"><span>Total</span><span>${fmtAmount(invoice.total_amount)}</span></div>
+    <div><span>Paid</span><span>${fmtAmount(invoice.paid_amount)}</span></div>
+    <div class="due"><span>Balance Due</span><span>${fmtAmount(balanceDue)}</span></div>
   </div>
 </body>
 </html>`

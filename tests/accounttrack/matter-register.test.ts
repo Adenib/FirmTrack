@@ -17,18 +17,18 @@ describe('matter register batched aggregation', () => {
       method: 'POST',
       body: JSON.stringify({
         entries: [
-          { matter_id: matterId, hours: 3, rate_usd: 100, amount_usd: 300, billable: true },
-          { matter_id: matterId, hours: 1, rate_usd: 100, amount_usd: 100, billable: false },
+          { matter_id: matterId, hours: 3, rate: 100, amount: 300, billable: true },
+          { matter_id: matterId, hours: 1, rate: 100, amount: 100, billable: false },
         ],
       }),
     })
     await tenant.fetch('/api/accounttrack/disbursements', {
       method: 'POST',
-      body: JSON.stringify({ matter_id: matterId, description: 'Filing', amount_usd: 60 }),
+      body: JSON.stringify({ matter_id: matterId, description: 'Filing', amount: 60 }),
     })
     await tenant.fetch('/api/accounttrack/trust-ledger', {
       method: 'POST',
-      body: JSON.stringify({ matter_id: matterId, ledger_type: 'trust', amount_usd: 1000, description: 'Deposit' }),
+      body: JSON.stringify({ matter_id: matterId, ledger_type: 'trust', amount: 1000, description: 'Deposit' }),
     })
   })
 

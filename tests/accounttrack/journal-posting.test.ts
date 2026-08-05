@@ -23,8 +23,8 @@ describe('manual journal entry posting', () => {
       body: JSON.stringify({
         description: 'Deliberately unbalanced',
         lines: [
-          { account_id: cashAccountId, debit_usd: 100 },
-          { account_id: feesAccountId, credit_usd: 50 },
+          { account_id: cashAccountId, debit: 100 },
+          { account_id: feesAccountId, credit: 50 },
         ],
       }),
     })
@@ -43,8 +43,8 @@ describe('manual journal entry posting', () => {
       body: JSON.stringify({
         description: 'All zero',
         lines: [
-          { account_id: cashAccountId, debit_usd: 0 },
-          { account_id: feesAccountId, credit_usd: 0 },
+          { account_id: cashAccountId, debit: 0 },
+          { account_id: feesAccountId, credit: 0 },
         ],
       }),
     })
@@ -57,8 +57,8 @@ describe('manual journal entry posting', () => {
       body: JSON.stringify({
         description: 'Balanced test entry',
         lines: [
-          { account_id: cashAccountId, debit_usd: 250 },
-          { account_id: feesAccountId, credit_usd: 250 },
+          { account_id: cashAccountId, debit: 250 },
+          { account_id: feesAccountId, credit: 250 },
         ],
       }),
     })
@@ -68,12 +68,12 @@ describe('manual journal entry posting', () => {
 
     const { data: lines } = await supabaseAdmin
       .from('journal_lines')
-      .select('debit_usd, credit_usd, account_id')
+      .select('debit, credit, account_id')
       .eq('journal_entry_id', body.journal_entry_id)
 
     expect(lines).toHaveLength(2)
-    const totalDebit = lines!.reduce((s, l) => s + Number(l.debit_usd), 0)
-    const totalCredit = lines!.reduce((s, l) => s + Number(l.credit_usd), 0)
+    const totalDebit = lines!.reduce((s, l) => s + Number(l.debit), 0)
+    const totalCredit = lines!.reduce((s, l) => s + Number(l.credit), 0)
     expect(totalDebit).toBe(250)
     expect(totalCredit).toBe(250)
   })
@@ -89,8 +89,8 @@ describe('manual journal entry posting', () => {
         body: JSON.stringify({
           description: 'Cross-tenant account reference',
           lines: [
-            { account_id: otherCashId, debit_usd: 10 },
-            { account_id: feesAccountId, credit_usd: 10 },
+            { account_id: otherCashId, debit: 10 },
+            { account_id: feesAccountId, credit: 10 },
           ],
         }),
       })

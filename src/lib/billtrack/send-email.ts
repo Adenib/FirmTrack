@@ -13,10 +13,10 @@ type InvoiceForEmail = {
   invoice_number: string
   invoice_date: string
   due_date: string | null
-  fees_amount_usd: number
-  disbursements_amount_usd: number
-  total_amount_usd: number
-  paid_amount_usd: number
+  fees_amount: number
+  disbursements_amount: number
+  total_amount: number
+  paid_amount: number
   status: string
   matter_id: string
   matters: { case_name: string } | { case_name: string }[] | null
@@ -63,7 +63,7 @@ function caseName(inv: InvoiceForEmail): string {
 }
 
 function buildSubjectAndBody(inv: InvoiceForEmail, kind: 'initial' | 'reminder'): { subject: string; html: string } {
-  const amount = '₦' + Number(inv.total_amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const amount = '₦' + Number(inv.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const due = inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'on receipt'
 
   if (kind === 'initial') {
@@ -120,8 +120,8 @@ export async function sendInvoiceEmail(
   const { data: invoice } = await supabaseAdmin
     .from('invoices')
     .select(`
-      id, invoice_number, invoice_date, due_date, fees_amount_usd,
-      disbursements_amount_usd, total_amount_usd, paid_amount_usd, status,
+      id, invoice_number, invoice_date, due_date, fees_amount,
+      disbursements_amount, total_amount, paid_amount, status,
       matter_id, matters(case_name, clients(email))
     `)
     .eq('id', invoiceId)

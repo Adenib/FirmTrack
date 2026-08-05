@@ -34,23 +34,23 @@ export async function GET(request: Request) {
       .single(),
     supabaseAdmin
       .from('time_entries')
-      .select('hours, amount_usd, billable, status')
+      .select('hours, amount, billable, status')
       .eq('tenant_id', tenantId)
       .eq('matter_id', matterId),
     supabaseAdmin
       .from('disbursements')
-      .select('amount_usd')
+      .select('amount')
       .eq('tenant_id', tenantId)
       .eq('matter_id', matterId)
       .eq('billed', false),
     supabaseAdmin
       .from('trust_ledger_entries')
-      .select('ledger_type, amount_usd')
+      .select('ledger_type, amount')
       .eq('tenant_id', tenantId)
       .eq('matter_id', matterId),
     supabaseAdmin
       .from('invoices')
-      .select('total_amount_usd, paid_amount_usd, status')
+      .select('total_amount, paid_amount, status')
       .eq('tenant_id', tenantId)
       .eq('matter_id', matterId)
       .neq('status', 'void'),
@@ -61,26 +61,26 @@ export async function GET(request: Request) {
   const entries = entriesRes.data || []
   const billableHours = entries.filter((e) => e.billable).reduce((sum, e) => sum + Number(e.hours || 0), 0)
   const nonBillableHours = entries.filter((e) => !e.billable).reduce((sum, e) => sum + Number(e.hours || 0), 0)
-  const totalAmount = entries.reduce((sum, e) => sum + Number(e.amount_usd || 0), 0)
+  const totalAmount = entries.reduce((sum, e) => sum + Number(e.amount || 0), 0)
 
   const unbilledEntries = entries.filter((e) => e.billable && ['draft', 'submitted'].includes(e.status))
   const unbilledHours = unbilledEntries.reduce((sum, e) => sum + Number(e.hours || 0), 0)
-  const unbilledFees = unbilledEntries.reduce((sum, e) => sum + Number(e.amount_usd || 0), 0)
+  const unbilledFees = unbilledEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0)
 
   const unbilledDisbursements = (disbursementsRes.data || []).reduce(
-    (sum, d) => sum + Number(d.amount_usd || 0), 0
+    (sum, d) => sum + Number(d.amount || 0), 0
   )
 
   const ledger = ledgerRes.data || []
   const trustBalance = ledger
     .filter((l) => l.ledger_type === 'trust')
-    .reduce((sum, l) => sum + Number(l.amount_usd || 0), 0)
+    .reduce((sum, l) => sum + Number(l.amount || 0), 0)
   const retainerBalance = ledger
     .filter((l) => l.ledger_type === 'retainer')
-    .reduce((sum, l) => sum + Number(l.amount_usd || 0), 0)
+    .reduce((sum, l) => sum + Number(l.amount || 0), 0)
 
   const accountsReceivable = (invoicesRes.data || []).reduce(
-    (sum, inv) => sum + (Number(inv.total_amount_usd || 0) - Number(inv.paid_amount_usd || 0)), 0
+    (sum, inv) => sum + (Number(inv.total_amount || 0) - Number(inv.paid_amount || 0)), 0
   )
 
   const matter = matterRes.data

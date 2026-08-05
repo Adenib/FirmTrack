@@ -19,7 +19,7 @@ async function createUnpaidInvoice(tenant: TestTenant, matterId: string) {
   const entryRes = await tenant.fetch('/api/timetrack/entries', {
     method: 'POST',
     body: JSON.stringify({
-      entries: [{ matter_id: matterId, hours: 2, rate_usd: 100, amount_usd: 200, billable: true }],
+      entries: [{ matter_id: matterId, hours: 2, rate: 100, amount: 200, billable: true }],
     }),
   })
   const { entries } = await entryRes.json()

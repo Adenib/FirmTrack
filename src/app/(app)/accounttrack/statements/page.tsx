@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-function fmtUsd(n) {
+function fmtAmount(n) {
   return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
@@ -144,13 +144,13 @@ export default function StatementsPage() {
             incomeStatement.revenue.map((a) => (
               <div key={a.id} className="flex justify-between text-sm py-0.5">
                 <span className="text-gray-700">{a.name}</span>
-                <span className="text-gray-900">{fmtUsd(a.amount_usd)}</span>
+                <span className="text-gray-900">{fmtAmount(a.amount)}</span>
               </div>
             ))
           )}
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Revenue</span>
-            <span>{fmtUsd(incomeStatement.total_revenue)}</span>
+            <span>{fmtAmount(incomeStatement.total_revenue)}</span>
           </div>
 
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mt-4 mb-1">Expense</p>
@@ -160,18 +160,18 @@ export default function StatementsPage() {
             incomeStatement.expense.map((a) => (
               <div key={a.id} className="flex justify-between text-sm py-0.5">
                 <span className="text-gray-700">{a.name}</span>
-                <span className="text-gray-900">{fmtUsd(a.amount_usd)}</span>
+                <span className="text-gray-900">{fmtAmount(a.amount)}</span>
               </div>
             ))
           )}
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Expense</span>
-            <span>{fmtUsd(incomeStatement.total_expense)}</span>
+            <span>{fmtAmount(incomeStatement.total_expense)}</span>
           </div>
 
           <div className="flex justify-between text-sm font-semibold border-t border-gray-200 mt-3 pt-2">
             <span>Net Income</span>
-            <span>{fmtUsd(incomeStatement.net_income)}</span>
+            <span>{fmtAmount(incomeStatement.net_income)}</span>
           </div>
         </div>
       )}
@@ -184,38 +184,38 @@ export default function StatementsPage() {
           {balanceSheet.assets.map((a) => (
             <div key={a.id} className="flex justify-between text-sm py-0.5">
               <span className="text-gray-700">{a.name}</span>
-              <span className="text-gray-900">{fmtUsd(a.amount_usd)}</span>
+              <span className="text-gray-900">{fmtAmount(a.amount)}</span>
             </div>
           ))}
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Assets</span>
-            <span>{fmtUsd(balanceSheet.total_assets)}</span>
+            <span>{fmtAmount(balanceSheet.total_assets)}</span>
           </div>
 
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mt-4 mb-1">Liabilities</p>
           {balanceSheet.liabilities.map((a) => (
             <div key={a.id} className="flex justify-between text-sm py-0.5">
               <span className="text-gray-700">{a.name}</span>
-              <span className="text-gray-900">{fmtUsd(a.amount_usd)}</span>
+              <span className="text-gray-900">{fmtAmount(a.amount)}</span>
             </div>
           ))}
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Liabilities</span>
-            <span>{fmtUsd(balanceSheet.total_liabilities)}</span>
+            <span>{fmtAmount(balanceSheet.total_liabilities)}</span>
           </div>
 
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mt-4 mb-1">Equity</p>
           <div className="flex justify-between text-sm py-0.5">
             <span className="text-gray-700">Retained Earnings</span>
-            <span className="text-gray-900">{fmtUsd(balanceSheet.equity.retained_earnings)}</span>
+            <span className="text-gray-900">{fmtAmount(balanceSheet.equity.retained_earnings)}</span>
           </div>
           <div className="flex justify-between text-sm py-0.5">
             <span className="text-gray-700">Current Year Earnings</span>
-            <span className="text-gray-900">{fmtUsd(balanceSheet.equity.current_year_earnings)}</span>
+            <span className="text-gray-900">{fmtAmount(balanceSheet.equity.current_year_earnings)}</span>
           </div>
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Equity</span>
-            <span>{fmtUsd(balanceSheet.total_equity)}</span>
+            <span>{fmtAmount(balanceSheet.total_equity)}</span>
           </div>
 
           <div className="flex justify-between text-sm font-semibold border-t border-gray-200 mt-3 pt-2">

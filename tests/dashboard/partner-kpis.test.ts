@@ -35,8 +35,8 @@ describe('Partner KPI dashboard', () => {
       method: 'POST',
       body: JSON.stringify({
         entries: [
-          { matter_id: matterId, lawyer_id: lawyerId, entry_date: today, hours: 6, rate_usd: 100, amount_usd: 600, billable: true },
-          { matter_id: matterId, lawyer_id: lawyerId, entry_date: today, hours: 2, rate_usd: 100, amount_usd: 0, billable: false },
+          { matter_id: matterId, lawyer_id: lawyerId, entry_date: today, hours: 6, rate: 100, amount: 600, billable: true },
+          { matter_id: matterId, lawyer_id: lawyerId, entry_date: today, hours: 2, rate: 100, amount: 0, billable: false },
         ],
       }),
     })
@@ -50,13 +50,13 @@ describe('Partner KPI dashboard', () => {
     const { invoice } = await invRes.json()
     await tenant.fetch('/api/accounttrack/invoices', {
       method: 'PATCH',
-      body: JSON.stringify({ id: invoice.id, payment_amount_usd: 250 }),
+      body: JSON.stringify({ id: invoice.id, payment_amount: 250 }),
     })
 
     // Trust deposit -- exercises the trust balance.
     await tenant.fetch('/api/accounttrack/trust-ledger', {
       method: 'POST',
-      body: JSON.stringify({ matter_id: matterId, ledger_type: 'trust', amount_usd: 5000, description: 'Retainer deposit' }),
+      body: JSON.stringify({ matter_id: matterId, ledger_type: 'trust', amount: 5000, description: 'Retainer deposit' }),
     })
   })
 

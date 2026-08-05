@@ -104,14 +104,14 @@ export async function GET(request: Request) {
   const [invoicesRes, timeEntriesRes, disbursementsRes, paymentEntriesRes] = await Promise.all([
     supabaseAdmin
       .from('invoices')
-      .select('invoice_date, total_amount_usd, status')
+      .select('invoice_date, total_amount, status')
       .eq('tenant_id', profile.tenant_id)
       .gte('invoice_date', from)
       .lte('invoice_date', to)
       .neq('status', 'void'),
     supabaseAdmin
       .from('time_entries')
-      .select('entry_date, amount_usd')
+      .select('entry_date, amount')
       .eq('tenant_id', profile.tenant_id)
       .eq('billable', true)
       .in('status', ['draft', 'submitted'])
@@ -119,14 +119,14 @@ export async function GET(request: Request) {
       .lte('entry_date', to),
     supabaseAdmin
       .from('disbursements')
-      .select('disb_date, amount_usd')
+      .select('disb_date, amount')
       .eq('tenant_id', profile.tenant_id)
       .eq('billed', false)
       .gte('disb_date', from)
       .lte('disb_date', to),
     supabaseAdmin
       .from('journal_entries')
-      .select('entry_date, journal_lines(debit_usd, chart_of_accounts(key))')
+      .select('entry_date, journal_lines(debit, chart_of_accounts(key))')
       .eq('tenant_id', profile.tenant_id)
       .eq('source_type', 'invoice_payment')
       .gte('entry_date', from)
@@ -137,16 +137,16 @@ export async function GET(request: Request) {
     const bucket = findBucket(buckets, inv.invoice_date)
     if (!bucket) continue
     bucket.sentCount += 1
-    bucket.sentUsd += Number(inv.total_amount_usd || 0)
+    bucket.sentUsd += Number(inv.total_amount || 0)
   }
 
   for (const e of timeEntriesRes.data || []) {
     const bucket = findBucket(buckets, e.entry_date)
-    if (bucket) bucket.pendingUsd += Number(e.amount_usd || 0)
+    if (bucket) bucket.pendingUsd += Number(e.amount || 0)
   }
   for (const d of disbursementsRes.data || []) {
     const bucket = findBucket(buckets, d.disb_date)
-    if (bucket) bucket.pendingUsd += Number(d.amount_usd || 0)
+    if (bucket) bucket.pendingUsd += Number(d.amount || 0)
   }
 
   for (const entry of paymentEntriesRes.data || []) {
@@ -157,7 +157,7 @@ export async function GET(request: Request) {
       const acct = Array.isArray(l.chart_of_accounts) ? l.chart_of_accounts[0] : l.chart_of_accounts
       return acct?.key === 'operating_cash'
     })
-    if (cashLine) bucket.paidUsd += Number(cashLine.debit_usd || 0)
+    if (cashLine) bucket.paidUsd += Number(cashLine.debit || 0)
   }
 
   const summary = buckets.reduce(

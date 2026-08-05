@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { DEFAULT_ACCOUNTS } from '@/lib/accounttrack/default-accounts'
 import { DEFAULT_LEAVE_TYPES } from '@/lib/hrtrack/default-leave-types'
 import { logSecurityEvent } from '@/lib/audit-log'
+import { currencyForPhone } from '@/lib/currency/calling-codes'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +15,7 @@ const slugify = (text: string) =>
 
 export async function POST(request: Request) {
   try {
-    const { userId, email, orgName, agreementAccepted } = await request.json()
+    const { userId, email, orgName, phone, agreementAccepted } = await request.json()
 
     if (!userId || !email || !orgName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -29,9 +30,12 @@ export async function POST(request: Request) {
 
     const slug = slugify(orgName) + '-' + Math.random().toString(36).slice(2, 7)
 
+    // The calling-code prefix (e.g. +234) picks a sensible default
+    // base_currency (e.g. NGN) -- just a starting point, editable from
+    // settings until the tenant's first posted transaction locks it in.
     const { data: org, error: orgError } = await supabaseAdmin
       .from('organizations')
-      .insert({ name: orgName, slug, plan: 'free' })
+      .insert({ name: orgName, slug, plan: 'free', phone: phone || null, base_currency: currencyForPhone(phone) })
       .select()
       .single()
 

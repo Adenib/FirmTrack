@@ -6,6 +6,7 @@ import AuthCard from '@/components/auth/auth-card'
 
 export default function CompleteSignupPage() {
   const [orgName, setOrgName] = useState('')
+  const [phone, setPhone] = useState('')
   const [agreementAccepted, setAgreementAccepted] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -43,7 +44,7 @@ export default function CompleteSignupPage() {
     const response = await fetch('/api/register', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ userId, email, orgName, agreementAccepted }),
+      body: JSON.stringify({ userId, email, orgName, phone, agreementAccepted }),
     })
 
     const result = await response.json()
@@ -79,6 +80,20 @@ export default function CompleteSignupPage() {
               className="w-full px-3 py-2 border rounded-md"
               placeholder="e.g. Compnet Systems"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Phone number</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="+234 801 234 5678"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Used to set your firm&apos;s default currency (e.g. +234 → NGN). You can change this later.
+            </p>
           </div>
 
           <label className="flex items-start gap-2 text-sm text-gray-700">

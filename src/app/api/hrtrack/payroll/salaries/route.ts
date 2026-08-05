@@ -66,9 +66,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   }
 
-  const { user_id, amount_usd, effective_from } = await request.json()
-  if (!user_id || !(Number(amount_usd) > 0) || !effective_from) {
-    return NextResponse.json({ error: 'user_id, a positive amount_usd, and effective_from are required' }, { status: 400 })
+  const { user_id, amount, effective_from } = await request.json()
+  if (!user_id || !(Number(amount) > 0) || !effective_from) {
+    return NextResponse.json({ error: 'user_id, a positive amount, and effective_from are required' }, { status: 400 })
   }
 
   const { data: targetUser } = await supabaseAdmin
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     .insert({
       tenant_id: profile.tenant_id,
       user_id,
-      amount_usd: Number(amount_usd),
+      amount: Number(amount),
       effective_from,
       created_by: user.id,
     })

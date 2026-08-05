@@ -31,8 +31,8 @@ describe('lawyer overview aggregation and utilization basis', () => {
       method: 'POST',
       body: JSON.stringify({
         entries: [
-          { matter_id: matter.id, lawyer_id: lawyerId, hours: 6, rate_usd: 100, amount_usd: 600, billable: true },
-          { matter_id: matter.id, lawyer_id: lawyerId, hours: 2, rate_usd: 100, amount_usd: 200, billable: false },
+          { matter_id: matter.id, lawyer_id: lawyerId, hours: 6, rate: 100, amount: 600, billable: true },
+          { matter_id: matter.id, lawyer_id: lawyerId, hours: 2, rate: 100, amount: 200, billable: false },
         ],
       }),
     })

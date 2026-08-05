@@ -304,8 +304,8 @@ export default function TimeTrackPage() {
           lawyer_id: r.lawyerId || null,
           task_code_id: r.taskCodeId || null,
           hours,
-          rate_usd: rate,
-          amount_usd: hours * rate,
+          rate: rate,
+          amount: hours * rate,
           expl_code: r.explCode || null,
           explanation: r.explanation || null,
           notes: r.notes || null,
@@ -711,8 +711,8 @@ export default function TimeTrackPage() {
                     <td className="px-3 py-2 text-gray-700">{entry.lawyers?.nickname || '—'}</td>
                     <td className="px-3 py-2 text-gray-700">{entry.task_codes?.code || '—'}</td>
                     <td className="px-3 py-2 text-gray-700">{Number(entry.hours || 0).toFixed(2)}</td>
-                    <td className="px-3 py-2 text-gray-700">{Number(entry.rate_usd || 0).toFixed(2)}</td>
-                    <td className="px-3 py-2 text-gray-700">{Number(entry.amount_usd || 0).toFixed(2)}</td>
+                    <td className="px-3 py-2 text-gray-700">{Number(entry.rate || 0).toFixed(2)}</td>
+                    <td className="px-3 py-2 text-gray-700">{Number(entry.amount || 0).toFixed(2)}</td>
                     <td className="px-3 py-2 text-gray-500">{entry.billable === false ? 'No' : 'Yes'}</td>
                     <td className="px-3 py-2">
                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full capitalize">

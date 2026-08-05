@@ -90,7 +90,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'AccountTrack is not active for this tenant' }, { status: 403 })
   }
 
-  const { id, payment_amount_usd, void: voidInvoice } = await request.json()
+  const { id, payment_amount, void: voidInvoice } = await request.json()
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
   const { data: invoice } = await supabaseAdmin
@@ -114,17 +114,17 @@ export async function PATCH(request: Request) {
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
   if (voidInvoice) {
-    if (Number(invoice.paid_amount_usd || 0) > 0) {
+    if (Number(invoice.paid_amount || 0) > 0) {
       return NextResponse.json(
         { error: 'Cannot void an invoice with recorded payments — refund the payment first' },
         { status: 400 }
       )
     }
     updates.status = 'void'
-  } else if (payment_amount_usd) {
-    const newPaid = Number(invoice.paid_amount_usd || 0) + Number(payment_amount_usd)
-    updates.paid_amount_usd = newPaid
-    updates.status = newPaid >= Number(invoice.total_amount_usd || 0) ? 'paid' : 'partially_paid'
+  } else if (payment_amount) {
+    const newPaid = Number(invoice.paid_amount || 0) + Number(payment_amount)
+    updates.paid_amount = newPaid
+    updates.status = newPaid >= Number(invoice.total_amount || 0) ? 'paid' : 'partially_paid'
   }
 
   const { data, error } = await supabaseAdmin
@@ -147,12 +147,12 @@ export async function PATCH(request: Request) {
         sourceId: invoice.id,
         createdBy: user.id,
         lines: [
-          { accountKey: 'fees_earned', matterId: invoice.matter_id, debitUsd: Number(invoice.fees_amount_usd || 0) },
-          { accountKey: 'client_costs_advanced', matterId: invoice.matter_id, debitUsd: Number(invoice.disbursements_amount_usd || 0) },
-          { accountKey: 'accounts_receivable', matterId: invoice.matter_id, creditUsd: Number(invoice.total_amount_usd || 0) },
+          { accountKey: 'fees_earned', matterId: invoice.matter_id, debit: Number(invoice.fees_amount || 0) },
+          { accountKey: 'client_costs_advanced', matterId: invoice.matter_id, debit: Number(invoice.disbursements_amount || 0) },
+          { accountKey: 'accounts_receivable', matterId: invoice.matter_id, credit: Number(invoice.total_amount || 0) },
         ],
       })
-    } else if (payment_amount_usd) {
+    } else if (payment_amount) {
       await postJournalEntry({
         tenantId: profile.tenant_id,
         entryDate: today,
@@ -161,8 +161,8 @@ export async function PATCH(request: Request) {
         sourceId: invoice.id,
         createdBy: user.id,
         lines: [
-          { accountKey: 'operating_cash', matterId: invoice.matter_id, debitUsd: Number(payment_amount_usd) },
-          { accountKey: 'accounts_receivable', matterId: invoice.matter_id, creditUsd: Number(payment_amount_usd) },
+          { accountKey: 'operating_cash', matterId: invoice.matter_id, debit: Number(payment_amount) },
+          { accountKey: 'accounts_receivable', matterId: invoice.matter_id, credit: Number(payment_amount) },
         ],
       })
     }

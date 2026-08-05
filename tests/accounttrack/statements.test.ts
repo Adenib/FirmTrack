@@ -15,21 +15,21 @@ describe('balance sheet self-check', () => {
 
     await tenant.fetch('/api/accounttrack/disbursements', {
       method: 'POST',
-      body: JSON.stringify({ matter_id: matter.id, description: 'Courier', amount_usd: 75 }),
+      body: JSON.stringify({ matter_id: matter.id, description: 'Courier', amount: 75 }),
     })
     await tenant.fetch('/api/accounttrack/trust-ledger', {
       method: 'POST',
-      body: JSON.stringify({ matter_id: matter.id, ledger_type: 'trust', amount_usd: 1200, description: 'Deposit' }),
+      body: JSON.stringify({ matter_id: matter.id, ledger_type: 'trust', amount: 1200, description: 'Deposit' }),
     })
     await tenant.fetch('/api/accounttrack/trust-ledger', {
       method: 'POST',
-      body: JSON.stringify({ matter_id: matter.id, ledger_type: 'retainer', amount_usd: 600, description: 'Retainer' }),
+      body: JSON.stringify({ matter_id: matter.id, ledger_type: 'retainer', amount: 600, description: 'Retainer' }),
     })
 
     const entryRes = await tenant.fetch('/api/timetrack/entries', {
       method: 'POST',
       body: JSON.stringify({
-        entries: [{ matter_id: matter.id, hours: 3, rate_usd: 100, amount_usd: 300, billable: true }],
+        entries: [{ matter_id: matter.id, hours: 3, rate: 100, amount: 300, billable: true }],
       }),
     })
     const { entries } = await entryRes.json()
@@ -42,7 +42,7 @@ describe('balance sheet self-check', () => {
 
     await tenant.fetch('/api/accounttrack/invoices', {
       method: 'PATCH',
-      body: JSON.stringify({ id: invoice.id, payment_amount_usd: 150 }),
+      body: JSON.stringify({ id: invoice.id, payment_amount: 150 }),
     })
 
     const today = new Date().toISOString().split('T')[0]

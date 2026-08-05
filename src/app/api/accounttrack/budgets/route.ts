@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   const {
     lawyer_id, matter_id, period_start, period_end,
-    target_hours, target_billable_hours, target_revenue_usd, notes,
+    target_hours, target_billable_hours, target_revenue, notes,
   } = await request.json()
 
   if (!!lawyer_id === !!matter_id) {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       period_end,
       target_hours: target_hours || null,
       target_billable_hours: target_billable_hours || null,
-      target_revenue_usd: target_revenue_usd || null,
+      target_revenue: target_revenue || null,
       notes: notes || null,
       created_by: user.id,
     })
@@ -94,13 +94,13 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   }
 
-  const { id, target_hours, target_billable_hours, target_revenue_usd, notes } = await request.json()
+  const { id, target_hours, target_billable_hours, target_revenue, notes } = await request.json()
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (target_hours !== undefined) updates.target_hours = target_hours
   if (target_billable_hours !== undefined) updates.target_billable_hours = target_billable_hours
-  if (target_revenue_usd !== undefined) updates.target_revenue_usd = target_revenue_usd
+  if (target_revenue !== undefined) updates.target_revenue = target_revenue
   if (notes !== undefined) updates.notes = notes
 
   const { data: budget, error } = await supabaseAdmin

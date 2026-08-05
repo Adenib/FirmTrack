@@ -6,16 +6,16 @@ import Link from 'next/link'
 
 const PAYROLL_PRIVILEGED = ['owner', 'admin']
 
-function fmtUsd(n) {
+function fmtAmount(n) {
   return '₦' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function deductionsTotal(deductions) {
-  return (deductions || []).reduce((sum, d) => sum + Number(d.amount_usd || 0), 0)
+  return (deductions || []).reduce((sum, d) => sum + Number(d.amount || 0), 0)
 }
 
 function netPay(lineItem) {
-  return Number(lineItem.base_salary_usd) + Number(lineItem.leave_allowance_usd) - deductionsTotal(lineItem.deductions)
+  return Number(lineItem.base_salary) + Number(lineItem.leave_allowance) - deductionsTotal(lineItem.deductions)
 }
 
 const statusColor = {
@@ -106,7 +106,7 @@ export default function HRTrackPayrollPage() {
     const res = await fetch('/api/hrtrack/payroll/salaries', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ user_id: salaryUserId, amount_usd: Number(salaryAmount), effective_from: salaryEffectiveFrom }),
+      body: JSON.stringify({ user_id: salaryUserId, amount: Number(salaryAmount), effective_from: salaryEffectiveFrom }),
     })
     const result = await res.json()
     if (!res.ok) {
@@ -165,12 +165,12 @@ export default function HRTrackPayrollPage() {
   const addDeduction = (lineItem) => {
     setDeductionDrafts((prev) => ({
       ...prev,
-      [lineItem.id]: [...draftFor(lineItem), { name: '', amount_usd: 0 }],
+      [lineItem.id]: [...draftFor(lineItem), { name: '', amount: 0 }],
     }))
   }
 
   const updateDeduction = (lineItem, index, field, value) => {
-    const next = draftFor(lineItem).map((d, i) => (i === index ? { ...d, [field]: field === 'amount_usd' ? Number(value) : value } : d))
+    const next = draftFor(lineItem).map((d, i) => (i === index ? { ...d, [field]: field === 'amount' ? Number(value) : value } : d))
     setDeductionDrafts((prev) => ({ ...prev, [lineItem.id]: next }))
   }
 
@@ -252,7 +252,7 @@ export default function HRTrackPayrollPage() {
                     <div key={li.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
                       <div>
                         <p className="font-medium text-gray-900">{li.payroll_runs?.period_start} → {li.payroll_runs?.period_end}</p>
-                        <p className="text-sm text-gray-600">Pay date: {li.payroll_runs?.pay_date} · Net pay: {fmtUsd(netPay(li))}</p>
+                        <p className="text-sm text-gray-600">Pay date: {li.payroll_runs?.pay_date} · Net pay: {fmtAmount(netPay(li))}</p>
                       </div>
                       <button type="button" onClick={() => viewPayslip(li.id)} className="text-sm text-blue-600 hover:underline">View</button>
                     </div>
@@ -289,7 +289,7 @@ export default function HRTrackPayrollPage() {
                     {Array.from(currentSalaryByUser().values()).map((s) => (
                       <tr key={s.user_id}>
                         <td className="px-4 py-3 text-gray-900">{s.users?.email || emailFor(s.user_id)}</td>
-                        <td className="px-4 py-3 text-gray-700">{fmtUsd(s.amount_usd)}</td>
+                        <td className="px-4 py-3 text-gray-700">{fmtAmount(s.amount)}</td>
                         <td className="px-4 py-3 text-gray-700">{s.effective_from}</td>
                       </tr>
                     ))}
@@ -334,7 +334,7 @@ export default function HRTrackPayrollPage() {
                       <div className="flex items-center justify-between">
                         <button type="button" onClick={() => setExpandedRunId(expanded ? null : run.id)} className="text-left">
                           <p className="font-medium text-gray-900">{run.period_start} → {run.period_end}</p>
-                          <p className="text-sm text-gray-600">Pay date: {run.pay_date} · {items.length} employee{items.length === 1 ? '' : 's'} · Total net: {fmtUsd(totalNet)}</p>
+                          <p className="text-sm text-gray-600">Pay date: {run.pay_date} · {items.length} employee{items.length === 1 ? '' : 's'} · Total net: {fmtAmount(totalNet)}</p>
                         </button>
                         <div className="flex items-center gap-2">
                           <span className={`text-xs px-2 py-0.5 rounded capitalize ${statusColor[run.status]}`}>{run.status}</span>
@@ -353,11 +353,11 @@ export default function HRTrackPayrollPage() {
                             <div key={li.id} className="border border-gray-100 rounded-md p-3">
                               <div className="flex items-center justify-between mb-2">
                                 <p className="font-medium text-gray-900 text-sm">{li.users?.email || emailFor(li.user_id)}</p>
-                                <p className="text-sm text-gray-700">Net: {fmtUsd(run.status === 'draft' ? netPay({ ...li, deductions: draftFor(li) }) : netPay(li))}</p>
+                                <p className="text-sm text-gray-700">Net: {fmtAmount(run.status === 'draft' ? netPay({ ...li, deductions: draftFor(li) }) : netPay(li))}</p>
                               </div>
                               <p className="text-xs text-gray-500 mb-2">
-                                Base: {fmtUsd(li.base_salary_usd)}
-                                {Number(li.leave_allowance_usd) > 0 && ` · Leave allowance: ${fmtUsd(li.leave_allowance_usd)}`}
+                                Base: {fmtAmount(li.base_salary)}
+                                {Number(li.leave_allowance) > 0 && ` · Leave allowance: ${fmtAmount(li.leave_allowance)}`}
                               </p>
 
                               {run.status === 'draft' ? (
@@ -365,7 +365,7 @@ export default function HRTrackPayrollPage() {
                                   {draftFor(li).map((d, i) => (
                                     <div key={i} className="flex items-center gap-2">
                                       <input type="text" placeholder="Deduction name" value={d.name} onChange={(e) => updateDeduction(li, i, 'name', e.target.value)} className="flex-1 px-2 py-1 border rounded text-xs" />
-                                      <input type="number" step="0.01" placeholder="Amount" value={d.amount_usd} onChange={(e) => updateDeduction(li, i, 'amount_usd', e.target.value)} className="w-28 px-2 py-1 border rounded text-xs" />
+                                      <input type="number" step="0.01" placeholder="Amount" value={d.amount} onChange={(e) => updateDeduction(li, i, 'amount', e.target.value)} className="w-28 px-2 py-1 border rounded text-xs" />
                                       <button type="button" onClick={() => removeDeduction(li, i)} className="text-xs text-red-500 hover:underline">Remove</button>
                                     </div>
                                   ))}
@@ -377,7 +377,7 @@ export default function HRTrackPayrollPage() {
                               ) : (
                                 <div className="flex items-center gap-3">
                                   {(li.deductions || []).length > 0 && (
-                                    <p className="text-xs text-gray-500">Deductions: {li.deductions.map((d) => `${d.name} (${fmtUsd(d.amount_usd)})`).join(', ')}</p>
+                                    <p className="text-xs text-gray-500">Deductions: {li.deductions.map((d) => `${d.name} (${fmtAmount(d.amount)})`).join(', ')}</p>
                                   )}
                                   <button type="button" onClick={() => viewPayslip(li.id)} className="text-xs text-blue-600 hover:underline">View payslip</button>
                                   <button type="button" onClick={() => sendPayslip(li.id)} className="text-xs text-blue-600 hover:underline">

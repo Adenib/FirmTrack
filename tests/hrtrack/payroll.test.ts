@@ -5,7 +5,7 @@ import {
 import { netPayUsd, deductionsTotalUsd } from '@/lib/hrtrack/payroll'
 import { sendPayslipEmail } from '@/lib/hrtrack/send-payslip-email'
 
-type LineWithKey = { debit_usd: number; credit_usd: number; account_key: string | null }
+type LineWithKey = { debit: number; credit: number; account_key: string | null }
 
 async function getLinesForPayrollLineItem(tenantId: string, lineItemId: string): Promise<LineWithKey[]> {
   const { data: entry } = await supabaseAdmin
@@ -19,12 +19,12 @@ async function getLinesForPayrollLineItem(tenantId: string, lineItemId: string):
 
   const { data: lines } = await supabaseAdmin
     .from('journal_lines')
-    .select('debit_usd, credit_usd, chart_of_accounts(key)')
+    .select('debit, credit, chart_of_accounts(key)')
     .eq('journal_entry_id', entry.id)
 
   return (lines || []).map((l) => ({
-    debit_usd: Number(l.debit_usd),
-    credit_usd: Number(l.credit_usd),
+    debit: Number(l.debit),
+    credit: Number(l.credit),
     account_key: (Array.isArray(l.chart_of_accounts) ? l.chart_of_accounts[0] : l.chart_of_accounts)?.key ?? null,
   }))
 }
@@ -37,13 +37,13 @@ function findLine(lines: LineWithKey[], key: string) {
 
 describe('netPayUsd / deductionsTotalUsd', () => {
   it('net pay is base + leave allowance minus deductions', () => {
-    const lineItem = { base_salary_usd: 1000, leave_allowance_usd: 100, deductions: [{ name: 'Pension', amount_usd: 80 }, { name: 'Tax', amount_usd: 20 }] }
+    const lineItem = { base_salary: 1000, leave_allowance: 100, deductions: [{ name: 'Pension', amount: 80 }, { name: 'Tax', amount: 20 }] }
     expect(deductionsTotalUsd(lineItem.deductions)).toBe(100)
     expect(netPayUsd(lineItem)).toBe(1000)
   })
 
   it('handles no leave allowance and no deductions', () => {
-    expect(netPayUsd({ base_salary_usd: 500, leave_allowance_usd: 0, deductions: [] })).toBe(500)
+    expect(netPayUsd({ base_salary: 500, leave_allowance: 0, deductions: [] })).toBe(500)
   })
 })
 
@@ -65,7 +65,7 @@ describe('HRTrack Payroll', () => {
   it('a non-owner/admin cannot access salaries or runs', async () => {
     const salariesRes = await staff.fetch('/api/hrtrack/payroll/salaries', {
       method: 'POST',
-      body: JSON.stringify({ user_id: staff.userId, amount_usd: 1000, effective_from: '2026-01-01' }),
+      body: JSON.stringify({ user_id: staff.userId, amount: 1000, effective_from: '2026-01-01' }),
     })
     expect(salariesRes.status).toBe(403)
 
@@ -79,20 +79,20 @@ describe('HRTrack Payroll', () => {
   it('setting a salary twice creates two effective-dated rows, not an update', async () => {
     const first = await tenant.fetch('/api/hrtrack/payroll/salaries', {
       method: 'POST',
-      body: JSON.stringify({ user_id: staff.userId, amount_usd: 1000, effective_from: '2026-01-01' }),
+      body: JSON.stringify({ user_id: staff.userId, amount: 1000, effective_from: '2026-01-01' }),
     })
     expect(first.status).toBe(200)
 
     const second = await tenant.fetch('/api/hrtrack/payroll/salaries', {
       method: 'POST',
-      body: JSON.stringify({ user_id: staff.userId, amount_usd: 1500, effective_from: '2026-03-01' }),
+      body: JSON.stringify({ user_id: staff.userId, amount: 1500, effective_from: '2026-03-01' }),
     })
     expect(second.status).toBe(200)
 
     const listRes = await tenant.fetch(`/api/hrtrack/payroll/salaries?user_id=${staff.userId}`)
     const { salaries } = await listRes.json()
     expect(salaries).toHaveLength(2)
-    expect(salaries.map((s: { amount_usd: string }) => Number(s.amount_usd)).sort()).toEqual([1000, 1500])
+    expect(salaries.map((s: { amount: string }) => Number(s.amount)).sort()).toEqual([1000, 1500])
   })
 
   it('a staff member can see their own salary but not another staff member\'s', async () => {
@@ -114,8 +114,8 @@ describe('HRTrack Payroll', () => {
     expect(run.status).toBe('draft')
 
     const staffLine = lineItems.find((li: { user_id: string }) => li.user_id === staff.userId)
-    expect(Number(staffLine.base_salary_usd)).toBe(1500)
-    expect(Number(staffLine.leave_allowance_usd)).toBe(0)
+    expect(Number(staffLine.base_salary)).toBe(1500)
+    expect(Number(staffLine.leave_allowance)).toBe(0)
 
     // Delete this throwaway draft -- the balance/leave-allowance tests below create their own runs.
     const delRes = await tenant.fetch('/api/hrtrack/payroll/runs', { method: 'DELETE', body: JSON.stringify({ id: run.id }) })
@@ -136,7 +136,7 @@ describe('HRTrack Payroll', () => {
         id: run.id,
         action: 'update_deductions',
         lineItemId: staffLine.id,
-        deductions: [{ name: 'Pension', amount_usd: 120 }],
+        deductions: [{ name: 'Pension', amount: 120 }],
       }),
     })
     expect(deductRes.status).toBe(200)
@@ -153,9 +153,9 @@ describe('HRTrack Payroll', () => {
 
     // Ledger: Dr salaries_expense 1500, Cr payroll_liabilities 120, Cr operating_cash 1380.
     const lines = await getLinesForPayrollLineItem(tenant.tenantId, staffLine.id)
-    expect(findLine(lines, 'salaries_expense').debit_usd).toBe(1500)
-    expect(findLine(lines, 'payroll_liabilities').credit_usd).toBe(120)
-    expect(findLine(lines, 'operating_cash').credit_usd).toBe(1380)
+    expect(findLine(lines, 'salaries_expense').debit).toBe(1500)
+    expect(findLine(lines, 'payroll_liabilities').credit).toBe(120)
+    expect(findLine(lines, 'operating_cash').credit).toBe(1380)
 
     const editAfterPostRes = await tenant.fetch('/api/hrtrack/payroll/runs', {
       method: 'PATCH',
@@ -190,7 +190,7 @@ describe('HRTrack Payroll', () => {
     })
     const { run, lineItems } = await runRes.json()
     const staffLine = lineItems.find((li: { user_id: string }) => li.user_id === staff.userId)
-    expect(Number(staffLine.leave_allowance_usd)).toBe(200)
+    expect(Number(staffLine.leave_allowance)).toBe(200)
 
     const postRes = await tenant.fetch('/api/hrtrack/payroll/runs', { method: 'PATCH', body: JSON.stringify({ id: run.id, action: 'post' }) })
     expect(postRes.status).toBe(200)
@@ -205,7 +205,7 @@ describe('HRTrack Payroll', () => {
     })
     const { lineItems: secondLineItems } = await secondRunRes.json()
     const staffLineAgain = secondLineItems.find((li: { user_id: string }) => li.user_id === staff.userId)
-    expect(Number(staffLineAgain.leave_allowance_usd)).toBe(0)
+    expect(Number(staffLineAgain.leave_allowance)).toBe(0)
   })
 
   it('posting into a closed accounting period is rejected', async () => {

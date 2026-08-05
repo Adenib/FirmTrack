@@ -15,8 +15,8 @@ export type JournalLineInput = {
   accountId?: string
   matterId?: string | null
   lawyerId?: string | null
-  debitUsd?: number
-  creditUsd?: number
+  debit?: number
+  credit?: number
   description?: string | null
 }
 
@@ -82,7 +82,7 @@ async function resolveAccountIds(tenantId: string, keys: AccountKey[]): Promise<
 // asserts the entry balances client-side (post_journal_entry re-checks
 // server-side as defense in depth), then posts atomically via the RPC.
 export async function postJournalEntry(input: PostJournalEntryInput): Promise<string> {
-  const nonZeroLines = input.lines.filter((l) => (l.debitUsd || 0) > 0 || (l.creditUsd || 0) > 0)
+  const nonZeroLines = input.lines.filter((l) => (l.debit || 0) > 0 || (l.credit || 0) > 0)
   if (nonZeroLines.length === 0) {
     throw new JournalPostingError('No non-zero lines to post')
   }
@@ -95,8 +95,8 @@ export async function postJournalEntry(input: PostJournalEntryInput): Promise<st
     })
   const accountIds = keysToResolve.length > 0 ? await resolveAccountIds(input.tenantId, keysToResolve) : {}
 
-  const totalDebit = nonZeroLines.reduce((sum, l) => sum + (l.debitUsd || 0), 0)
-  const totalCredit = nonZeroLines.reduce((sum, l) => sum + (l.creditUsd || 0), 0)
+  const totalDebit = nonZeroLines.reduce((sum, l) => sum + (l.debit || 0), 0)
+  const totalCredit = nonZeroLines.reduce((sum, l) => sum + (l.credit || 0), 0)
   if (Math.abs(totalDebit - totalCredit) > 0.005) {
     throw new JournalPostingError(`Journal entry not balanced: debit=${totalDebit} credit=${totalCredit}`)
   }
@@ -112,8 +112,8 @@ export async function postJournalEntry(input: PostJournalEntryInput): Promise<st
       account_id: l.accountId || accountIds[l.accountKey as AccountKey],
       matter_id: l.matterId || null,
       lawyer_id: l.lawyerId || null,
-      debit_usd: l.debitUsd || 0,
-      credit_usd: l.creditUsd || 0,
+      debit: l.debit || 0,
+      credit: l.credit || 0,
       description: l.description || null,
     })),
   })

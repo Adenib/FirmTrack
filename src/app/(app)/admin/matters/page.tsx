@@ -52,6 +52,7 @@ export default function NewMatterPage() {
   const [lawyers, setLawyers] = useState([{ user_id: '', rate_tier: 'associate' }])
   const [users, setUsers] = useState([])
   const [exchangeRate, setExchangeRate] = useState(1600)
+  const [currencyOptions, setCurrencyOptions] = useState(['NGN'])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -71,6 +72,13 @@ export default function NewMatterPage() {
     fetch('/api/admin/clients/detail?type=users').then(r => r.json()).then(d => setUsers(d.users || []))
     fetch('/api/admin/clients/detail?type=exchange_rate').then(r => r.json()).then(d => {
       if (d.exchange_rate) setExchangeRate(d.exchange_rate.rate)
+    })
+    fetch('/api/accounttrack/currency-settings').then(r => r.json()).then(d => {
+      if (!d.base_currency) return
+      const options = [d.base_currency, ...(d.enabled_currencies || [])]
+      setCurrencyOptions(options)
+      setNewClientCurrency(d.base_currency)
+      setBillingCurrency(d.base_currency)
     })
   }, [])
 
@@ -282,8 +290,7 @@ export default function NewMatterPage() {
                 <input type='text' placeholder='Phone' value={newClientPhone}
                   onChange={e => setNewClientPhone(e.target.value)} className='px-3 py-2 border rounded-md text-sm bg-white' />
                 <select value={newClientCurrency} onChange={e => setNewClientCurrency(e.target.value)} className='px-3 py-2 border rounded-md text-sm bg-white'>
-                  <option value='NGN'>NGN (Nigerian Naira)</option>
-                  <option value='USD'>USD (US Dollar)</option>
+                  {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
@@ -406,8 +413,7 @@ export default function NewMatterPage() {
             <div>
               <label className='text-xs text-gray-500 block mb-1'>Billing Currency</label>
               <select value={billingCurrency} onChange={e => setBillingCurrency(e.target.value)} className='w-full px-3 py-2 border rounded-md text-sm'>
-                <option value='NGN'>NGN (Nigerian Naira)</option>
-                <option value='USD'>USD (US Dollar)</option>
+                {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>

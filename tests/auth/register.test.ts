@@ -64,4 +64,32 @@ describe('POST /api/register -- User Agreement acceptance gate (Security Roadmap
     expect(events?.[0].email).toBe(email)
     expect(events?.[0].metadata.version).toBe('v1')
   })
+
+  it('defaults base_currency from the phone number\'s calling code, and NGN with no phone at all', async () => {
+    const cases: Array<{ phone: string | undefined; expected: string }> = [
+      { phone: '+234 801 234 5678', expected: 'NGN' },
+      { phone: '+1 415 555 0100', expected: 'USD' },
+      { phone: '+44 20 7946 0958', expected: 'GBP' },
+      { phone: undefined, expected: 'NGN' },
+    ]
+
+    for (const { phone, expected } of cases) {
+      const email = `register-currency-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@firmtrack-test.local`
+      const { data: authUser } = await supabaseAdmin.auth.admin.createUser({ email, password: TEST_PASSWORD, email_confirm: true })
+      createdUserIds.push(authUser!.user!.id)
+
+      const res = await fetch(`${APP_URL}/api/register`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId: authUser!.user!.id, email, orgName: `Currency Org ${expected}`, phone, agreementAccepted: true }),
+      })
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      createdOrgIds.push(body.organizationId)
+
+      const { data: org } = await supabaseAdmin.from('organizations').select('base_currency, phone').eq('id', body.organizationId).single()
+      expect(org?.base_currency).toBe(expected)
+      expect(org?.phone).toBe(phone || null)
+    }
+  })
 })

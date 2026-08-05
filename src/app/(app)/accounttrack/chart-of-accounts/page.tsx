@@ -14,6 +14,9 @@ export default function ChartOfAccountsPage() {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [accountType, setAccountType] = useState('expense')
+  const [currency, setCurrency] = useState('')
+  const [baseCurrency, setBaseCurrency] = useState('NGN')
+  const [currencyOptions, setCurrencyOptions] = useState([])
   const [submitting, setSubmitting] = useState(false)
 
   const loadAccounts = async () => {
@@ -25,8 +28,17 @@ export default function ChartOfAccountsPage() {
     setLoading(false)
   }
 
+  const loadCurrencyOptions = async () => {
+    const response = await fetch('/api/accounttrack/currency-settings')
+    if (!response.ok) return
+    const result = await response.json()
+    setBaseCurrency(result.base_currency)
+    setCurrencyOptions(result.enabled_currencies || [])
+  }
+
   useEffect(() => {
     loadAccounts()
+    loadCurrencyOptions()
   }, [])
 
   const handleCreate = async (e) => {
@@ -37,7 +49,7 @@ export default function ChartOfAccountsPage() {
     const response = await fetch('/api/accounttrack/chart-of-accounts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: code || null, name, account_type: accountType }),
+      body: JSON.stringify({ code: code || null, name, account_type: accountType, currency: currency || null }),
     })
     const result = await response.json()
 
@@ -50,6 +62,7 @@ export default function ChartOfAccountsPage() {
     setCode('')
     setName('')
     setAccountType('expense')
+    setCurrency('')
     setSubmitting(false)
     await loadAccounts()
   }
@@ -110,6 +123,19 @@ export default function ChartOfAccountsPage() {
             ))}
           </select>
         </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Currency</label>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className="px-2 py-1 border rounded text-sm"
+          >
+            <option value="">{baseCurrency} (default)</option>
+            {currencyOptions.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
         <button
           type="submit"
           disabled={submitting}
@@ -131,6 +157,7 @@ export default function ChartOfAccountsPage() {
                 <th className="px-3 py-2 font-medium">Code</th>
                 <th className="px-3 py-2 font-medium">Name</th>
                 <th className="px-3 py-2 font-medium">Type</th>
+                <th className="px-3 py-2 font-medium">Currency</th>
                 <th className="px-3 py-2 font-medium"></th>
                 <th className="px-3 py-2 font-medium"></th>
               </tr>
@@ -141,6 +168,7 @@ export default function ChartOfAccountsPage() {
                   <td className="px-3 py-2 text-gray-700">{a.code || '—'}</td>
                   <td className="px-3 py-2 text-gray-900 font-medium">{a.name}</td>
                   <td className="px-3 py-2 text-gray-700 capitalize">{a.account_type}</td>
+                  <td className="px-3 py-2 text-gray-700">{a.currency || baseCurrency}</td>
                   <td className="px-3 py-2">
                     {a.key && (
                       <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Default</span>

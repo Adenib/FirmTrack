@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   let linesQuery = supabaseAdmin
     .from('journal_lines')
-    .select('account_id, debit_usd, credit_usd, matter_id, journal_entries!inner(entry_date, tenant_id)')
+    .select('account_id, debit, credit, matter_id, journal_entries!inner(entry_date, tenant_id)')
     .eq('tenant_id', tenantId)
     .in('account_id', accountIds)
     .gte('journal_entries.entry_date', from)
@@ -54,21 +54,21 @@ export async function GET(request: Request) {
   const byAccount = new Map<string, number>()
   for (const line of lines || []) {
     const current = byAccount.get(line.account_id) || 0
-    byAccount.set(line.account_id, current + Number(line.credit_usd || 0) - Number(line.debit_usd || 0))
+    byAccount.set(line.account_id, current + Number(line.credit || 0) - Number(line.debit || 0))
   }
 
   const revenue = (accounts || [])
     .filter((a) => a.account_type === 'revenue')
-    .map((a) => ({ ...a, amount_usd: byAccount.get(a.id) || 0 }))
-    .filter((a) => a.amount_usd !== 0)
+    .map((a) => ({ ...a, amount: byAccount.get(a.id) || 0 }))
+    .filter((a) => a.amount !== 0)
 
   const expense = (accounts || [])
     .filter((a) => a.account_type === 'expense')
-    .map((a) => ({ ...a, amount_usd: -(byAccount.get(a.id) || 0) }))
-    .filter((a) => a.amount_usd !== 0)
+    .map((a) => ({ ...a, amount: -(byAccount.get(a.id) || 0) }))
+    .filter((a) => a.amount !== 0)
 
-  const totalRevenue = revenue.reduce((sum, a) => sum + a.amount_usd, 0)
-  const totalExpense = expense.reduce((sum, a) => sum + a.amount_usd, 0)
+  const totalRevenue = revenue.reduce((sum, a) => sum + a.amount, 0)
+  const totalExpense = expense.reduce((sum, a) => sum + a.amount, 0)
 
   return NextResponse.json({
     from,

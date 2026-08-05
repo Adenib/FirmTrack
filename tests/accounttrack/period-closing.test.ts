@@ -41,7 +41,7 @@ describe('accounting period closing', () => {
 
     const blockedRes = await tenant.fetch('/api/accounttrack/disbursements', {
       method: 'POST',
-      body: JSON.stringify({ matter_id: matterId, description: 'Should be blocked', amount_usd: 50 }),
+      body: JSON.stringify({ matter_id: matterId, description: 'Should be blocked', amount: 50 }),
     })
     expect(blockedRes.status).toBe(400)
     const blockedBody = await blockedRes.json()
@@ -57,7 +57,7 @@ describe('accounting period closing', () => {
 
     const unblockedRes = await tenant.fetch('/api/accounttrack/disbursements', {
       method: 'POST',
-      body: JSON.stringify({ matter_id: matterId, description: 'Should work now', amount_usd: 50 }),
+      body: JSON.stringify({ matter_id: matterId, description: 'Should work now', amount: 50 }),
     })
     expect(unblockedRes.status).toBe(200)
   })
@@ -73,8 +73,8 @@ describe('accounting period closing', () => {
         entry_date: '2024-06-15',
         description: '2024 revenue for year-close test',
         lines: [
-          { account_id: arId, matter_id: matterId, debit_usd: 900 },
-          { account_id: feesId, matter_id: matterId, credit_usd: 900 },
+          { account_id: arId, matter_id: matterId, debit: 900 },
+          { account_id: feesId, matter_id: matterId, credit: 900 },
         ],
       }),
     })

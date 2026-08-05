@@ -45,9 +45,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'AccountTrack is not active for this tenant' }, { status: 403 })
   }
 
-  const { code, name, account_type } = await request.json()
+  const { code, name, account_type, currency } = await request.json()
   if (!name || !['asset', 'liability', 'equity', 'revenue', 'expense'].includes(account_type)) {
     return NextResponse.json({ error: 'name and a valid account_type are required' }, { status: 400 })
+  }
+
+  if (currency) {
+    const { data: org } = await supabaseAdmin
+      .from('organizations').select('base_currency').eq('id', profile.tenant_id).single()
+    const { data: enabled } = await supabaseAdmin
+      .from('accounttrack_currency_settings').select('currency').eq('tenant_id', profile.tenant_id)
+    const allowed = new Set([org?.base_currency, ...(enabled || []).map((r) => r.currency)])
+    if (!allowed.has(currency)) {
+      return NextResponse.json({ error: 'currency must be the base currency or a currency enabled for this tenant' }, { status: 400 })
+    }
   }
 
   const { data: account, error } = await supabaseAdmin
@@ -58,6 +69,7 @@ export async function POST(request: Request) {
       code: code || null,
       name,
       account_type,
+      currency: currency || null,
     })
     .select()
     .single()

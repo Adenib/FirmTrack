@@ -6,7 +6,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-function fmtUsd(n: number): string {
+function fmtAmount(n: number): string {
   return '₦' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
@@ -22,8 +22,8 @@ export type PayrollLineItemRow = {
   id: string
   payroll_run_id: string
   user_id: string
-  base_salary_usd: number
-  leave_allowance_usd: number
+  base_salary: number
+  leave_allowance: number
   deductions: Deduction[]
 }
 
@@ -39,7 +39,7 @@ async function buildPayslipHtml(tenantId: string, lineItem: PayrollLineItemRow):
   const run = runRes.data
 
   const deductionRows = (lineItem.deductions || [])
-    .map((d) => `<tr><td>${escapeHtml(d.name)}</td><td class="num">${fmtUsd(d.amount_usd)}</td></tr>`)
+    .map((d) => `<tr><td>${escapeHtml(d.name)}</td><td class="num">${fmtAmount(d.amount)}</td></tr>`)
     .join('')
 
   const deductionsTotal = deductionsTotalUsd(lineItem.deductions)
@@ -82,8 +82,8 @@ async function buildPayslipHtml(tenantId: string, lineItem: PayrollLineItemRow):
   <table>
     <thead><tr><th>Item</th><th class="num">Amount</th></tr></thead>
     <tbody>
-      <tr><td>Base salary</td><td class="num">${fmtUsd(lineItem.base_salary_usd)}</td></tr>
-      ${Number(lineItem.leave_allowance_usd) > 0 ? `<tr><td>Leave allowance</td><td class="num">${fmtUsd(lineItem.leave_allowance_usd)}</td></tr>` : ''}
+      <tr><td>Base salary</td><td class="num">${fmtAmount(lineItem.base_salary)}</td></tr>
+      ${Number(lineItem.leave_allowance) > 0 ? `<tr><td>Leave allowance</td><td class="num">${fmtAmount(lineItem.leave_allowance)}</td></tr>` : ''}
     </tbody>
   </table>
 
@@ -95,9 +95,9 @@ async function buildPayslipHtml(tenantId: string, lineItem: PayrollLineItemRow):
   </table>` : ''}
 
   <div class="totals">
-    <div><span>Gross pay</span><span>${fmtUsd(Number(lineItem.base_salary_usd) + Number(lineItem.leave_allowance_usd))}</span></div>
-    <div><span>Deductions</span><span>${fmtUsd(deductionsTotal)}</span></div>
-    <div class="grand"><span>Net pay</span><span>${fmtUsd(net)}</span></div>
+    <div><span>Gross pay</span><span>${fmtAmount(Number(lineItem.base_salary) + Number(lineItem.leave_allowance))}</span></div>
+    <div><span>Deductions</span><span>${fmtAmount(deductionsTotal)}</span></div>
+    <div class="grand"><span>Net pay</span><span>${fmtAmount(net)}</span></div>
   </div>
 </body>
 </html>`

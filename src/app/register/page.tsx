@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
   const [agreementAccepted, setAgreementAccepted] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,6 +42,7 @@ export default function RegisterPage() {
         userId: authData.user.id,
         email,
         orgName,
+        phone,
         agreementAccepted,
       }),
     })
@@ -94,6 +96,20 @@ export default function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-3 py-2 border rounded-md"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Phone number</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md"
+            placeholder="+234 801 234 5678"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Used to set your firm&apos;s default currency (e.g. +234 → NGN). You can change this later.
+          </p>
         </div>
 
         <label className="flex items-start gap-2 text-sm text-gray-700">

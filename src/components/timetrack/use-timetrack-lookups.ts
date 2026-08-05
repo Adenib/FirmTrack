@@ -6,7 +6,7 @@ export type LawyerOption = {
   nickname: string
   initials: string
   status: string
-  lawyer_rates: { rate_type: string; amount_usd: number }[]
+  lawyer_rates: { rate_type: string; amount: number }[]
 }
 
 export type TaskCodeOption = {
@@ -18,7 +18,7 @@ export type TaskCodeOption = {
 export function lawyerRateFor(lawyer: LawyerOption | undefined, rateType: string | null) {
   if (!lawyer || !rateType) return null
   const rate = lawyer.lawyer_rates?.find((r) => r.rate_type === rateType)
-  return rate ? rate.amount_usd : null
+  return rate ? rate.amount : null
 }
 
 export default function useTimetrackLookups() {
@@ -33,7 +33,7 @@ export default function useTimetrackLookups() {
       const [lawyersRes, taskCodesRes] = await Promise.all([
         supabase
           .from('lawyers')
-          .select('id, nickname, initials, status, lawyer_rates(rate_type, amount_usd)')
+          .select('id, nickname, initials, status, lawyer_rates(rate_type, amount)')
           .eq('status', 'active')
           .order('nickname'),
         supabase

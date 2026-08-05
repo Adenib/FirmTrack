@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 
     let query = supabaseAdmin
       .from('journal_lines')
-      .select('id, debit_usd, credit_usd, description, matter_id, journal_entries!inner(entry_date, description, source_type, tenant_id)')
+      .select('id, debit, credit, description, matter_id, journal_entries!inner(entry_date, description, source_type, tenant_id)')
       .eq('tenant_id', tenantId)
       .eq('account_id', accountId)
       .order('created_at', { ascending: true })
@@ -57,8 +57,8 @@ export async function GET(request: Request) {
     let running = 0
     const withBalance = (lines || []).map((line) => {
       const delta = debitNormal
-        ? Number(line.debit_usd || 0) - Number(line.credit_usd || 0)
-        : Number(line.credit_usd || 0) - Number(line.debit_usd || 0)
+        ? Number(line.debit || 0) - Number(line.credit || 0)
+        : Number(line.credit || 0) - Number(line.debit || 0)
       running += delta
       return { ...line, running_balance: running }
     })
@@ -162,12 +162,12 @@ export async function POST(request: Request) {
       description: description || 'Manual journal entry',
       sourceType: 'manual',
       createdBy: user.id,
-      lines: lines.map((l: { account_id: string; matter_id?: string; lawyer_id?: string; debit_usd?: number; credit_usd?: number; description?: string }) => ({
+      lines: lines.map((l: { account_id: string; matter_id?: string; lawyer_id?: string; debit?: number; credit?: number; description?: string }) => ({
         accountId: l.account_id,
         matterId: l.matter_id || null,
         lawyerId: l.lawyer_id || null,
-        debitUsd: l.debit_usd || 0,
-        creditUsd: l.credit_usd || 0,
+        debit: l.debit || 0,
+        credit: l.credit || 0,
         description: l.description || null,
       })),
     })

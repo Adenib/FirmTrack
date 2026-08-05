@@ -70,7 +70,7 @@ describe('BillTrack Stage 2: cron auto-invoicing + reminders', () => {
     const entryRes = await tenant.fetch('/api/timetrack/entries', {
       method: 'POST',
       body: JSON.stringify({
-        entries: [{ matter_id: matterId, hours: 3, rate_usd: 100, amount_usd: 300, billable: true }],
+        entries: [{ matter_id: matterId, hours: 3, rate: 100, amount: 300, billable: true }],
       }),
     })
     expect(entryRes.status).toBe(200)
@@ -88,7 +88,7 @@ describe('BillTrack Stage 2: cron auto-invoicing + reminders', () => {
     expect(invoices).toHaveLength(1)
     const invoice = invoices![0]
     expect(invoice.auto_generated).toBe(true)
-    expect(Number(invoice.total_amount_usd)).toBe(300)
+    expect(Number(invoice.total_amount)).toBe(300)
 
     const { data: entry } = await supabaseAdmin
       .from('journal_entries')
@@ -134,7 +134,7 @@ describe('BillTrack Stage 2: cron auto-invoicing + reminders', () => {
     const entryRes = await tenant.fetch('/api/timetrack/entries', {
       method: 'POST',
       body: JSON.stringify({
-        entries: [{ matter_id: matter.id, hours: 1, rate_usd: 100, amount_usd: 100, billable: true }],
+        entries: [{ matter_id: matter.id, hours: 1, rate: 100, amount: 100, billable: true }],
       }),
     })
     const { entries } = await entryRes.json()

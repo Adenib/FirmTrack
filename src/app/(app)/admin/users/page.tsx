@@ -21,6 +21,11 @@ export default function UsersPage() {
   const [error, setError] = useState('')
   const [me, setMe] = useState<{ id: string } | null>(null)
   const [savingRoleFor, setSavingRoleFor] = useState<string | null>(null)
+  // Keyed by user id -- a role-change/deactivate/etc. failure needs to show
+  // up next to the row it actually happened on, not just in the create-form
+  // error banner at the top of the page where nothing points to which row
+  // failed (previously the only place `error` was ever rendered).
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
 
   const loadUsers = async () => {
     setLoading(true)
@@ -41,52 +46,71 @@ export default function UsersPage() {
     supabase.auth.getUser().then(({ data }) => setMe(data.user ? { id: data.user.id } : null))
   }, [])
 
+  const setRowError = (id: string, message: string) =>
+    setRowErrors((prev) => ({ ...prev, [id]: message }))
+
   const handleRoleChange = async (id: string, newRole: string) => {
     setSavingRoleFor(id)
-    setError('')
-    const response = await fetch('/api/admin/users', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, role: newRole }),
-    })
-    const result = await response.json()
-    if (!response.ok) setError(result.error || 'Could not change role')
+    setRowError(id, '')
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, role: newRole }),
+      })
+      const result = await response.json()
+      if (!response.ok) setRowError(id, result.error || 'Could not change role')
+    } catch {
+      setRowError(id, 'Could not change role -- check your connection and try again')
+    }
     setSavingRoleFor(null)
     await loadUsers()
   }
 
   const handleToggleActive = async (id: string, currentlyActive: boolean) => {
-    setError('')
-    const response = await fetch('/api/admin/users', {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, reactivate: !currentlyActive }),
-    })
-    const result = await response.json()
-    if (!response.ok) setError(result.error || 'Could not update status')
+    setRowError(id, '')
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, reactivate: !currentlyActive }),
+      })
+      const result = await response.json()
+      if (!response.ok) setRowError(id, result.error || 'Could not update status')
+    } catch {
+      setRowError(id, 'Could not update status -- check your connection and try again')
+    }
     await loadUsers()
   }
 
   const handleRevokeSessions = async (id: string) => {
-    setError('')
-    const response = await fetch('/api/admin/users', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, revokeSessions: true }),
-    })
-    const result = await response.json()
-    if (!response.ok) setError(result.error || 'Could not sign the user out')
+    setRowError(id, '')
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, revokeSessions: true }),
+      })
+      const result = await response.json()
+      if (!response.ok) setRowError(id, result.error || 'Could not sign the user out')
+    } catch {
+      setRowError(id, 'Could not sign the user out -- check your connection and try again')
+    }
   }
 
   const handleResetMfa = async (id: string) => {
-    setError('')
-    const response = await fetch('/api/admin/users', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, resetMfa: true }),
-    })
-    const result = await response.json()
-    if (!response.ok) setError(result.error || 'Could not reset MFA for this user')
+    setRowError(id, '')
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, resetMfa: true }),
+      })
+      const result = await response.json()
+      if (!response.ok) setRowError(id, result.error || 'Could not reset MFA for this user')
+    } catch {
+      setRowError(id, 'Could not reset MFA -- check your connection and try again')
+    }
   }
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -187,6 +211,7 @@ export default function UsersPage() {
                       <option value="admin">Admin</option>
                     </select>
                   )}
+                  {rowErrors[u.id] && <p className="text-red-600 text-xs mt-1">{rowErrors[u.id]}</p>}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-xs px-2 py-0.5 rounded ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>

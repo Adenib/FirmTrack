@@ -53,38 +53,38 @@ async function getBilling(tenantId: string, from: string, to: string) {
   const [invoicesRes, paymentEntriesRes, outstandingRes] = await Promise.all([
     supabaseAdmin
       .from('invoices')
-      .select('total_amount_usd')
+      .select('total_amount')
       .eq('tenant_id', tenantId)
       .neq('status', 'void')
       .gte('invoice_date', from)
       .lte('invoice_date', to),
     supabaseAdmin
       .from('journal_entries')
-      .select('journal_lines(debit_usd, chart_of_accounts(key))')
+      .select('journal_lines(debit, chart_of_accounts(key))')
       .eq('tenant_id', tenantId)
       .eq('source_type', 'invoice_payment')
       .gte('entry_date', from)
       .lte('entry_date', to),
     supabaseAdmin
       .from('invoices')
-      .select('total_amount_usd, paid_amount_usd')
+      .select('total_amount, paid_amount')
       .eq('tenant_id', tenantId)
       .in('status', ['open', 'partially_paid']),
   ])
 
-  const invoicedUsd = (invoicesRes.data || []).reduce((sum, i) => sum + Number(i.total_amount_usd || 0), 0)
+  const invoicedUsd = (invoicesRes.data || []).reduce((sum, i) => sum + Number(i.total_amount || 0), 0)
 
   let collectedUsd = 0
   for (const entry of paymentEntriesRes.data || []) {
     const lines = Array.isArray(entry.journal_lines) ? entry.journal_lines : []
     for (const line of lines) {
       const acct = Array.isArray(line.chart_of_accounts) ? line.chart_of_accounts[0] : line.chart_of_accounts
-      if (acct?.key === 'operating_cash') collectedUsd += Number(line.debit_usd || 0)
+      if (acct?.key === 'operating_cash') collectedUsd += Number(line.debit || 0)
     }
   }
 
   const outstandingUsd = (outstandingRes.data || []).reduce(
-    (sum, i) => sum + (Number(i.total_amount_usd || 0) - Number(i.paid_amount_usd || 0)),
+    (sum, i) => sum + (Number(i.total_amount || 0) - Number(i.paid_amount || 0)),
     0
   )
 
@@ -102,14 +102,14 @@ async function getTrustBalance(tenantId: string, asOf: string) {
 
   const { data: lines } = await supabaseAdmin
     .from('journal_lines')
-    .select('debit_usd, credit_usd, journal_entries!inner(entry_date, tenant_id)')
+    .select('debit, credit, journal_entries!inner(entry_date, tenant_id)')
     .eq('tenant_id', tenantId)
     .eq('account_id', account.id)
     .lte('journal_entries.entry_date', asOf)
 
   // Credit-normal (liability) balance: credit - debit.
   const balanceUsd = (lines || []).reduce(
-    (sum, l) => sum + Number(l.credit_usd || 0) - Number(l.debit_usd || 0),
+    (sum, l) => sum + Number(l.credit || 0) - Number(l.debit || 0),
     0
   )
   return { balanceUsd }
@@ -145,7 +145,7 @@ async function getMatters(tenantId: string, monthFrom: string) {
 async function getTopClients(tenantId: string, from: string, to: string) {
   const { data: invoices } = await supabaseAdmin
     .from('invoices')
-    .select('total_amount_usd, matters(client_id, clients(name))')
+    .select('total_amount, matters(client_id, clients(name))')
     .eq('tenant_id', tenantId)
     .neq('status', 'void')
     .gte('invoice_date', from)
@@ -157,7 +157,7 @@ async function getTopClients(tenantId: string, from: string, to: string) {
     const client = matter?.clients ? (Array.isArray(matter.clients) ? matter.clients[0] : matter.clients) : null
     const name = client?.name
     if (!name) continue
-    revenueByClient.set(name, (revenueByClient.get(name) || 0) + Number(inv.total_amount_usd || 0))
+    revenueByClient.set(name, (revenueByClient.get(name) || 0) + Number(inv.total_amount || 0))
   }
 
   return [...revenueByClient.entries()]

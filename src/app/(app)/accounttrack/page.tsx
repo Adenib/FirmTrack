@@ -6,7 +6,7 @@ import Link from 'next/link'
 import MatterSearchInput from '@/components/timetrack/matter-search-input'
 import MatterSummaryCard from '@/components/timetrack/matter-summary-card'
 
-function fmtUsd(n) {
+function fmtAmount(n) {
   return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
@@ -84,7 +84,7 @@ export default function AccountTrackPage() {
         matter_id: matterId,
         disb_date: disbDate || null,
         description: disbDescription || null,
-        amount_usd: parseFloat(disbAmount) || 0,
+        amount: parseFloat(disbAmount) || 0,
       }),
     })
     const result = await response.json()
@@ -107,7 +107,7 @@ export default function AccountTrackPage() {
       body: JSON.stringify({
         matter_id: matterId,
         ledger_type: ledgerType,
-        amount_usd: parseFloat(ledgerAmount) || 0,
+        amount: parseFloat(ledgerAmount) || 0,
         description: ledgerDescription || null,
       }),
     })
@@ -150,7 +150,7 @@ export default function AccountTrackPage() {
     const response = await fetch('/api/accounttrack/invoices', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: invoiceId, payment_amount_usd: amount }),
+      body: JSON.stringify({ id: invoiceId, payment_amount: amount }),
     })
     const result = await response.json()
     if (!response.ok) {
@@ -162,7 +162,7 @@ export default function AccountTrackPage() {
   }
 
   const startEditingBudget = () => {
-    setBudgetTarget(matterBudget?.target_revenue_usd ?? '')
+    setBudgetTarget(matterBudget?.target_revenue ?? '')
     setBudgetNotes(matterBudget?.notes ?? '')
     setEditingBudget(true)
   }
@@ -176,12 +176,12 @@ export default function AccountTrackPage() {
     // sentinel range gives it one durable budget row per matter within the
     // same schema as lawyer budgets, rather than a separate periodless table.
     const body = matterBudget
-      ? { id: matterBudget.id, target_revenue_usd: budgetTarget === '' ? null : Number(budgetTarget), notes: budgetNotes || null }
+      ? { id: matterBudget.id, target_revenue: budgetTarget === '' ? null : Number(budgetTarget), notes: budgetNotes || null }
       : {
           matter_id: matterId,
           period_start: '2000-01-01',
           period_end: '2099-12-31',
-          target_revenue_usd: budgetTarget === '' ? null : Number(budgetTarget),
+          target_revenue: budgetTarget === '' ? null : Number(budgetTarget),
           notes: budgetNotes || null,
         }
 
@@ -208,9 +208,9 @@ export default function AccountTrackPage() {
   // billing status.
   const invoicedTotal = invoices
     .filter((inv) => inv.status !== 'void')
-    .reduce((sum, inv) => sum + Number(inv.total_amount_usd || 0), 0)
-  const unbilledFeesTotal = unbilledEntries.reduce((sum, e) => sum + Number(e.amount_usd || 0), 0)
-  const unbilledDisbTotal = disbursements.reduce((sum, d) => sum + Number(d.amount_usd || 0), 0)
+    .reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0)
+  const unbilledFeesTotal = unbilledEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0)
+  const unbilledDisbTotal = disbursements.reduce((sum, d) => sum + Number(d.amount || 0), 0)
   const matterActualSpend = invoicedTotal + unbilledFeesTotal + unbilledDisbTotal
 
   return (
@@ -226,6 +226,9 @@ export default function AccountTrackPage() {
           </Link>
           <Link href="/accounttrack/lawyer-overview" className="text-sm text-blue-600 hover:underline">
             Lawyer Overview
+          </Link>
+          <Link href="/accounttrack/currencies" className="text-sm text-blue-600 hover:underline">
+            Currencies
           </Link>
           <Link href="/accounttrack/registers" className="text-sm text-blue-600 hover:underline">
             Registers →
@@ -274,29 +277,29 @@ export default function AccountTrackPage() {
               </button>
             </div>
 
-            {matterBudget?.target_revenue_usd ? (
+            {matterBudget?.target_revenue ? (
               <div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-700">Actual spend to date</span>
-                  <span className="text-gray-900">{fmtUsd(matterActualSpend)}</span>
+                  <span className="text-gray-900">{fmtAmount(matterActualSpend)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-700">Budget ceiling</span>
-                  <span className="text-gray-900">{fmtUsd(matterBudget.target_revenue_usd)}</span>
+                  <span className="text-gray-900">{fmtAmount(matterBudget.target_revenue)}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2 mt-2">
                   <div
                     className={
-                      matterActualSpend > Number(matterBudget.target_revenue_usd)
+                      matterActualSpend > Number(matterBudget.target_revenue)
                         ? 'bg-red-500 h-2 rounded-full'
                         : 'bg-blue-500 h-2 rounded-full'
                     }
                     style={{
-                      width: `${Math.min(100, (matterActualSpend / Number(matterBudget.target_revenue_usd)) * 100)}%`,
+                      width: `${Math.min(100, (matterActualSpend / Number(matterBudget.target_revenue)) * 100)}%`,
                     }}
                   />
                 </div>
-                {matterActualSpend > Number(matterBudget.target_revenue_usd) && (
+                {matterActualSpend > Number(matterBudget.target_revenue) && (
                   <p className="text-xs text-red-600 mt-1">Over budget</p>
                 )}
                 {matterBudget.notes && <p className="text-xs text-gray-400 mt-2">{matterBudget.notes}</p>}
@@ -357,7 +360,7 @@ export default function AccountTrackPage() {
                       }
                     />
                     <span className="text-gray-700">
-                      {entry.entry_date} · {entry.explanation || 'Time entry'} · {fmtUsd(entry.amount_usd)}
+                      {entry.entry_date} · {entry.explanation || 'Time entry'} · {fmtAmount(entry.amount)}
                     </span>
                   </label>
                 ))}
@@ -373,7 +376,7 @@ export default function AccountTrackPage() {
                       }
                     />
                     <span className="text-gray-700">
-                      {d.disb_date} · {d.description || 'Disbursement'} · {fmtUsd(d.amount_usd)}
+                      {d.disb_date} · {d.description || 'Disbursement'} · {fmtAmount(d.amount)}
                     </span>
                   </label>
                 ))}
@@ -399,7 +402,7 @@ export default function AccountTrackPage() {
                 {invoices.map((inv) => (
                   <div key={inv.id} className="flex items-center justify-between text-sm border-t border-gray-100 pt-2">
                     <span className="text-gray-700">
-                      {inv.invoice_number} · {fmtUsd(inv.total_amount_usd)} · paid {fmtUsd(inv.paid_amount_usd)} ·{' '}
+                      {inv.invoice_number} · {fmtAmount(inv.total_amount)} · paid {fmtAmount(inv.paid_amount)} ·{' '}
                       <span className="capitalize">{inv.status.replace('_', ' ')}</span>
                     </span>
                     {inv.status !== 'paid' && inv.status !== 'void' && (
@@ -515,8 +518,8 @@ export default function AccountTrackPage() {
                       <span className="capitalize">{entry.ledger_type}</span> ·{' '}
                       {entry.description || '—'}
                     </span>
-                    <span className={entry.amount_usd < 0 ? 'text-red-600' : 'text-green-700'}>
-                      {fmtUsd(entry.amount_usd)}
+                    <span className={entry.amount < 0 ? 'text-red-600' : 'text-green-700'}>
+                      {fmtAmount(entry.amount)}
                     </span>
                   </div>
                 ))}
