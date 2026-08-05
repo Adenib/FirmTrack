@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -77,28 +78,50 @@ export async function POST(request: Request) {
   const currencyByMatter = new Map((matters || []).map((m) => [m.id, m.billing_currency]))
   const baseCurrency = org?.base_currency || 'NGN'
 
-  const entryRows = candidateRows
-    .map((r) => ({
-      tenant_id: profile.tenant_id,
-      lawyer_id: r.lawyer_id || null,
-      matter_id: r.matter_id,
-      task_code_id: r.task_code_id || null,
-      entry_date: r.entry_date || new Date().toISOString().split('T')[0],
-      hours: r.hours || null,
-      rate: r.rate || null,
-      amount: r.amount || null,
-      currency: currencyByMatter.get(r.matter_id) || baseCurrency,
-      base_currency_amount: r.amount || null,
-      expl_code: r.expl_code || null,
-      explanation: r.explanation || null,
-      notes: r.notes || null,
-      hold: !!r.hold,
-      billable: r.billable === false ? false : true,
-      calendar_event_id: r.calendar_event_id || null,
-      entry_type: r.entry_type === 'quickfee' ? 'quickfee' : 'timesheet',
-      status: 'submitted',
-      created_by: user.id,
-    }))
+  // Rate depends on (currency, entry_date), which can vary per row within
+  // one batch (different matters/dates in a single timesheet submission).
+  // Cache lookups per (currency, date) pair to avoid redundant DB calls
+  // when a batch shares the same matter/date across many lines.
+  const rateCache = new Map<string, number>()
+  let entryRows
+  try {
+    entryRows = await Promise.all(
+      candidateRows.map(async (r) => {
+        const entryDate = r.entry_date || new Date().toISOString().split('T')[0]
+        const currency = currencyByMatter.get(r.matter_id) || baseCurrency
+        const cacheKey = `${currency}->${entryDate}`
+        let rate = rateCache.get(cacheKey)
+        if (rate === undefined) {
+          rate = await getExchangeRate(profile.tenant_id, currency, baseCurrency, entryDate)
+          rateCache.set(cacheKey, rate)
+        }
+        return {
+          tenant_id: profile.tenant_id,
+          lawyer_id: r.lawyer_id || null,
+          matter_id: r.matter_id,
+          task_code_id: r.task_code_id || null,
+          entry_date: entryDate,
+          hours: r.hours || null,
+          rate: r.rate || null,
+          amount: r.amount || null,
+          currency,
+          base_currency_amount: r.amount ? Number(r.amount) * rate : null,
+          expl_code: r.expl_code || null,
+          explanation: r.explanation || null,
+          notes: r.notes || null,
+          hold: !!r.hold,
+          billable: r.billable === false ? false : true,
+          calendar_event_id: r.calendar_event_id || null,
+          entry_type: r.entry_type === 'quickfee' ? 'quickfee' : 'timesheet',
+          status: 'submitted',
+          created_by: user.id,
+        }
+      })
+    )
+  } catch (err) {
+    if (err instanceof ExchangeRateError) return NextResponse.json({ error: err.message }, { status: 400 })
+    throw err
+  }
 
   if (entryRows.length === 0) {
     return NextResponse.json({ error: 'No valid entries to save (matter and hours/amount required)' }, { status: 400 })

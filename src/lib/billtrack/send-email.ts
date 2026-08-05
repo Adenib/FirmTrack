@@ -19,6 +19,7 @@ type InvoiceForEmail = {
   paid_amount: number
   status: string
   matter_id: string
+  currency?: string | null
   matters: { case_name: string } | { case_name: string }[] | null
 }
 
@@ -63,7 +64,8 @@ function caseName(inv: InvoiceForEmail): string {
 }
 
 function buildSubjectAndBody(inv: InvoiceForEmail, kind: 'initial' | 'reminder'): { subject: string; html: string } {
-  const amount = '₦' + Number(inv.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const formattedAmount = Number(inv.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const amount = inv.currency && inv.currency !== 'NGN' ? `${inv.currency} ${formattedAmount}` : `₦${formattedAmount}`
   const due = inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'on receipt'
 
   if (kind === 'initial') {
@@ -122,7 +124,7 @@ export async function sendInvoiceEmail(
     .select(`
       id, invoice_number, invoice_date, due_date, fees_amount,
       disbursements_amount, total_amount, paid_amount, status,
-      matter_id, matters(case_name, clients(email))
+      matter_id, currency, matters(case_name, clients(email))
     `)
     .eq('id', invoiceId)
     .eq('tenant_id', tenantId)

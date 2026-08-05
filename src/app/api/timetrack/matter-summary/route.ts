@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   const [matterRes, entriesRes, disbursementsRes, ledgerRes, invoicesRes] = await Promise.all([
     supabaseAdmin
       .from('matters')
-      .select('id, matter_id, case_name, description, clients(name)')
+      .select('id, matter_id, case_name, description, billing_currency, clients(name)')
       .eq('id', matterId)
       .eq('tenant_id', tenantId)
       .single(),
@@ -92,6 +92,7 @@ export async function GET(request: Request) {
       case_name: matter.case_name,
       re_line: matter.description || matter.case_name,
       client_name: client?.name || null,
+      currency: matter.billing_currency || null,
     },
     hours: {
       billable: billableHours,

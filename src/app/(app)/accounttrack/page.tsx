@@ -6,8 +6,9 @@ import Link from 'next/link'
 import MatterSearchInput from '@/components/timetrack/matter-search-input'
 import MatterSummaryCard from '@/components/timetrack/matter-summary-card'
 
-function fmtAmount(n) {
-  return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function fmtAmount(n, currency) {
+  const formatted = Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return currency && currency !== 'NGN' ? `${currency} ${formatted}` : `₦${formatted}`
 }
 
 export default function AccountTrackPage() {
@@ -360,7 +361,7 @@ export default function AccountTrackPage() {
                       }
                     />
                     <span className="text-gray-700">
-                      {entry.entry_date} · {entry.explanation || 'Time entry'} · {fmtAmount(entry.amount)}
+                      {entry.entry_date} · {entry.explanation || 'Time entry'} · {fmtAmount(entry.amount, entry.currency)}
                     </span>
                   </label>
                 ))}
@@ -376,7 +377,7 @@ export default function AccountTrackPage() {
                       }
                     />
                     <span className="text-gray-700">
-                      {d.disb_date} · {d.description || 'Disbursement'} · {fmtAmount(d.amount)}
+                      {d.disb_date} · {d.description || 'Disbursement'} · {fmtAmount(d.amount, d.currency)}
                     </span>
                   </label>
                 ))}
@@ -402,7 +403,7 @@ export default function AccountTrackPage() {
                 {invoices.map((inv) => (
                   <div key={inv.id} className="flex items-center justify-between text-sm border-t border-gray-100 pt-2">
                     <span className="text-gray-700">
-                      {inv.invoice_number} · {fmtAmount(inv.total_amount)} · paid {fmtAmount(inv.paid_amount)} ·{' '}
+                      {inv.invoice_number} · {fmtAmount(inv.total_amount, inv.currency)} · paid {fmtAmount(inv.paid_amount, inv.currency)} ·{' '}
                       <span className="capitalize">{inv.status.replace('_', ' ')}</span>
                     </span>
                     {inv.status !== 'paid' && inv.status !== 'void' && (
@@ -519,7 +520,7 @@ export default function AccountTrackPage() {
                       {entry.description || '—'}
                     </span>
                     <span className={entry.amount < 0 ? 'text-red-600' : 'text-green-700'}>
-                      {fmtAmount(entry.amount)}
+                      {fmtAmount(entry.amount, entry.currency)}
                     </span>
                   </div>
                 ))}

@@ -3,6 +3,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
 import { assertPeriodOpen, postJournalEntry, JournalPostingError } from '@/lib/accounttrack/post-journal-entry'
+import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
 import type { AccountKey } from '@/lib/accounttrack/default-accounts'
 
 const supabaseAdmin = createClient(
@@ -79,6 +80,17 @@ export async function POST(request: Request) {
     supabaseAdmin.from('organizations').select('base_currency').eq('id', profile.tenant_id).single(),
   ])
   const ledgerCurrency = matter?.billing_currency || org?.base_currency || 'NGN'
+  const baseCurrency = org?.base_currency || 'NGN'
+
+  let rate: number
+  try {
+    rate = await getExchangeRate(profile.tenant_id, ledgerCurrency, baseCurrency, effectiveDate)
+  } catch (err) {
+    if (err instanceof ExchangeRateError) return NextResponse.json({ error: err.message }, { status: 400 })
+    throw err
+  }
+  const numericAmount = Number(amount)
+  const baseAmount = numericAmount * rate
 
   const { data: entry, error } = await supabaseAdmin
     .from('trust_ledger_entries')
@@ -87,9 +99,9 @@ export async function POST(request: Request) {
       matter_id,
       ledger_type,
       entry_date: effectiveDate,
-      amount: Number(amount),
+      amount: numericAmount,
       currency: ledgerCurrency,
-      base_currency_amount: Number(amount),
+      base_currency_amount: baseAmount,
       transaction_type: transaction_type || null,
       description: description || null,
       reference: reference || null,
@@ -100,7 +112,6 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const numericAmount = Number(amount)
   const deposit = numericAmount > 0
   const liabilityKey: AccountKey = ledger_type === 'trust' ? 'trust_liability' : 'retainer_liability'
   const sourceType = deposit
@@ -117,12 +128,12 @@ export async function POST(request: Request) {
       createdBy: user.id,
       lines: deposit
         ? [
-            { accountKey: 'trust_bank', matterId: matter_id, debit: Math.abs(numericAmount) },
-            { accountKey: liabilityKey, matterId: matter_id, credit: Math.abs(numericAmount) },
+            { accountKey: 'trust_bank', matterId: matter_id, debit: Math.abs(baseAmount) },
+            { accountKey: liabilityKey, matterId: matter_id, credit: Math.abs(baseAmount) },
           ]
         : [
-            { accountKey: liabilityKey, matterId: matter_id, debit: Math.abs(numericAmount) },
-            { accountKey: 'trust_bank', matterId: matter_id, credit: Math.abs(numericAmount) },
+            { accountKey: liabilityKey, matterId: matter_id, debit: Math.abs(baseAmount) },
+            { accountKey: 'trust_bank', matterId: matter_id, credit: Math.abs(baseAmount) },
           ],
     })
   } catch (err) {

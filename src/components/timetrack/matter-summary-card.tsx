@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 
 type MatterSummary = {
-  matter: { matter_id: string; case_name: string; re_line: string | null; client_name: string | null }
+  matter: { matter_id: string; case_name: string; re_line: string | null; client_name: string | null; currency: string | null }
   hours: { billable: number; non_billable: number; total: number }
   amount_total: number
   unbilled: { hours: number; fees: number; disbursements: number }
@@ -16,8 +16,9 @@ function fmtHours(h: number) {
   return `${Number(h || 0).toFixed(2)}h`
 }
 
-function fmtUsd(n: number) {
-  return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function fmtUsd(n: number, currency?: string | null) {
+  const formatted = Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return currency && currency !== 'NGN' ? `${currency} ${formatted}` : `₦${formatted}`
 }
 
 function Cell({ label, value }: { label: string; value: string }) {
@@ -81,7 +82,7 @@ export default function MatterSummaryCard({ matterId }: { matterId: string }) {
         <Cell label="Non-Billable" value={fmtHours(summary.hours.non_billable)} />
         <Cell label="Billable" value={fmtHours(summary.hours.billable)} />
         <Cell label="Total Hours" value={fmtHours(summary.hours.total)} />
-        <Cell label="Amount" value={fmtUsd(summary.amount_total)} />
+        <Cell label="Amount" value={fmtUsd(summary.amount_total, summary.matter.currency)} />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 pb-4 border-b border-gray-100">
@@ -92,15 +93,15 @@ export default function MatterSummaryCard({ matterId }: { matterId: string }) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 pb-4 border-b border-gray-100">
-        <Cell label="Unbd D" value={fmtUsd(summary.unbilled.disbursements)} />
+        <Cell label="Unbd D" value={fmtUsd(summary.unbilled.disbursements, summary.matter.currency)} />
         <Cell label="Unbd Hrs" value={fmtHours(summary.unbilled.hours)} />
-        <Cell label="Unbd Fees" value={fmtUsd(summary.unbilled.fees)} />
+        <Cell label="Unbd Fees" value={fmtUsd(summary.unbilled.fees, summary.matter.currency)} />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <Cell label="A/R" value={fmtUsd(summary.accounts_receivable)} />
-        <Cell label="Gen Rtnr" value={fmtUsd(summary.retainer_balance)} />
-        <Cell label="Trust" value={fmtUsd(summary.trust_balance)} />
+        <Cell label="A/R" value={fmtUsd(summary.accounts_receivable, summary.matter.currency)} />
+        <Cell label="Gen Rtnr" value={fmtUsd(summary.retainer_balance, summary.matter.currency)} />
+        <Cell label="Trust" value={fmtUsd(summary.trust_balance, summary.matter.currency)} />
       </div>
     </div>
   )

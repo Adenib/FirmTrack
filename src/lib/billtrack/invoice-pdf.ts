@@ -5,8 +5,9 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-function fmtAmount(n: number): string {
-  return '₦' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+function fmtAmount(n: number, currency?: string | null): string {
+  const formatted = Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return currency && currency !== 'NGN' ? `${currency} ${formatted}` : `₦${formatted}`
 }
 
 function fmtDate(d: string | null): string {
@@ -28,6 +29,7 @@ export type InvoiceRow = {
   paid_amount: number
   status: string
   matter_id: string
+  currency?: string | null
 }
 
 async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<string> {
@@ -66,8 +68,8 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
         <td>${fmtDate(e.entry_date)}</td>
         <td>${escapeHtml(desc)}</td>
         <td class="num">${Number(e.hours || 0).toFixed(2)}</td>
-        <td class="num">${fmtAmount(e.rate)}</td>
-        <td class="num">${fmtAmount(e.amount)}</td>
+        <td class="num">${fmtAmount(e.rate, invoice.currency)}</td>
+        <td class="num">${fmtAmount(e.amount, invoice.currency)}</td>
       </tr>`
     })
     .join('')
@@ -77,7 +79,7 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
       (d) => `<tr>
         <td>${fmtDate(d.disb_date)}</td>
         <td colspan="3">${escapeHtml(d.description || 'Disbursement')}</td>
-        <td class="num">${fmtAmount(d.amount)}</td>
+        <td class="num">${fmtAmount(d.amount, invoice.currency)}</td>
       </tr>`
     )
     .join('')
@@ -143,11 +145,11 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
   </table>` : ''}
 
   <div class="totals">
-    <div><span>Fees</span><span>${fmtAmount(invoice.fees_amount)}</span></div>
-    <div><span>Disbursements</span><span>${fmtAmount(invoice.disbursements_amount)}</span></div>
-    <div class="grand"><span>Total</span><span>${fmtAmount(invoice.total_amount)}</span></div>
-    <div><span>Paid</span><span>${fmtAmount(invoice.paid_amount)}</span></div>
-    <div class="due"><span>Balance Due</span><span>${fmtAmount(balanceDue)}</span></div>
+    <div><span>Fees</span><span>${fmtAmount(invoice.fees_amount, invoice.currency)}</span></div>
+    <div><span>Disbursements</span><span>${fmtAmount(invoice.disbursements_amount, invoice.currency)}</span></div>
+    <div class="grand"><span>Total</span><span>${fmtAmount(invoice.total_amount, invoice.currency)}</span></div>
+    <div><span>Paid</span><span>${fmtAmount(invoice.paid_amount, invoice.currency)}</span></div>
+    <div class="due"><span>Balance Due</span><span>${fmtAmount(balanceDue, invoice.currency)}</span></div>
   </div>
 </body>
 </html>`

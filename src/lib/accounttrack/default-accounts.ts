@@ -16,6 +16,8 @@ export const DEFAULT_ACCOUNTS = [
   { key: 'fees_earned', code: '4000', name: 'Fees Earned', account_type: 'revenue' },
   { key: 'retained_earnings', code: '3000', name: 'Retained Earnings', account_type: 'equity' },
   { key: 'salaries_expense', code: '5000', name: 'Salaries Expense', account_type: 'expense' },
+  { key: 'fx_gain', code: '4010', name: 'Foreign Exchange Gain', account_type: 'revenue' },
+  { key: 'fx_loss', code: '5010', name: 'Foreign Exchange Loss', account_type: 'expense' },
 ] as const
 
 export type AccountKey = typeof DEFAULT_ACCOUNTS[number]['key']

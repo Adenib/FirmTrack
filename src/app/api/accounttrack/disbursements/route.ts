@@ -3,6 +3,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
 import { assertPeriodOpen, postJournalEntry, JournalPostingError } from '@/lib/accounttrack/post-journal-entry'
+import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,6 +70,16 @@ export async function POST(request: Request) {
     supabaseAdmin.from('organizations').select('base_currency').eq('id', profile.tenant_id).single(),
   ])
   const disbCurrency = matter?.billing_currency || org?.base_currency || 'NGN'
+  const baseCurrency = org?.base_currency || 'NGN'
+
+  let rate: number
+  try {
+    rate = await getExchangeRate(profile.tenant_id, disbCurrency, baseCurrency, effectiveDate)
+  } catch (err) {
+    if (err instanceof ExchangeRateError) return NextResponse.json({ error: err.message }, { status: 400 })
+    throw err
+  }
+  const baseAmount = Number(amount) * rate
 
   const { data: disbursement, error } = await supabaseAdmin
     .from('disbursements')
@@ -80,7 +91,7 @@ export async function POST(request: Request) {
       description: description || null,
       amount: Number(amount),
       currency: disbCurrency,
-      base_currency_amount: Number(amount),
+      base_currency_amount: baseAmount,
       created_by: user.id,
     })
     .select()
@@ -97,8 +108,8 @@ export async function POST(request: Request) {
       sourceId: disbursement.id,
       createdBy: user.id,
       lines: [
-        { accountKey: 'client_costs_advanced', matterId: matter_id, lawyerId: lawyer_id || null, debit: Number(amount) },
-        { accountKey: 'operating_cash', matterId: matter_id, lawyerId: lawyer_id || null, credit: Number(amount) },
+        { accountKey: 'client_costs_advanced', matterId: matter_id, lawyerId: lawyer_id || null, debit: baseAmount },
+        { accountKey: 'operating_cash', matterId: matter_id, lawyerId: lawyer_id || null, credit: baseAmount },
       ],
     })
   } catch (err) {

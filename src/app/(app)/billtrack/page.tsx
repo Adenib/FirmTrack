@@ -4,8 +4,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-function fmtAmount(n) {
-  return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function fmtAmount(n, currency) {
+  const formatted = Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return currency && currency !== 'NGN' ? `${currency} ${formatted}` : `₦${formatted}`
 }
 
 function fmtDate(d) {
@@ -157,11 +158,11 @@ export default function BillTrackPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-3">
                   <div>
                     <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Total</p>
-                    <p className="text-sm text-gray-900">{fmtAmount(inv.total_amount)}</p>
+                    <p className="text-sm text-gray-900">{fmtAmount(inv.total_amount, inv.currency)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Paid</p>
-                    <p className="text-sm text-gray-900">{fmtAmount(inv.paid_amount)}</p>
+                    <p className="text-sm text-gray-900">{fmtAmount(inv.paid_amount, inv.currency)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Status</p>
