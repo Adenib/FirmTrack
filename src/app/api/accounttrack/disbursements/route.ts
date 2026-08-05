@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
 import { assertPeriodOpen, postJournalEntry, JournalPostingError } from '@/lib/accounttrack/post-journal-entry'
 import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
+import { tagOriginalAmount } from '@/lib/accounttrack/tag-original-amount'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -99,6 +100,8 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  const cashTag = await tagOriginalAmount(profile.tenant_id, 'operating_cash', disbCurrency, Number(amount))
+
   try {
     await postJournalEntry({
       tenantId: profile.tenant_id,
@@ -109,7 +112,7 @@ export async function POST(request: Request) {
       createdBy: user.id,
       lines: [
         { accountKey: 'client_costs_advanced', matterId: matter_id, lawyerId: lawyer_id || null, debit: baseAmount },
-        { accountKey: 'operating_cash', matterId: matter_id, lawyerId: lawyer_id || null, credit: baseAmount },
+        { accountKey: 'operating_cash', matterId: matter_id, lawyerId: lawyer_id || null, credit: baseAmount, ...cashTag },
       ],
     })
   } catch (err) {

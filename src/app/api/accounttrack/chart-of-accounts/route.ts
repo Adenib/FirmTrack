@@ -78,6 +78,54 @@ export async function POST(request: Request) {
   return NextResponse.json({ account })
 }
 
+// Sets currency on an EXISTING account -- including the seeded default
+// accounts (operating_cash, trust_bank), which is how a tenant marks their
+// real bank account as foreign-currency for revaluation purposes. POST only
+// creates brand-new custom accounts; there was previously no way to edit a
+// default account's currency at all.
+export async function PATCH(request: Request) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users').select('tenant_id, role').eq('id', user.id).single()
+  if (!profile || !['owner', 'admin'].includes(profile.role)) {
+    return NextResponse.json({ error: 'Not authorized — editing accounts requires owner or admin' }, { status: 403 })
+  }
+
+  if (!(await hasActiveModule(profile.tenant_id, 'accounttrack'))) {
+    return NextResponse.json({ error: 'AccountTrack is not active for this tenant' }, { status: 403 })
+  }
+
+  const { id, currency } = await request.json()
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  const { data: org } = await supabaseAdmin
+    .from('organizations').select('base_currency').eq('id', profile.tenant_id).single()
+
+  if (currency) {
+    const { data: enabled } = await supabaseAdmin
+      .from('accounttrack_currency_settings').select('currency').eq('tenant_id', profile.tenant_id)
+    const allowed = new Set([org?.base_currency, ...(enabled || []).map((r) => r.currency)])
+    if (!allowed.has(currency)) {
+      return NextResponse.json({ error: 'currency must be the base currency or a currency enabled for this tenant' }, { status: 400 })
+    }
+  }
+
+  const { data: account, error } = await supabaseAdmin
+    .from('chart_of_accounts')
+    .update({ currency: currency === org?.base_currency ? null : (currency || null) })
+    .eq('id', id)
+    .eq('tenant_id', profile.tenant_id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+  return NextResponse.json({ account })
+}
+
 export async function DELETE(request: Request) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()

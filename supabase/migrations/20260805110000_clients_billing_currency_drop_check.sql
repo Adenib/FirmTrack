@@ -1,0 +1,12 @@
+-- clients.billing_currency has carried a legacy check constraint
+-- (clients_billing_currency_check, predating this migration history) that
+-- only allows 'NGN' or 'USD' -- silently rejecting any other currency a
+-- tenant has since enabled via AccountTrack -> Currencies (e.g. GBP, EUR).
+-- matters.billing_currency has no such constraint at all, so a matter can
+-- already be billed in any enabled currency; a client couldn't be, which is
+-- a real gap discovered while manually verifying Phase 3 (creating a GBP
+-- client 500'd). Currency codes are now dynamic per-tenant
+-- (accounttrack_currency_settings), not a fixed global list, so there's no
+-- sensible fixed enum to replace this with -- dropping it entirely, same
+-- as matters.billing_currency's (lack of a) constraint.
+alter table public.clients drop constraint if exists clients_billing_currency_check;

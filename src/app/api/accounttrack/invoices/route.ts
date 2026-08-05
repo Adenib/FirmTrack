@@ -5,6 +5,7 @@ import { hasActiveModule } from '@/lib/require-module'
 import { assertPeriodOpen, postJournalEntry, JournalPostingError, type JournalLineInput } from '@/lib/accounttrack/post-journal-entry'
 import { createInvoiceForMatter, InvoiceCreationError } from '@/lib/accounttrack/create-invoice'
 import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
+import { tagOriginalAmount } from '@/lib/accounttrack/tag-original-amount'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -178,8 +179,10 @@ export async function PATCH(request: Request) {
         : Number(payment_amount)
       const fxDiff = paymentBaseValue - originalArValue
 
+      const cashTag = await tagOriginalAmount(profile.tenant_id, 'operating_cash', invoiceCurrency, Number(payment_amount))
+
       const lines: JournalLineInput[] = [
-        { accountKey: 'operating_cash', matterId: invoice.matter_id, debit: paymentBaseValue },
+        { accountKey: 'operating_cash', matterId: invoice.matter_id, debit: paymentBaseValue, ...cashTag },
         { accountKey: 'accounts_receivable', matterId: invoice.matter_id, credit: originalArValue },
       ]
       if (fxDiff > 0.005) {

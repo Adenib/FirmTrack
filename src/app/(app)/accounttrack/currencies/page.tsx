@@ -24,6 +24,10 @@ export default function CurrenciesPage() {
   const [rateDate, setRateDate] = useState(new Date().toISOString().split('T')[0])
   const [addingRate, setAddingRate] = useState(false)
 
+  const [revalDate, setRevalDate] = useState(new Date().toISOString().split('T')[0])
+  const [revaluing, setRevaluing] = useState(false)
+  const [revalResult, setRevalResult] = useState(null)
+
   const loadSettings = async () => {
     setLoading(true)
     const response = await fetch('/api/accounttrack/currency-settings')
@@ -111,6 +115,26 @@ export default function CurrenciesPage() {
   }
 
   const allCurrencies = [baseCurrency, ...enabledCurrencies]
+
+  const handleRevalue = async (e) => {
+    e.preventDefault()
+    setRevaluing(true)
+    setError('')
+    setRevalResult(null)
+    const response = await fetch('/api/accounttrack/fx-revaluation', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ as_of_date: revalDate }),
+    })
+    const result = await response.json()
+    if (!response.ok) {
+      setError(result.error || 'Could not revalue foreign-currency accounts')
+      setRevaluing(false)
+      return
+    }
+    setRevalResult(result)
+    setRevaluing(false)
+  }
 
   const handleSaveBaseCurrency = async (e) => {
     e.preventDefault()
@@ -293,6 +317,52 @@ export default function CurrenciesPage() {
                   ))}
                 </tbody>
               </table>
+            )}
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-4 mt-6">
+            <h2 className="font-semibold text-gray-900 mb-1">Revalue foreign-currency accounts</h2>
+            <p className="text-sm text-gray-600 mb-3">
+              Restates any account marked with a foreign currency (e.g. a real USD bank
+              account, set on the Chart of Accounts) to the given date&apos;s rate, and books
+              the difference from its current book value as unrealized FX gain/loss. Also
+              runs automatically whenever you close an accounting period.
+            </p>
+            <form onSubmit={handleRevalue} className="flex flex-wrap items-end gap-2 mb-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">As of date</label>
+                <input
+                  type="date"
+                  value={revalDate}
+                  onChange={(e) => setRevalDate(e.target.value)}
+                  className="px-2 py-1 border rounded text-sm"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={revaluing}
+                className="text-sm bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {revaluing ? 'Revaluing…' : 'Revalue now'}
+              </button>
+            </form>
+
+            {revalResult && (
+              revalResult.adjustments.length === 0 ? (
+                <p className="text-sm text-gray-500">No foreign-currency accounts needed adjustment.</p>
+              ) : (
+                <div className="space-y-1">
+                  {revalResult.adjustments.map((a, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm border-t border-gray-100 pt-1">
+                      <span className="text-gray-700">{a.accountName} ({a.accountCurrency})</span>
+                      <span className={a.delta >= 0 ? 'text-green-700' : 'text-red-600'}>
+                        {a.delta >= 0 ? '+' : ''}
+                        {Number(a.delta).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
             )}
           </div>
         </>

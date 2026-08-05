@@ -78,6 +78,21 @@ export default function ChartOfAccountsPage() {
     await loadAccounts()
   }
 
+  const handleCurrencyChange = async (id, newCurrency) => {
+    setError('')
+    const response = await fetch('/api/accounttrack/chart-of-accounts', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, currency: newCurrency || null }),
+    })
+    const result = await response.json()
+    if (!response.ok) {
+      setError(result.error || 'Could not update account currency')
+      return
+    }
+    await loadAccounts()
+  }
+
   return (
     <div className="p-8 max-w-3xl">
       <div className="flex items-center justify-between mb-1">
@@ -168,7 +183,22 @@ export default function ChartOfAccountsPage() {
                   <td className="px-3 py-2 text-gray-700">{a.code || '—'}</td>
                   <td className="px-3 py-2 text-gray-900 font-medium">{a.name}</td>
                   <td className="px-3 py-2 text-gray-700 capitalize">{a.account_type}</td>
-                  <td className="px-3 py-2 text-gray-700">{a.currency || baseCurrency}</td>
+                  <td className="px-3 py-2 text-gray-700">
+                    {a.account_type === 'asset' || a.account_type === 'liability' ? (
+                      <select
+                        value={a.currency || ''}
+                        onChange={(e) => handleCurrencyChange(a.id, e.target.value)}
+                        className="px-1 py-0.5 border rounded text-xs"
+                      >
+                        <option value="">{baseCurrency} (default)</option>
+                        {currencyOptions.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      a.currency || baseCurrency
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     {a.key && (
                       <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Default</span>

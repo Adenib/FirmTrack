@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
 import { assertPeriodOpen, postJournalEntry, JournalPostingError } from '@/lib/accounttrack/post-journal-entry'
 import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
+import { tagOriginalAmount } from '@/lib/accounttrack/tag-original-amount'
 import type { AccountKey } from '@/lib/accounttrack/default-accounts'
 
 const supabaseAdmin = createClient(
@@ -118,6 +119,8 @@ export async function POST(request: Request) {
     ? (ledger_type === 'trust' ? 'trust_deposit' : 'retainer_deposit')
     : (ledger_type === 'trust' ? 'trust_withdrawal' : 'retainer_withdrawal')
 
+  const bankTag = await tagOriginalAmount(profile.tenant_id, 'trust_bank', ledgerCurrency, Math.abs(numericAmount))
+
   try {
     await postJournalEntry({
       tenantId: profile.tenant_id,
@@ -128,12 +131,12 @@ export async function POST(request: Request) {
       createdBy: user.id,
       lines: deposit
         ? [
-            { accountKey: 'trust_bank', matterId: matter_id, debit: Math.abs(baseAmount) },
+            { accountKey: 'trust_bank', matterId: matter_id, debit: Math.abs(baseAmount), ...bankTag },
             { accountKey: liabilityKey, matterId: matter_id, credit: Math.abs(baseAmount) },
           ]
         : [
             { accountKey: liabilityKey, matterId: matter_id, debit: Math.abs(baseAmount) },
-            { accountKey: 'trust_bank', matterId: matter_id, credit: Math.abs(baseAmount) },
+            { accountKey: 'trust_bank', matterId: matter_id, credit: Math.abs(baseAmount), ...bankTag },
           ],
     })
   } catch (err) {

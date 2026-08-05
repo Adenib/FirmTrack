@@ -4,8 +4,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-function fmtAmount(n) {
-  return `₦${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function fmtAmount(n, currency) {
+  const formatted = Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return currency && currency !== 'NGN' ? `${currency} ${formatted}` : `₦${formatted}`
 }
 
 function pad(n) {
@@ -42,19 +43,31 @@ export default function StatementsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const [baseCurrency, setBaseCurrency] = useState('NGN')
+  const [enabledCurrencies, setEnabledCurrencies] = useState([])
+  const [displayCurrency, setDisplayCurrency] = useState('')
+
   useEffect(() => {
     fetch('/api/accounttrack/accounting-periods')
       .then((r) => r.json())
       .then((body) => setPeriods(body.periods || []))
       .catch(() => {})
+    fetch('/api/accounttrack/currency-settings')
+      .then((r) => r.json())
+      .then((body) => {
+        setBaseCurrency(body.base_currency || 'NGN')
+        setEnabledCurrencies(body.enabled_currencies || [])
+      })
+      .catch(() => {})
   }, [])
 
-  const run = async (fromDate, toDate) => {
+  const run = async (fromDate, toDate, currency) => {
     setLoading(true)
     setError('')
+    const currencyParam = currency ? `&currency=${currency}` : ''
     const [isRes, bsRes] = await Promise.all([
-      fetch(`/api/accounttrack/statements/income-statement?from=${fromDate}&to=${toDate}`),
-      fetch(`/api/accounttrack/statements/balance-sheet?as_of=${toDate}`),
+      fetch(`/api/accounttrack/statements/income-statement?from=${fromDate}&to=${toDate}${currencyParam}`),
+      fetch(`/api/accounttrack/statements/balance-sheet?as_of=${toDate}${currencyParam}`),
     ])
     const [isBody, bsBody] = await Promise.all([isRes.json(), bsRes.json()])
     if (!isRes.ok) setError(isBody.error || 'Could not load income statement')
@@ -65,7 +78,7 @@ export default function StatementsPage() {
   }
 
   useEffect(() => {
-    run(from, to)
+    run(from, to, displayCurrency)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -96,7 +109,7 @@ export default function StatementsPage() {
             onClick={() => {
               setFrom(p.from)
               setTo(p.to)
-              run(p.from, p.to)
+              run(p.from, p.to, displayCurrency)
             }}
             className="text-xs px-3 py-1.5 border rounded-full text-gray-600 hover:border-gray-400"
           >
@@ -114,9 +127,22 @@ export default function StatementsPage() {
           <label className="block text-xs text-gray-500 mb-1">To / As of</label>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="px-2 py-1 border rounded text-sm" />
         </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">View in</label>
+          <select
+            value={displayCurrency}
+            onChange={(e) => setDisplayCurrency(e.target.value)}
+            className="px-2 py-1 border rounded text-sm"
+          >
+            <option value="">{baseCurrency} (base)</option>
+            {enabledCurrencies.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
         <button
           type="button"
-          onClick={() => run(from, to)}
+          onClick={() => run(from, to, displayCurrency)}
           className="text-sm px-3 py-2 border rounded-md hover:bg-gray-50"
         >
           Run
@@ -136,6 +162,11 @@ export default function StatementsPage() {
           <p className="font-medium text-gray-900 mb-3">
             Income Statement ({incomeStatement.from} to {incomeStatement.to})
           </p>
+          {incomeStatement.display_currency && (
+            <p className="text-xs text-gray-500 mb-3">
+              Translated at 1 {incomeStatement.base_currency} = {incomeStatement.display_rate} {incomeStatement.display_currency} as of {incomeStatement.to} — for reference only, not a currency-restated financial statement.
+            </p>
+          )}
 
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1">Revenue</p>
           {incomeStatement.revenue.length === 0 ? (
@@ -144,13 +175,13 @@ export default function StatementsPage() {
             incomeStatement.revenue.map((a) => (
               <div key={a.id} className="flex justify-between text-sm py-0.5">
                 <span className="text-gray-700">{a.name}</span>
-                <span className="text-gray-900">{fmtAmount(a.amount)}</span>
+                <span className="text-gray-900">{fmtAmount(a.amount, incomeStatement.display_currency || incomeStatement.base_currency)}</span>
               </div>
             ))
           )}
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Revenue</span>
-            <span>{fmtAmount(incomeStatement.total_revenue)}</span>
+            <span>{fmtAmount(incomeStatement.total_revenue, incomeStatement.display_currency || incomeStatement.base_currency)}</span>
           </div>
 
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mt-4 mb-1">Expense</p>
@@ -160,18 +191,18 @@ export default function StatementsPage() {
             incomeStatement.expense.map((a) => (
               <div key={a.id} className="flex justify-between text-sm py-0.5">
                 <span className="text-gray-700">{a.name}</span>
-                <span className="text-gray-900">{fmtAmount(a.amount)}</span>
+                <span className="text-gray-900">{fmtAmount(a.amount, incomeStatement.display_currency || incomeStatement.base_currency)}</span>
               </div>
             ))
           )}
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Expense</span>
-            <span>{fmtAmount(incomeStatement.total_expense)}</span>
+            <span>{fmtAmount(incomeStatement.total_expense, incomeStatement.display_currency || incomeStatement.base_currency)}</span>
           </div>
 
           <div className="flex justify-between text-sm font-semibold border-t border-gray-200 mt-3 pt-2">
             <span>Net Income</span>
-            <span>{fmtAmount(incomeStatement.net_income)}</span>
+            <span>{fmtAmount(incomeStatement.net_income, incomeStatement.display_currency || incomeStatement.base_currency)}</span>
           </div>
         </div>
       )}
@@ -179,43 +210,58 @@ export default function StatementsPage() {
       {balanceSheet && (
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <p className="font-medium text-gray-900 mb-3">Balance Sheet (as of {balanceSheet.as_of})</p>
+          {balanceSheet.display_currency && (
+            <p className="text-xs text-gray-500 mb-3">
+              Translated at 1 {balanceSheet.base_currency} = {balanceSheet.display_rate} {balanceSheet.display_currency} as of {balanceSheet.as_of} — for reference only, not a currency-restated financial statement.
+            </p>
+          )}
 
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1">Assets</p>
           {balanceSheet.assets.map((a) => (
             <div key={a.id} className="flex justify-between text-sm py-0.5">
-              <span className="text-gray-700">{a.name}</span>
-              <span className="text-gray-900">{fmtAmount(a.amount)}</span>
+              <span className="text-gray-700">
+                {a.name}
+                {a.foreign_balance !== null && (
+                  <span className="text-gray-400"> ({fmtAmount(a.foreign_balance, a.currency)})</span>
+                )}
+              </span>
+              <span className="text-gray-900">{fmtAmount(a.amount, balanceSheet.display_currency || balanceSheet.base_currency)}</span>
             </div>
           ))}
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Assets</span>
-            <span>{fmtAmount(balanceSheet.total_assets)}</span>
+            <span>{fmtAmount(balanceSheet.total_assets, balanceSheet.display_currency || balanceSheet.base_currency)}</span>
           </div>
 
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mt-4 mb-1">Liabilities</p>
           {balanceSheet.liabilities.map((a) => (
             <div key={a.id} className="flex justify-between text-sm py-0.5">
-              <span className="text-gray-700">{a.name}</span>
-              <span className="text-gray-900">{fmtAmount(a.amount)}</span>
+              <span className="text-gray-700">
+                {a.name}
+                {a.foreign_balance !== null && (
+                  <span className="text-gray-400"> ({fmtAmount(a.foreign_balance, a.currency)})</span>
+                )}
+              </span>
+              <span className="text-gray-900">{fmtAmount(a.amount, balanceSheet.display_currency || balanceSheet.base_currency)}</span>
             </div>
           ))}
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Liabilities</span>
-            <span>{fmtAmount(balanceSheet.total_liabilities)}</span>
+            <span>{fmtAmount(balanceSheet.total_liabilities, balanceSheet.display_currency || balanceSheet.base_currency)}</span>
           </div>
 
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mt-4 mb-1">Equity</p>
           <div className="flex justify-between text-sm py-0.5">
             <span className="text-gray-700">Retained Earnings</span>
-            <span className="text-gray-900">{fmtAmount(balanceSheet.equity.retained_earnings)}</span>
+            <span className="text-gray-900">{fmtAmount(balanceSheet.equity.retained_earnings, balanceSheet.display_currency || balanceSheet.base_currency)}</span>
           </div>
           <div className="flex justify-between text-sm py-0.5">
             <span className="text-gray-700">Current Year Earnings</span>
-            <span className="text-gray-900">{fmtAmount(balanceSheet.equity.current_year_earnings)}</span>
+            <span className="text-gray-900">{fmtAmount(balanceSheet.equity.current_year_earnings, balanceSheet.display_currency || balanceSheet.base_currency)}</span>
           </div>
           <div className="flex justify-between text-sm font-medium border-t border-gray-100 mt-1 pt-1">
             <span>Total Equity</span>
-            <span>{fmtAmount(balanceSheet.total_equity)}</span>
+            <span>{fmtAmount(balanceSheet.total_equity, balanceSheet.display_currency || balanceSheet.base_currency)}</span>
           </div>
 
           <div className="flex justify-between text-sm font-semibold border-t border-gray-200 mt-3 pt-2">

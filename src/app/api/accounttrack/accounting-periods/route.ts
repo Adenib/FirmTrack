@@ -3,6 +3,8 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
 import { postJournalEntry, JournalPostingError } from '@/lib/accounttrack/post-journal-entry'
+import { revalueForeignCurrencyAccounts } from '@/lib/accounttrack/revalue-fx-accounts'
+import { ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -126,6 +128,21 @@ export async function POST(request: Request) {
     }
   }
 
+  // Revalue foreign-currency accounts (e.g. a real USD bank account) as of
+  // the period end, for both month and year closes -- unlike the year-only
+  // closing entry above, revaluation is date-based, not year-end-only.
+  // Stored on its own accounting_periods.revaluation_entry_id column since
+  // month closes never have a closing_entry_id to piggyback on.
+  let revaluationEntryId: string | null = null
+  try {
+    const result = await revalueForeignCurrencyAccounts(profile.tenant_id, period_end, user.id, 'fx_revaluation_period_close')
+    revaluationEntryId = result.entryId
+  } catch (err) {
+    if (err instanceof ExchangeRateError) return NextResponse.json({ error: err.message }, { status: 400 })
+    if (err instanceof JournalPostingError) return NextResponse.json({ error: err.message }, { status: 400 })
+    throw err
+  }
+
   const { data: period, error } = await supabaseAdmin
     .from('accounting_periods')
     .insert({
@@ -137,6 +154,7 @@ export async function POST(request: Request) {
       closed_at: new Date().toISOString(),
       closed_by: user.id,
       closing_entry_id: closingEntryId,
+      revaluation_entry_id: revaluationEntryId,
     })
     .select()
     .single()
@@ -218,5 +236,38 @@ export async function PATCH(request: Request) {
       throw err
     }
   }
+
+  // Mirrors the closing_entry_id reversal above, independently -- a year
+  // period can have both a closing entry and a revaluation entry, and both
+  // need reversing on reopen.
+  if (period.revaluation_entry_id) {
+    const { data: revaluationLines } = await supabaseAdmin
+      .from('journal_lines')
+      .select('account_id, matter_id, lawyer_id, debit, credit, description')
+      .eq('journal_entry_id', period.revaluation_entry_id)
+
+    try {
+      await postJournalEntry({
+        tenantId: profile.tenant_id,
+        entryDate: period.period_end,
+        description: `Reopen ${period.period_start} to ${period.period_end}: reverse FX revaluation`,
+        sourceType: 'fx_revaluation_reopen',
+        sourceId: period.revaluation_entry_id,
+        createdBy: user.id,
+        lines: (revaluationLines || []).map((l) => ({
+          accountId: l.account_id,
+          matterId: l.matter_id,
+          lawyerId: l.lawyer_id,
+          debit: Number(l.credit || 0),
+          credit: Number(l.debit || 0),
+          description: l.description || 'Reopen reversal',
+        })),
+      })
+    } catch (err) {
+      if (err instanceof JournalPostingError) return NextResponse.json({ error: err.message }, { status: 400 })
+      throw err
+    }
+  }
+
   return NextResponse.json({ period: updated })
 }

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,8 +22,13 @@ export async function GET(request: Request) {
   const from = searchParams.get('from')
   const to = searchParams.get('to')
   const matterId = searchParams.get('matter_id')
+  const displayCurrency = searchParams.get('currency')
 
   if (!from || !to) return NextResponse.json({ error: 'from and to are required' }, { status: 400 })
+
+  const { data: org } = await supabaseAdmin
+    .from('organizations').select('base_currency').eq('id', tenantId).single()
+  const baseCurrency = org?.base_currency || 'NGN'
 
   const { data: accounts, error: accountsError } = await supabaseAdmin
     .from('chart_of_accounts')
@@ -35,7 +41,10 @@ export async function GET(request: Request) {
   const accountIds = (accounts || []).map((a) => a.id)
 
   if (accountIds.length === 0) {
-    return NextResponse.json({ from, to, revenue: [], expense: [], total_revenue: 0, total_expense: 0, net_income: 0 })
+    return NextResponse.json({
+      from, to, revenue: [], expense: [], total_revenue: 0, total_expense: 0, net_income: 0,
+      base_currency: baseCurrency, display_currency: null, display_rate: null,
+    })
   }
 
   let linesQuery = supabaseAdmin
@@ -67,8 +76,26 @@ export async function GET(request: Request) {
     .map((a) => ({ ...a, amount: -(byAccount.get(a.id) || 0) }))
     .filter((a) => a.amount !== 0)
 
-  const totalRevenue = revenue.reduce((sum, a) => sum + a.amount, 0)
-  const totalExpense = expense.reduce((sum, a) => sum + a.amount, 0)
+  let totalRevenue = revenue.reduce((sum, a) => sum + a.amount, 0)
+  let totalExpense = expense.reduce((sum, a) => sum + a.amount, 0)
+
+  // Whole-statement translation at a single current rate, for quick
+  // reference -- NOT per-line historical-rate conversion (that's the real
+  // GL/revaluation accounting in create-invoice.ts / revalue-fx-accounts.ts).
+  let displayRate: number | null = null
+  if (displayCurrency && displayCurrency !== baseCurrency) {
+    try {
+      displayRate = await getExchangeRate(tenantId, baseCurrency, displayCurrency, to)
+    } catch (err) {
+      if (err instanceof ExchangeRateError) return NextResponse.json({ error: err.message }, { status: 400 })
+      throw err
+    }
+    const r = displayRate
+    revenue.forEach((a) => { a.amount *= r })
+    expense.forEach((a) => { a.amount *= r })
+    totalRevenue *= r
+    totalExpense *= r
+  }
 
   return NextResponse.json({
     from,
@@ -78,5 +105,8 @@ export async function GET(request: Request) {
     total_revenue: totalRevenue,
     total_expense: totalExpense,
     net_income: totalRevenue - totalExpense,
+    base_currency: baseCurrency,
+    display_currency: displayCurrency && displayCurrency !== baseCurrency ? displayCurrency : null,
+    display_rate: displayRate,
   })
 }

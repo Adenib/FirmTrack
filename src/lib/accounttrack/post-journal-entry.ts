@@ -18,6 +18,13 @@ export type JournalLineInput = {
   debit?: number
   credit?: number
   description?: string | null
+  // Set only when this line posts against a genuinely foreign-currency
+  // account (chart_of_accounts.currency is set) -- tags the line with its
+  // native-currency amount so period-end revaluation has something to
+  // revalue. Left unset for the overwhelming majority of lines (base-currency
+  // accounts), matching today's behavior exactly.
+  originalCurrency?: string | null
+  originalAmount?: number | null
 }
 
 export type PostJournalEntryInput = {
@@ -115,6 +122,8 @@ export async function postJournalEntry(input: PostJournalEntryInput): Promise<st
       debit: l.debit || 0,
       credit: l.credit || 0,
       description: l.description || null,
+      original_currency: l.originalCurrency || null,
+      original_amount: l.originalAmount ?? null,
     })),
   })
 

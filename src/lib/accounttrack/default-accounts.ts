@@ -18,6 +18,8 @@ export const DEFAULT_ACCOUNTS = [
   { key: 'salaries_expense', code: '5000', name: 'Salaries Expense', account_type: 'expense' },
   { key: 'fx_gain', code: '4010', name: 'Foreign Exchange Gain', account_type: 'revenue' },
   { key: 'fx_loss', code: '5010', name: 'Foreign Exchange Loss', account_type: 'expense' },
+  { key: 'unrealized_fx_gain', code: '4020', name: 'Unrealized Foreign Exchange Gain', account_type: 'revenue' },
+  { key: 'unrealized_fx_loss', code: '5020', name: 'Unrealized Foreign Exchange Loss', account_type: 'expense' },
 ] as const
 
 export type AccountKey = typeof DEFAULT_ACCOUNTS[number]['key']
