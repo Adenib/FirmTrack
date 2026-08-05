@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('users').select('tenant_id, role').eq('id', user.id).single()
-  if (!profile || !['owner', 'admin'].includes(profile.role)) {
+  if (!profile || !['owner', 'admin', 'hr'].includes(profile.role)) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   }
 

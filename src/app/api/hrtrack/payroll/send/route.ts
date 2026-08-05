@@ -2,7 +2,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendPayslipEmail, EmailSendError } from '@/lib/hrtrack/send-payslip-email'
 
-const PAYROLL_PRIVILEGED = ['owner', 'admin']
+const PAYROLL_PRIVILEGED = ['owner', 'admin', 'hr']
 
 export async function POST(request: Request) {
   const supabase = await createServerClient()

@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const PAYROLL_PRIVILEGED = ['owner', 'admin']
+const PAYROLL_PRIVILEGED = ['owner', 'admin', 'hr']
 
 // Returns the payslip as a PDF -- the employee it belongs to, or
 // owner/admin for anyone's. Only posted runs have a real payslip; a

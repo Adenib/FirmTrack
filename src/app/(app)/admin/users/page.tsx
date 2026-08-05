@@ -171,6 +171,7 @@ export default function UsersPage() {
             <option value="staff">Staff</option>
             <option value="manager">Manager</option>
             <option value="accounts">Accounts</option>
+            <option value="hr">HR</option>
             <option value="admin">Admin</option>
           </select>
         </div>

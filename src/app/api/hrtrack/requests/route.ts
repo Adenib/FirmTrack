@@ -9,8 +9,8 @@ const supabaseAdmin = createClient(
 )
 
 const REQUEST_TYPES = ['leave', 'redeployment', 'grievance', 'exit']
-const REVIEW_PRIVILEGED = ['owner', 'admin', 'manager']
-const GRIEVANCE_PRIVILEGED = ['owner', 'admin']
+const REVIEW_PRIVILEGED = ['owner', 'admin', 'manager', 'hr']
+const GRIEVANCE_PRIVILEGED = ['owner', 'admin', 'hr']
 
 async function getProfile(supabase: Awaited<ReturnType<typeof createServerClient>>, userId: string) {
   const { data } = await supabase.from('users').select('tenant_id, role').eq('id', userId).single()

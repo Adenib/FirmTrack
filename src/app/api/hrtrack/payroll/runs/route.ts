@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const PAYROLL_PRIVILEGED = ['owner', 'admin']
+const PAYROLL_PRIVILEGED = ['owner', 'admin', 'hr']
 
 async function getProfile(supabase: Awaited<ReturnType<typeof createServerClient>>, userId: string) {
   const { data } = await supabase.from('users').select('tenant_id, role').eq('id', userId).single()

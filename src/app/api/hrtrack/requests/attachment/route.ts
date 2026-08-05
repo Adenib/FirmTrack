@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 )
 
 const BUCKET = 'request-attachments'
-const GRIEVANCE_PRIVILEGED = ['owner', 'admin']
+const GRIEVANCE_PRIVILEGED = ['owner', 'admin', 'hr']
 const MAX_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES: Record<string, string> = {
   'application/pdf': 'pdf',

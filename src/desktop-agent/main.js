@@ -2,6 +2,7 @@ const { app, Tray, Menu, BrowserWindow, ipcMain, shell, nativeImage, safeStorage
 const path = require('path')
 const Store = require('electron-store')
 const tracker = require('./tracker')
+const wfhMonitor = require('./wfh-monitor')
 
 // Set before any app.getPath() calls so userData resolves to
 // %APPDATA%/FirmTrack instead of the package name "firmtrack-tracker".
@@ -174,6 +175,7 @@ app.on('before-quit', (event) => {
   if (isQuitting) return
   event.preventDefault()
   isQuitting = true
+  wfhMonitor.stop()
   tracker.stop().finally(() => app.quit())
 })
 
@@ -189,4 +191,6 @@ app.whenReady().then(() => {
     settingsGetter: getSettings,
     onState: onTrackerState,
   })
+
+  wfhMonitor.start({ settingsGetter: getSettings })
 })

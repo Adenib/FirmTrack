@@ -21,8 +21,12 @@ const statusColor = {
   remote: 'bg-amber-100 text-amber-700',
 }
 
+const WFH_PRIVILEGED = ['owner', 'admin', 'hr']
+
 export default function AttendancePage() {
-  const [me, setMe] = useState({ email: '' })
+  const [me, setMe] = useState({ email: '', role: '' })
+  const [wfhChecks, setWfhChecks] = useState([])
+  const [wfhChecksLoading, setWfhChecksLoading] = useState(false)
   const [openRecord, setOpenRecord] = useState(null)
   const [clockedInAt, setClockedInAt] = useState(null)
   const [remoteNote, setRemoteNote] = useState('')
@@ -62,8 +66,20 @@ export default function AttendancePage() {
     if (res.ok) setOffices(result.offices || [])
   }
 
+  const loadWfhChecks = async () => {
+    setWfhChecksLoading(true)
+    const res = await fetch('/api/hrtrack/wfh-checks')
+    const result = await res.json()
+    if (res.ok) setWfhChecks(result.checks || [])
+    setWfhChecksLoading(false)
+  }
+
   useEffect(() => {
-    fetch('/api/layout-data').then((r) => r.json()).then((d) => setMe({ email: d.profile?.email || '' }))
+    fetch('/api/layout-data').then((r) => r.json()).then((d) => {
+      const role = d.profile?.role || ''
+      setMe({ email: d.profile?.email || '', role })
+      if (WFH_PRIVILEGED.includes(role)) loadWfhChecks()
+    })
     load()
     loadOffices()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -278,6 +294,33 @@ export default function AttendancePage() {
           </form>
         )}
       </div>
+
+      {WFH_PRIVILEGED.includes(me.role) && (
+        <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-semibold text-gray-900">WFH Check-ins — Today</p>
+            <button type="button" onClick={loadWfhChecks} className="text-xs text-blue-600 hover:underline">Refresh</button>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">
+            Employees who were prompted &quot;Are you still working from home?&quot; after 30 idle minutes and haven&apos;t
+            confirmed yet. Also sent as an end-of-day digest.
+          </p>
+          {wfhChecksLoading ? (
+            <p className="text-sm text-gray-500">Loading...</p>
+          ) : wfhChecks.length === 0 ? (
+            <p className="text-sm text-gray-400">No unconfirmed WFH check-ins today.</p>
+          ) : (
+            <div className="space-y-1">
+              {wfhChecks.map((c) => (
+                <div key={c.id} className="flex items-center justify-between text-sm border-t border-gray-100 pt-1">
+                  <span className="text-gray-700">{c.users?.email || 'Unknown'}</span>
+                  <span className="text-amber-600">Prompted {fmtTime(c.prompted_at)} · no response</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-gray-100">

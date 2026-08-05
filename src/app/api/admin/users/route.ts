@@ -10,7 +10,7 @@ const supabaseAdmin = createClient(
 
 // 'owner' is deliberately excluded -- ownership transfer is a more
 // sensitive operation than a routine role change and isn't handled here.
-const ASSIGNABLE_ROLES = ['staff', 'manager', 'accounts', 'admin']
+const ASSIGNABLE_ROLES = ['staff', 'manager', 'accounts', 'hr', 'admin']
 
 async function requirePrivilegedRequester(supabase: Awaited<ReturnType<typeof createServerClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
