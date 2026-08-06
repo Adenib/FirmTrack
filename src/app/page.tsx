@@ -9,6 +9,7 @@ import {
   BuildingIcon,
 } from '@/components/brand/icons'
 import { MARKETING_MODULES } from '@/lib/marketing/modules'
+import FaqChatWidget from '@/components/marketing/faq-chat-widget'
 
 const TRUST_ITEMS = [
   { icon: ShieldLockIcon, label: 'Multi-factor authentication' },
@@ -177,6 +178,8 @@ export default function HomePage() {
           </Link>
         </div>
       </footer>
+
+      <FaqChatWidget />
     </div>
   )
 }
