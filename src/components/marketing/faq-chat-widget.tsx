@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { FAQ_ENTRIES, matchFaqEntry, type FaqEntry } from '@/lib/marketing/faq'
+import { FAQ_CATEGORIES, matchFaqEntry, type FaqEntry, type FaqCategory } from '@/lib/marketing/faq'
 
 function ChatIcon({ className = 'w-6 h-6' }: { className?: string }) {
   return (
@@ -26,6 +26,7 @@ function XIcon({ className = 'w-5 h-5' }: { className?: string }) {
 
 export default function FaqChatWidget() {
   const [open, setOpen] = useState(false)
+  const [category, setCategory] = useState<FaqCategory | null>(null)
   const [selected, setSelected] = useState<FaqEntry | null>(null)
   const [query, setQuery] = useState('')
   const [searched, setSearched] = useState<{ query: string; result: FaqEntry | null } | null>(null)
@@ -35,10 +36,17 @@ export default function FaqChatWidget() {
     if (!query.trim()) return
     setSearched({ query, result: matchFaqEntry(query) })
     setSelected(null)
+    setCategory(null)
     setQuery('')
   }
 
-  const reset = () => {
+  const resetToCategories = () => {
+    setSelected(null)
+    setCategory(null)
+    setSearched(null)
+  }
+
+  const backToCategory = () => {
     setSelected(null)
     setSearched(null)
   }
@@ -56,16 +64,18 @@ export default function FaqChatWidget() {
 
           <div className="flex-1 overflow-y-auto p-4">
             {selected ? (
+              // Level 3: a specific answer.
               <div>
-                <button type="button" onClick={reset} className="text-xs text-brand-blue hover:underline mb-3">
-                  &larr; Ask something else
+                <button type="button" onClick={backToCategory} className="text-xs text-brand-blue hover:underline mb-3">
+                  &larr; {category ? `Back to ${category.label}` : 'Ask something else'}
                 </button>
                 <p className="text-sm font-semibold text-gray-900 mb-1">{selected.question}</p>
                 <p className="text-sm text-gray-700">{selected.answer}</p>
               </div>
             ) : searched ? (
+              // Free-text search result.
               <div>
-                <button type="button" onClick={reset} className="text-xs text-brand-blue hover:underline mb-3">
+                <button type="button" onClick={resetToCategories} className="text-xs text-brand-blue hover:underline mb-3">
                   &larr; Ask something else
                 </button>
                 {searched.result ? (
@@ -79,13 +89,15 @@ export default function FaqChatWidget() {
                   </p>
                 )}
               </div>
-            ) : (
+            ) : category ? (
+              // Level 2: questions within a category.
               <div>
-                <p className="text-sm text-gray-600 mb-3">
-                  Hi! I can answer common questions about FirmTrack. Pick one below, or type your own.
-                </p>
+                <button type="button" onClick={resetToCategories} className="text-xs text-brand-blue hover:underline mb-3">
+                  &larr; All topics
+                </button>
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-2">{category.label}</p>
                 <div className="space-y-1.5">
-                  {FAQ_ENTRIES.map((entry) => (
+                  {category.entries.map((entry) => (
                     <button
                       key={entry.id}
                       type="button"
@@ -93,6 +105,25 @@ export default function FaqChatWidget() {
                       className="block w-full text-left text-sm px-3 py-2 border border-gray-200 rounded-md text-gray-700 hover:border-brand-blue/40 hover:bg-blue-50"
                     >
                       {entry.question}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              // Level 1: topic categories.
+              <div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Hi! I can answer common questions about FirmTrack. Pick a topic below, or type your own question.
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {FAQ_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setCategory(cat)}
+                      className="text-left text-sm px-3 py-2 border border-gray-200 rounded-md text-gray-700 hover:border-brand-blue/40 hover:bg-blue-50"
+                    >
+                      {cat.label}
                     </button>
                   ))}
                 </div>
