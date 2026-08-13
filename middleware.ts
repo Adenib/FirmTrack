@@ -76,7 +76,9 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/complete-signup') ||
     path.startsWith('/terms') ||
     path.startsWith('/mfa/enroll') ||
-    path.startsWith('/mfa/challenge')
+    path.startsWith('/mfa/challenge') ||
+    path.startsWith('/pending-approval') ||
+    path.startsWith('/auth/signout')
 
   if ((!user || sessionRevoked) && !exemptFromAuthRedirect) {
     const url = request.nextUrl.clone()
@@ -91,6 +93,25 @@ export async function middleware(request: NextRequest) {
       redirectResponse.cookies.set(cookie)
     }
     return redirectResponse
+  }
+
+  // Pending-approval gate: a brand-new signup's organization starts
+  // is_active=false until a FirmTrack team member approves it via the
+  // Creator Console. Registration itself already establishes a live
+  // session, so this can't rely on the login route alone -- checked here
+  // on every request, same enforcement pattern as session-revocation and
+  // the MFA gate above/below. Runs before the MFA gate: no point making a
+  // pending user enroll MFA before they even have access.
+  if (user && !sessionRevoked && !exemptFromAuthRedirect) {
+    const { data: profile } = await supabase.from('users').select('tenant_id').eq('id', user.id).single()
+    if (profile?.tenant_id) {
+      const { data: org } = await supabaseAdmin.from('organizations').select('is_active').eq('id', profile.tenant_id).single()
+      if (org && org.is_active === false) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/pending-approval'
+        return NextResponse.redirect(url)
+      }
+    }
   }
 
   // MFA gate: a valid, non-revoked session that hasn't completed its

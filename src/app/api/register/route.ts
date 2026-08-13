@@ -4,6 +4,7 @@ import { DEFAULT_ACCOUNTS } from '@/lib/accounttrack/default-accounts'
 import { DEFAULT_LEAVE_TYPES } from '@/lib/hrtrack/default-leave-types'
 import { logSecurityEvent } from '@/lib/audit-log'
 import { currencyForPhone } from '@/lib/currency/calling-codes'
+import { notifyNewSignup } from '@/lib/creator/notify-signup'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,9 +34,14 @@ export async function POST(request: Request) {
     // The calling-code prefix (e.g. +234) picks a sensible default
     // base_currency (e.g. NGN) -- just a starting point, editable from
     // settings until the tenant's first posted transaction locks it in.
+    //
+    // is_active starts false -- every new signup is created pending until
+    // a FirmTrack team member approves it via the Creator Console
+    // (src/app/creator/signups/). Enforced at login (src/app/api/auth/login/route.ts)
+    // and on every request (middleware.ts).
     const { data: org, error: orgError } = await supabaseAdmin
       .from('organizations')
-      .insert({ name: orgName, slug, plan: 'free', phone: phone || null, base_currency: currencyForPhone(phone) })
+      .insert({ name: orgName, slug, plan: 'free', phone: phone || null, base_currency: currencyForPhone(phone), is_active: false })
       .select()
       .single()
 
@@ -81,6 +87,8 @@ export async function POST(request: Request) {
       request,
       metadata: { version: 'v1' },
     })
+
+    await notifyNewSignup({ orgName, email, orgId: org.id })
 
     return NextResponse.json({ success: true, organizationId: org.id })
   } catch (err) {

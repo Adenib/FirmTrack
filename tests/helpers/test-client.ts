@@ -80,6 +80,11 @@ export async function createTestTenant(namePrefix: string, emailDomain = 'firmtr
   }
   const tenantId = registerBody.organizationId
 
+  // /api/register now creates every new org pending (is_active: false)
+  // until a Creator Console approval -- test tenants should behave as
+  // already-approved, so the login right below this doesn't hit that gate.
+  await supabaseAdmin.from('organizations').update({ is_active: true }).eq('id', tenantId)
+
   // /api/register only grants the free-tier modules — accounttrack isn't
   // one of them, so every AccountTrack write route's hasActiveModule()
   // check would 403 without this.

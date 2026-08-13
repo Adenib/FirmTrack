@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { MICROSOFT_GRAPH_SCOPES } from '@/lib/microsoft-graph/scopes'
+import { notifyNewSignup } from '@/lib/creator/notify-signup'
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -131,9 +132,13 @@ export async function GET(request: Request) {
   const orgName = user.user_metadata.org_name as string
   const slug = slugify(orgName) + '-' + Math.random().toString(36).slice(2, 7)
 
+  // is_active starts false -- every new signup is created pending until a
+  // FirmTrack team member approves it via the Creator Console
+  // (src/app/creator/signups/). Enforced at login and on every request
+  // (middleware.ts). Mirrors /api/register's identical org-creation shape.
   const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .insert({ name: orgName, slug, plan: 'free' })
+    .insert({ name: orgName, slug, plan: 'free', is_active: false })
     .select()
     .single()
 
@@ -165,5 +170,7 @@ export async function GET(request: Request) {
 
   await supabase.from('subscriptions').insert(subscriptionRows)
 
-  return NextResponse.redirect(`${origin}/dashboard`)
+  await notifyNewSignup({ orgName, email: user.email || '', orgId: org.id })
+
+  return NextResponse.redirect(`${origin}/pending-approval`)
 }

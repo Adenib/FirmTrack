@@ -83,6 +83,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This account has been deactivated' }, { status: 401 })
     }
 
+    if (profile?.tenant_id) {
+      const { data: org } = await supabaseAdmin
+        .from('organizations')
+        .select('is_active')
+        .eq('id', profile.tenant_id)
+        .single()
+
+      if (org && org.is_active === false) {
+        await supabase.auth.signOut()
+        await logSecurityEvent({
+          eventType: 'login_failure',
+          email,
+          userId: data.user.id,
+          tenantId: profile.tenant_id,
+          request,
+          metadata: { reason: 'org_pending_approval' },
+        })
+        return NextResponse.json({ error: "Your firm's account is awaiting approval" }, { status: 401 })
+      }
+    }
+
     // A fresh token's iat is always after any past revocation moment
     // anyway, so leaving this set wouldn't let a stale session back in --
     // clearing it just keeps the column meaningful to read at a glance
