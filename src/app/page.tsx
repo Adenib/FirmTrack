@@ -36,6 +36,9 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Logo size="sm" />
           <nav className="flex items-center gap-4">
+            <Link href="/blog" className="text-sm font-medium text-gray-700 hover:text-brand-blue">
+              Blog
+            </Link>
             <Link href="/login" className="text-sm font-medium text-gray-700 hover:text-brand-blue">
               Log in
             </Link>
