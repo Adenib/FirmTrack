@@ -66,7 +66,10 @@ export async function middleware(request: NextRequest) {
     path === '/sw.js' ||
     path === '/manifest.webmanifest' ||
     path === '/offline.html' ||
+    path === '/sitemap.xml' ||
+    path === '/robots.txt' ||
     path.startsWith('/modules') ||
+    path.startsWith('/blog') ||
     path.startsWith('/api') ||
     path.startsWith('/login') ||
     path.startsWith('/register') ||
