@@ -3,13 +3,16 @@
 // admins) — kept equivalent to 'admin' so their access is unaffected.
 // New staff added via /creator/staff get one of 'admin' | 'accounts' |
 // 'developer', each scoped to a subset of the console's pages.
-export type CreatorPage = 'overview' | 'organizations' | 'signups' | 'revenue' | 'staff' | 'support'
+export type CreatorPage = 'overview' | 'organizations' | 'signups' | 'pricing' | 'revenue' | 'staff' | 'support'
 
 const PAGE_ACCESS: Record<CreatorPage, string[]> = {
   overview: ['creator', 'admin', 'accounts', 'developer'],
   organizations: ['creator', 'admin', 'developer'],
   // Same roles as 'organizations' -- approving a signup is an org-management action.
   signups: ['creator', 'admin', 'developer'],
+  // Financially sensitive (changes what every tenant is charged, and can
+  // push a live Paystack plan amount) -- same conservative bar as 'staff'.
+  pricing: ['creator', 'admin'],
   revenue: ['creator', 'admin', 'accounts'],
   staff: ['creator', 'admin'],
   support: ['creator', 'admin'],

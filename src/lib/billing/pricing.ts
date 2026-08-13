@@ -34,3 +34,17 @@ export function moduleMonthlyPrice(tier: Tier, mod: { free: boolean }): number {
 export function isModuleKey(key: string): key is ModuleKey {
   return MODULES.some((m) => m.key === key)
 }
+
+// Live, editable pricing (Creator Console -> /creator/pricing, table
+// platform_module_pricing) -- module key -> tier -> price. Used by every
+// consumer where "what's charged" must be exact: checkout
+// (payments/initialize) and the pricing calculator. TIER_PRICES/
+// ADDON_PRICE_BASIC above stay as the frozen seed values for that table's
+// migration and for illustrative marketing copy (the FAQ widget, the
+// Support Assistant upsell) that doesn't need to track live price
+// changes precisely.
+export type PriceTable = Partial<Record<ModuleKey, Partial<Record<Tier, number>>>>
+
+export function moduleMonthlyPriceFromTable(tier: Tier, moduleKey: ModuleKey, priceTable: PriceTable): number {
+  return priceTable[moduleKey]?.[tier] ?? 0
+}

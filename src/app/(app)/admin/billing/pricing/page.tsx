@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { MODULES, TIER_PRICES, moduleMonthlyPrice, type Tier } from '@/lib/billing/pricing'
+import { useState, useMemo, useEffect } from 'react'
+import { MODULES, type Tier, type ModuleKey, type PriceTable, moduleMonthlyPriceFromTable } from '@/lib/billing/pricing'
 
 type Billing = 'monthly' | 'annual'
 
@@ -14,6 +14,16 @@ export default function PricingCalculatorPage() {
   )
   const [subscribing, setSubscribing] = useState(false)
   const [subscribeError, setSubscribeError] = useState('')
+
+  // Live standard pricing (editable via the Creator Console) -- fetched
+  // once so what's shown here is exactly what checkout will charge.
+  const [priceTable, setPriceTable] = useState<PriceTable>({})
+  useEffect(() => {
+    fetch('/api/billing/pricing')
+      .then((r) => r.json())
+      .then((body) => setPriceTable(body.priceTable || {}))
+      .catch(() => {})
+  }, [])
 
   const toggleModule = (key: string) => {
     setSelectedModules((prev) => {
@@ -29,7 +39,7 @@ export default function PricingCalculatorPage() {
 
     MODULES.forEach((mod) => {
       if (!selectedModules.has(mod.key)) return
-      perUserMonthly += moduleMonthlyPrice(tier, mod)
+      perUserMonthly += moduleMonthlyPriceFromTable(tier, mod.key as ModuleKey, priceTable)
     })
 
     const isAnnual = billing === 'annual'
@@ -45,7 +55,7 @@ export default function PricingCalculatorPage() {
       periodTotal: periodTotalValue,
       periodLabel: isAnnual ? 'Per year' : 'Per month',
     }
-  }, [users, tier, billing, selectedModules])
+  }, [users, tier, billing, selectedModules, priceTable])
 
   const fmt = (n: number) => '₦' + Math.round(n).toLocaleString()
 
@@ -193,9 +203,9 @@ export default function PricingCalculatorPage() {
       </div>
 
       <p className="text-xs text-gray-400 mt-4">
-        Basic tier: core modules (TimeTrack, MovementTrack, TaskTrack, BillTrack) at ₦{TIER_PRICES.basic.toLocaleString()}/user/month.
-        AccountTrack, DocTrack, and HRTrack are ₦2,000/user/month add-ons on Basic.
-        Standard and Elite bundle all modules at a flat per-module rate.
+        Basic tier: core modules (TimeTrack, MovementTrack, TaskTrack, BillTrack) at ₦{(priceTable.timetrack?.basic ?? 0).toLocaleString()}/user/month.
+        AccountTrack, DocTrack, and HRTrack are ₦{(priceTable.accounttrack?.basic ?? 0).toLocaleString()}/user/month add-ons on Basic.
+        Standard and Elite bundle all modules at a per-module rate, editable per module in the Creator Console.
       </p>
     </div>
   )

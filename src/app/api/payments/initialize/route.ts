@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { MODULES, isModuleKey, moduleMonthlyPrice, type Tier } from '@/lib/billing/pricing'
+import { isModuleKey, moduleMonthlyPriceFromTable, type Tier } from '@/lib/billing/pricing'
+import { getPricingTable } from '@/lib/billing/get-pricing-table'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,11 +50,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'modules must be a non-empty array of known module keys' }, { status: 400 })
     }
     const tierKey = tier as Tier
+    const priceTable = await getPricingTable(currency)
     const modulePrices: Record<string, number> = {}
     let perUserMonthly = 0
     for (const key of modules) {
-      const mod = MODULES.find((m) => m.key === key)!
-      const price = moduleMonthlyPrice(tierKey, mod)
+      const price = moduleMonthlyPriceFromTable(tierKey, key, priceTable)
       modulePrices[key] = price
       perUserMonthly += price
     }
