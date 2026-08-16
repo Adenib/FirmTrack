@@ -126,7 +126,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'AccountTrack is not active for this tenant' }, { status: 403 })
   }
 
-  const { entry_date, description, lines } = await request.json()
+  const { entry_date, description, reference, lines } = await request.json()
   if (!Array.isArray(lines) || lines.length === 0) {
     return NextResponse.json({ error: 'lines array is required' }, { status: 400 })
   }
@@ -162,6 +162,7 @@ export async function POST(request: Request) {
       description: description || 'Manual journal entry',
       sourceType: 'manual',
       createdBy: user.id,
+      reference: reference || null,
       lines: lines.map((l: { account_id: string; matter_id?: string; lawyer_id?: string; debit?: number; credit?: number; description?: string }) => ({
         accountId: l.account_id,
         matterId: l.matter_id || null,

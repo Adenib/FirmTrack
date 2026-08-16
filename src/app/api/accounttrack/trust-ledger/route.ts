@@ -2,10 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
-import { assertPeriodOpen, postJournalEntry, JournalPostingError } from '@/lib/accounttrack/post-journal-entry'
-import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
-import { tagOriginalAmount } from '@/lib/accounttrack/tag-original-amount'
-import type { AccountKey } from '@/lib/accounttrack/default-accounts'
+import { JournalPostingError } from '@/lib/accounttrack/post-journal-entry'
+import { ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
+import { postTrustLedgerEntry, TrustLedgerGLPostingError } from '@/lib/accounttrack/post-trust-ledger-entry'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,78 +69,24 @@ export async function POST(request: Request) {
   const effectiveDate = entry_date || new Date().toISOString().split('T')[0]
 
   try {
-    await assertPeriodOpen(profile.tenant_id, effectiveDate)
+    const entry = await postTrustLedgerEntry({
+      tenantId: profile.tenant_id,
+      matterId: matter_id,
+      ledgerType: ledger_type,
+      entryDate: effectiveDate,
+      amount: Number(amount),
+      transactionType: transaction_type,
+      description,
+      reference,
+      createdBy: user.id,
+    })
+    return NextResponse.json({ entry })
   } catch (err) {
     if (err instanceof JournalPostingError) return NextResponse.json({ error: err.message }, { status: 400 })
-    throw err
-  }
-
-  const [{ data: matter }, { data: org }] = await Promise.all([
-    supabaseAdmin.from('matters').select('billing_currency').eq('id', matter_id).eq('tenant_id', profile.tenant_id).single(),
-    supabaseAdmin.from('organizations').select('base_currency').eq('id', profile.tenant_id).single(),
-  ])
-  const ledgerCurrency = matter?.billing_currency || org?.base_currency || 'NGN'
-  const baseCurrency = org?.base_currency || 'NGN'
-
-  let rate: number
-  try {
-    rate = await getExchangeRate(profile.tenant_id, ledgerCurrency, baseCurrency, effectiveDate)
-  } catch (err) {
     if (err instanceof ExchangeRateError) return NextResponse.json({ error: err.message }, { status: 400 })
-    throw err
+    if (err instanceof TrustLedgerGLPostingError) {
+      return NextResponse.json({ error: `Ledger entry recorded but GL posting failed: ${err.message}` }, { status: 500 })
+    }
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }
-  const numericAmount = Number(amount)
-  const baseAmount = numericAmount * rate
-
-  const { data: entry, error } = await supabaseAdmin
-    .from('trust_ledger_entries')
-    .insert({
-      tenant_id: profile.tenant_id,
-      matter_id,
-      ledger_type,
-      entry_date: effectiveDate,
-      amount: numericAmount,
-      currency: ledgerCurrency,
-      base_currency_amount: baseAmount,
-      transaction_type: transaction_type || null,
-      description: description || null,
-      reference: reference || null,
-      created_by: user.id,
-    })
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  const deposit = numericAmount > 0
-  const liabilityKey: AccountKey = ledger_type === 'trust' ? 'trust_liability' : 'retainer_liability'
-  const sourceType = deposit
-    ? (ledger_type === 'trust' ? 'trust_deposit' : 'retainer_deposit')
-    : (ledger_type === 'trust' ? 'trust_withdrawal' : 'retainer_withdrawal')
-
-  const bankTag = await tagOriginalAmount(profile.tenant_id, 'trust_bank', ledgerCurrency, Math.abs(numericAmount))
-
-  try {
-    await postJournalEntry({
-      tenantId: profile.tenant_id,
-      entryDate: effectiveDate,
-      description: description || `${ledger_type} ${deposit ? 'deposit' : 'withdrawal'}`,
-      sourceType,
-      sourceId: entry.id,
-      createdBy: user.id,
-      lines: deposit
-        ? [
-            { accountKey: 'trust_bank', matterId: matter_id, debit: Math.abs(baseAmount), ...bankTag },
-            { accountKey: liabilityKey, matterId: matter_id, credit: Math.abs(baseAmount) },
-          ]
-        : [
-            { accountKey: liabilityKey, matterId: matter_id, debit: Math.abs(baseAmount) },
-            { accountKey: 'trust_bank', matterId: matter_id, credit: Math.abs(baseAmount), ...bankTag },
-          ],
-    })
-  } catch (err) {
-    return NextResponse.json({ error: `Ledger entry recorded but GL posting failed: ${(err as Error).message}` }, { status: 500 })
-  }
-
-  return NextResponse.json({ entry })
 }

@@ -32,3 +32,24 @@ export async function tagOriginalAmount(
   }
   return {}
 }
+
+// Same as tagOriginalAmount but by raw account id -- needed for a custom
+// cash account (e.g. "Petty Cash - Lagos"), which has no `key`.
+export async function tagOriginalAmountById(
+  tenantId: string,
+  accountId: string,
+  transactionCurrency: string,
+  transactionAmount: number
+): Promise<{ originalCurrency?: string; originalAmount?: number }> {
+  const { data: account } = await supabaseAdmin
+    .from('chart_of_accounts')
+    .select('currency')
+    .eq('tenant_id', tenantId)
+    .eq('id', accountId)
+    .maybeSingle()
+
+  if (account?.currency && account.currency === transactionCurrency) {
+    return { originalCurrency: transactionCurrency, originalAmount: transactionAmount }
+  }
+  return {}
+}

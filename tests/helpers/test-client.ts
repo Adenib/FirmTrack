@@ -212,6 +212,7 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     'matters',
     'clients',
     'subscriptions',
+    'recurring_transaction_templates',
     'users',
     'organizations',
   ]

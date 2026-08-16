@@ -35,6 +35,10 @@ export type PostJournalEntryInput = {
   sourceId?: string | null
   createdBy: string
   lines: JournalLineInput[]
+  // Free-text reference (e.g. "JV-2026-0041", a check number) -- set
+  // after the RPC posts the entry, since post_journal_entry itself has no
+  // reference parameter.
+  reference?: string | null
 }
 
 // Thrown for both "period is closed" (checked here, before any row is
@@ -128,5 +132,11 @@ export async function postJournalEntry(input: PostJournalEntryInput): Promise<st
   })
 
   if (error) throw new JournalPostingError(error.message)
-  return data as string
+  const entryId = data as string
+
+  if (input.reference) {
+    await supabaseAdmin.from('journal_entries').update({ reference: input.reference }).eq('id', entryId)
+  }
+
+  return entryId
 }

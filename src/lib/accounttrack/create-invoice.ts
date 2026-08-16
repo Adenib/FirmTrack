@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
-import { assertPeriodOpen, postJournalEntry, JournalPostingError } from './post-journal-entry'
+import { assertPeriodOpen, postJournalEntry, JournalPostingError, type JournalLineInput } from './post-journal-entry'
 import { getExchangeRate, ExchangeRateError } from './exchange-rate'
+import { tagOriginalAmount, tagOriginalAmountById } from './tag-original-amount'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -168,4 +169,100 @@ export async function createInvoiceForMatter(input: CreateInvoiceInput) {
   }
 
   return invoice
+}
+
+export type ApplyInvoicePaymentInput = {
+  tenantId: string
+  invoice: { id: string; invoice_number: string; matter_id: string; currency: string | null; total_amount: number; paid_amount: number; base_currency_amount: number | null }
+  paymentAmount: number
+  entryDate: string
+  createdBy: string
+  // Defaults to the 'operating_cash' default account, preserving today's
+  // exact behavior. Pass a raw id to deposit into a different cash
+  // account (e.g. a custom "Petty Cash" account) -- Receive Payment's
+  // reason for this parameter existing.
+  cashAccountId?: string | null
+  reference?: string | null
+}
+
+// Extracted verbatim from the invoices route's PATCH payment_amount
+// branch so Receive Payment can reuse it. Caller must have already called
+// assertPeriodOpen for entryDate -- not repeated here, since Receive
+// Payment checks it once up front for the whole request.
+export async function applyInvoicePayment(input: ApplyInvoicePaymentInput) {
+  const { data: org } = await supabaseAdmin.from('organizations').select('base_currency').eq('id', input.tenantId).single()
+  const baseCurrency = org?.base_currency || 'NGN'
+  const invoiceCurrency = input.invoice.currency || baseCurrency
+
+  const newPaid = Number(input.invoice.paid_amount || 0) + Number(input.paymentAmount)
+  const updates = {
+    paid_amount: newPaid,
+    status: newPaid >= Number(input.invoice.total_amount || 0) ? 'paid' : 'partially_paid',
+    updated_at: new Date().toISOString(),
+  }
+
+  const { data: updatedInvoice, error: updateError } = await supabaseAdmin
+    .from('invoices')
+    .update(updates)
+    .eq('id', input.invoice.id)
+    .eq('tenant_id', input.tenantId)
+    .select()
+    .single()
+
+  if (updateError) throw new InvoiceCreationError(updateError.message, 500)
+
+  // payment_amount is in the invoice's own currency. Convert to base
+  // currency at the settlement date's rate -- the realized cash value. The
+  // AR being settled is a proportional slice of what was originally
+  // recognized at invoice creation (correctly handles partial payments
+  // across multiple rates). Any difference is a realized FX gain or loss.
+  let rate: number
+  try {
+    rate = await getExchangeRate(input.tenantId, invoiceCurrency, baseCurrency, input.entryDate)
+  } catch (err) {
+    if (err instanceof ExchangeRateError) throw new InvoiceCreationError(err.message, 400)
+    throw err
+  }
+  const paymentBaseValue = Number(input.paymentAmount) * rate
+  const totalAmount = Number(input.invoice.total_amount || 0)
+  const originalArValue = totalAmount > 0
+    ? (Number(input.paymentAmount) / totalAmount) * Number(input.invoice.base_currency_amount || 0)
+    : Number(input.paymentAmount)
+  const fxDiff = paymentBaseValue - originalArValue
+
+  const cashTag = input.cashAccountId
+    ? await tagOriginalAmountById(input.tenantId, input.cashAccountId, invoiceCurrency, Number(input.paymentAmount))
+    : await tagOriginalAmount(input.tenantId, 'operating_cash', invoiceCurrency, Number(input.paymentAmount))
+
+  const lines: JournalLineInput[] = [
+    {
+      ...(input.cashAccountId ? { accountId: input.cashAccountId } : { accountKey: 'operating_cash' }),
+      matterId: input.invoice.matter_id,
+      debit: paymentBaseValue,
+      ...cashTag,
+    },
+    { accountKey: 'accounts_receivable', matterId: input.invoice.matter_id, credit: originalArValue },
+  ]
+  if (fxDiff > 0.005) {
+    lines.push({ accountKey: 'fx_gain', matterId: input.invoice.matter_id, credit: fxDiff })
+  } else if (fxDiff < -0.005) {
+    lines.push({ accountKey: 'fx_loss', matterId: input.invoice.matter_id, debit: -fxDiff })
+  }
+
+  try {
+    await postJournalEntry({
+      tenantId: input.tenantId,
+      entryDate: input.entryDate,
+      description: `Payment received on invoice ${input.invoice.invoice_number}`,
+      sourceType: 'invoice_payment',
+      sourceId: input.invoice.id,
+      createdBy: input.createdBy,
+      reference: input.reference,
+      lines,
+    })
+  } catch (err) {
+    throw new InvoiceCreationError(`Invoice updated but GL posting failed: ${(err as Error).message}`, 500)
+  }
+
+  return updatedInvoice
 }

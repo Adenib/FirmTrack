@@ -14,6 +14,7 @@ export default function ChartOfAccountsPage() {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [accountType, setAccountType] = useState('expense')
+  const [isCashAccount, setIsCashAccount] = useState(false)
   const [currency, setCurrency] = useState('')
   const [baseCurrency, setBaseCurrency] = useState('NGN')
   const [currencyOptions, setCurrencyOptions] = useState([])
@@ -49,7 +50,7 @@ export default function ChartOfAccountsPage() {
     const response = await fetch('/api/accounttrack/chart-of-accounts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: code || null, name, account_type: accountType, currency: currency || null }),
+      body: JSON.stringify({ code: code || null, name, account_type: accountType, currency: currency || null, is_cash_account: isCashAccount }),
     })
     const result = await response.json()
 
@@ -62,8 +63,24 @@ export default function ChartOfAccountsPage() {
     setCode('')
     setName('')
     setAccountType('expense')
+    setIsCashAccount(false)
     setCurrency('')
     setSubmitting(false)
+    await loadAccounts()
+  }
+
+  const handleCashToggle = async (id, nextValue) => {
+    setError('')
+    const response = await fetch('/api/accounttrack/chart-of-accounts', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, is_cash_account: nextValue }),
+    })
+    const result = await response.json()
+    if (!response.ok) {
+      setError(result.error || 'Could not update account')
+      return
+    }
     await loadAccounts()
   }
 
@@ -151,6 +168,17 @@ export default function ChartOfAccountsPage() {
             ))}
           </select>
         </div>
+        <div>
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
+            <input
+              type="checkbox"
+              checked={isCashAccount}
+              onChange={(e) => setIsCashAccount(e.target.checked)}
+              disabled={accountType !== 'asset'}
+            />
+            Cash/bank account
+          </label>
+        </div>
         <button
           type="submit"
           disabled={submitting}
@@ -173,6 +201,7 @@ export default function ChartOfAccountsPage() {
                 <th className="px-3 py-2 font-medium">Name</th>
                 <th className="px-3 py-2 font-medium">Type</th>
                 <th className="px-3 py-2 font-medium">Currency</th>
+                <th className="px-3 py-2 font-medium">Cash?</th>
                 <th className="px-3 py-2 font-medium"></th>
                 <th className="px-3 py-2 font-medium"></th>
               </tr>
@@ -197,6 +226,17 @@ export default function ChartOfAccountsPage() {
                       </select>
                     ) : (
                       a.currency || baseCurrency
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {a.account_type === 'asset' ? (
+                      <input
+                        type="checkbox"
+                        checked={!!a.is_cash_account}
+                        onChange={(e) => handleCashToggle(a.id, e.target.checked)}
+                      />
+                    ) : (
+                      '—'
                     )}
                   </td>
                   <td className="px-3 py-2">

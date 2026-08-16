@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 
 type JournalLine = {
   id: string
@@ -43,13 +44,15 @@ export default function GeneralJournalRegister() {
     }
   }, [])
 
-  if (loading) return <p className="text-gray-500 text-sm">Loading...</p>
-  if (error) return <p className="text-red-600 text-sm">{error}</p>
-  if (entries.length === 0) return <p className="text-gray-500 text-sm">No journal entries yet.</p>
-
   return (
     <div className="space-y-2">
-      {entries.map((entry) => (
+      <Link href="/accounttrack/journal-entry/new" className="inline-block text-sm text-blue-600 hover:underline mb-1">
+        + New G/L Adjustment
+      </Link>
+      {loading && <p className="text-gray-500 text-sm">Loading...</p>}
+      {!loading && error && <p className="text-red-600 text-sm">{error}</p>}
+      {!loading && !error && entries.length === 0 && <p className="text-gray-500 text-sm">No journal entries yet.</p>}
+      {!loading && !error && entries.map((entry) => (
         <div key={entry.id} className="bg-white border border-gray-200 rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-700">

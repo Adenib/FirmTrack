@@ -222,6 +222,15 @@ export default function AccountTrackPage() {
           <Link href="/accounttrack/chart-of-accounts" className="text-sm text-blue-600 hover:underline">
             Chart of Accounts
           </Link>
+          <Link href="/accounttrack/journal-entry/new" className="text-sm text-blue-600 hover:underline">
+            New G/L Adjustment
+          </Link>
+          <Link href="/accounttrack/general-check/new" className="text-sm text-blue-600 hover:underline">
+            Write Check
+          </Link>
+          <Link href="/accounttrack/receive-payment/new" className="text-sm text-blue-600 hover:underline">
+            Receive Payment
+          </Link>
           <Link href="/accounttrack/statements" className="text-sm text-blue-600 hover:underline">
             Statements
           </Link>

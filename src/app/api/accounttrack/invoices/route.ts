@@ -2,10 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
-import { assertPeriodOpen, postJournalEntry, JournalPostingError, type JournalLineInput } from '@/lib/accounttrack/post-journal-entry'
-import { createInvoiceForMatter, InvoiceCreationError } from '@/lib/accounttrack/create-invoice'
+import { assertPeriodOpen, postJournalEntry, JournalPostingError } from '@/lib/accounttrack/post-journal-entry'
+import { createInvoiceForMatter, applyInvoicePayment, InvoiceCreationError } from '@/lib/accounttrack/create-invoice'
 import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
-import { tagOriginalAmount } from '@/lib/accounttrack/tag-original-amount'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -118,8 +117,6 @@ export async function PATCH(request: Request) {
   const baseCurrency = org?.base_currency || 'NGN'
   const invoiceCurrency = invoice.currency || baseCurrency
 
-  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
-
   if (voidInvoice) {
     if (Number(invoice.paid_amount || 0) > 0) {
       return NextResponse.json(
@@ -127,25 +124,18 @@ export async function PATCH(request: Request) {
         { status: 400 }
       )
     }
-    updates.status = 'void'
-  } else if (payment_amount) {
-    const newPaid = Number(invoice.paid_amount || 0) + Number(payment_amount)
-    updates.paid_amount = newPaid
-    updates.status = newPaid >= Number(invoice.total_amount || 0) ? 'paid' : 'partially_paid'
-  }
 
-  const { data, error } = await supabaseAdmin
-    .from('invoices')
-    .update(updates)
-    .eq('id', id)
-    .eq('tenant_id', profile.tenant_id)
-    .select()
-    .single()
+    const { data, error } = await supabaseAdmin
+      .from('invoices')
+      .update({ status: 'void', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('tenant_id', profile.tenant_id)
+      .select()
+      .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  try {
-    if (voidInvoice) {
+    try {
       // Reverse using the rate as of the ORIGINAL invoice date (not
       // today), so this resolves to the same historical rate used when
       // the invoice was created -- the reversal must match what was
@@ -164,47 +154,39 @@ export async function PATCH(request: Request) {
           { accountKey: 'accounts_receivable', matterId: invoice.matter_id, credit: Number(invoice.base_currency_amount || Number(invoice.total_amount || 0) * voidRate) },
         ],
       })
-    } else if (payment_amount) {
-      // payment_amount is in the invoice's own currency. Convert to base
-      // currency at TODAY's rate (the actual settlement date) -- the
-      // realized cash value. The AR being settled is a proportional
-      // slice of what was originally recognized at invoice creation
-      // (correctly handles partial payments across multiple rates).
-      // Any difference between the two is a realized FX gain or loss.
-      const paymentRate = await getExchangeRate(profile.tenant_id, invoiceCurrency, baseCurrency, today)
-      const paymentBaseValue = Number(payment_amount) * paymentRate
-      const totalAmount = Number(invoice.total_amount || 0)
-      const originalArValue = totalAmount > 0
-        ? (Number(payment_amount) / totalAmount) * Number(invoice.base_currency_amount || 0)
-        : Number(payment_amount)
-      const fxDiff = paymentBaseValue - originalArValue
-
-      const cashTag = await tagOriginalAmount(profile.tenant_id, 'operating_cash', invoiceCurrency, Number(payment_amount))
-
-      const lines: JournalLineInput[] = [
-        { accountKey: 'operating_cash', matterId: invoice.matter_id, debit: paymentBaseValue, ...cashTag },
-        { accountKey: 'accounts_receivable', matterId: invoice.matter_id, credit: originalArValue },
-      ]
-      if (fxDiff > 0.005) {
-        lines.push({ accountKey: 'fx_gain', matterId: invoice.matter_id, credit: fxDiff })
-      } else if (fxDiff < -0.005) {
-        lines.push({ accountKey: 'fx_loss', matterId: invoice.matter_id, debit: -fxDiff })
-      }
-
-      await postJournalEntry({
-        tenantId: profile.tenant_id,
-        entryDate: today,
-        description: `Payment received on invoice ${invoice.invoice_number}`,
-        sourceType: 'invoice_payment',
-        sourceId: invoice.id,
-        createdBy: user.id,
-        lines,
-      })
+    } catch (err) {
+      if (err instanceof ExchangeRateError) return NextResponse.json({ error: err.message }, { status: 400 })
+      return NextResponse.json({ error: `Invoice updated but GL posting failed: ${(err as Error).message}` }, { status: 500 })
     }
-  } catch (err) {
-    if (err instanceof ExchangeRateError) return NextResponse.json({ error: err.message }, { status: 400 })
-    return NextResponse.json({ error: `Invoice updated but GL posting failed: ${(err as Error).message}` }, { status: 500 })
+
+    return NextResponse.json({ invoice: data })
   }
 
+  if (payment_amount) {
+    try {
+      const updatedInvoice = await applyInvoicePayment({
+        tenantId: profile.tenant_id,
+        invoice,
+        paymentAmount: Number(payment_amount),
+        entryDate: today,
+        createdBy: user.id,
+      })
+      return NextResponse.json({ invoice: updatedInvoice })
+    } catch (err) {
+      if (err instanceof InvoiceCreationError) return NextResponse.json({ error: err.message }, { status: err.status })
+      throw err
+    }
+  }
+
+  // Neither void nor payment_amount -- a no-op touch, same as before.
+  const { data, error } = await supabaseAdmin
+    .from('invoices')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('tenant_id', profile.tenant_id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ invoice: data })
 }

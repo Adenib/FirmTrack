@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
@@ -17,12 +17,18 @@ export async function GET() {
     .from('users').select('tenant_id').eq('id', user.id).single()
   if (!profile) return NextResponse.json({ error: 'No profile' }, { status: 403 })
 
-  const { data: accounts, error } = await supabaseAdmin
+  const { searchParams } = new URL(request.url)
+  const cashOnly = searchParams.get('cash_only')
+
+  let query = supabaseAdmin
     .from('chart_of_accounts')
     .select('*')
     .eq('tenant_id', profile.tenant_id)
     .order('code')
 
+  if (cashOnly) query = query.eq('is_cash_account', true)
+
+  const { data: accounts, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ accounts })
 }
@@ -45,9 +51,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'AccountTrack is not active for this tenant' }, { status: 403 })
   }
 
-  const { code, name, account_type, currency } = await request.json()
+  const { code, name, account_type, currency, is_cash_account } = await request.json()
   if (!name || !['asset', 'liability', 'equity', 'revenue', 'expense'].includes(account_type)) {
     return NextResponse.json({ error: 'name and a valid account_type are required' }, { status: 400 })
+  }
+
+  if (is_cash_account && account_type !== 'asset') {
+    return NextResponse.json({ error: 'Only an asset account can be flagged as a cash/bank account' }, { status: 400 })
   }
 
   if (currency) {
@@ -70,6 +80,7 @@ export async function POST(request: Request) {
       name,
       account_type,
       currency: currency || null,
+      is_cash_account: !!is_cash_account,
     })
     .select()
     .single()
@@ -98,7 +109,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'AccountTrack is not active for this tenant' }, { status: 403 })
   }
 
-  const { id, currency } = await request.json()
+  const { id, currency, is_cash_account } = await request.json()
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
   const { data: org } = await supabaseAdmin
@@ -113,13 +124,26 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const updates: Record<string, unknown> = {}
+  if (currency !== undefined) updates.currency = currency === org?.base_currency ? null : (currency || null)
+  if (is_cash_account !== undefined) {
+    if (is_cash_account) {
+      const { data: target } = await supabaseAdmin
+        .from('chart_of_accounts').select('account_type').eq('id', id).eq('tenant_id', profile.tenant_id).single()
+      if (target?.account_type !== 'asset') {
+        return NextResponse.json({ error: 'Only an asset account can be flagged as a cash/bank account' }, { status: 400 })
+      }
+    }
+    updates.is_cash_account = !!is_cash_account
+  }
+
   const { data: account, error } = await supabaseAdmin
     .from('chart_of_accounts')
-    .update({ currency: currency === org?.base_currency ? null : (currency || null) })
+    .update(updates)
     .eq('id', id)
     .eq('tenant_id', profile.tenant_id)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })

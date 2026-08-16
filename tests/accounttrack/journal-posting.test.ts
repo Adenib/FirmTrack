@@ -78,6 +78,25 @@ describe('manual journal entry posting', () => {
     expect(totalCredit).toBe(250)
   })
 
+  it('round-trips an optional reference through to the created entry', async () => {
+    const res = await tenant.fetch('/api/accounttrack/journal-entries', {
+      method: 'POST',
+      body: JSON.stringify({
+        description: 'Entry with a reference',
+        reference: 'JV-2026-0001',
+        lines: [
+          { account_id: cashAccountId, debit: 40 },
+          { account_id: feesAccountId, credit: 40 },
+        ],
+      }),
+    })
+    expect(res.status).toBe(200)
+    const { journal_entry_id } = await res.json()
+
+    const { data: entry } = await supabaseAdmin.from('journal_entries').select('reference').eq('id', journal_entry_id).single()
+    expect(entry!.reference).toBe('JV-2026-0001')
+  })
+
   it('rejects an entry referencing an account from another tenant', async () => {
     const otherTenant = await createTestTenant('OtherTenantForIsolationCheck')
     try {
