@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import { ClockIcon, MapPinIcon, ChecklistIcon, ChartBarIcon } from '@/components/brand/icons'
+import { ClockIcon, MapPinIcon, ChecklistIcon, ChartBarIcon, FileCheckIcon } from '@/components/brand/icons'
 
 const SECTIONS = [
   { href: '/hrtrack/attendance', icon: ClockIcon, label: 'Attendance', description: 'Clock in/out, location, and attendance log.' },
   { href: '/hrtrack/movement', icon: MapPinIcon, label: 'Movement', description: 'Log and approve staff out-of-office movements.' },
   { href: '/hrtrack/performance', icon: ChecklistIcon, label: 'Performance', description: 'Tasks and performance tracking.' },
+  { href: '/hrtrack/evaluate-applications', icon: FileCheckIcon, label: 'Evaluate Applications', description: 'Log daily AI-vs-traditional comparisons and score app performance.' },
   { href: '/hrtrack/reports', icon: ChartBarIcon, label: 'Reports', description: 'Attendance summaries across the firm.' },
 ]
 
