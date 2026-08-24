@@ -10,6 +10,28 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/api/billtrack/invoices/send': ['./node_modules/@sparticuz/chromium/bin/**/*'],
     '/api/cron/billtrack-daily': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+    // pdfjs-dist requires @napi-rs/canvas inside a try/catch (an
+    // optional-dependency pattern) to polyfill DOMMatrix/ImageData/
+    // Path2D for Node -- the exact same blind spot as the chromium
+    // binaries above: Next.js's static file-tracer never sees that
+    // conditional require, so the package (native binary included) gets
+    // silently pruned from the deployed function. Confirmed by
+    // inspecting the actual .next/**/route.js.nft.json trace manifest --
+    // adding @napi-rs/canvas to serverExternalPackages alone did NOT put
+    // it in that file; only an explicit include does.
+    //
+    // npm nests a SEPARATE copy of @napi-rs/canvas under both
+    // pdf-parse/node_modules and pdfjs-dist/node_modules (not just the
+    // top-level one), and Node's resolution finds whichever is closest
+    // to the requiring file -- ** here catches every copy at any depth,
+    // not just the top-level one. linux-x64-gnu is the platform variant
+    // npm resolves on Vercel's (Linux) build machine, not the win32 one
+    // a local Windows install produces, so this can't be fully confirmed
+    // from a local build -- only from the actual deployed trace/runtime.
+    '/api/aitrack/document-reviews': [
+      './node_modules/**/@napi-rs/canvas/**/*',
+      './node_modules/**/@napi-rs/canvas-linux-x64-gnu/**/*',
+    ],
   },
   // pdf-parse (AITrack's PDF text extraction) resolves its pdf.js worker
   // file via a runtime-relative path -- Next.js's Server Components
