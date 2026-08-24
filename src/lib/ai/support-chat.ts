@@ -2,9 +2,10 @@ import Anthropic from '@anthropic-ai/sdk'
 
 // Mirrors src/lib/ai/time-entry-draft.ts's shape (transport-injectable,
 // throws clearly when unconfigured). Gated by a real paid subscription
-// (hasActiveModule(tenantId, 'ai_support')) rather than a free/disable
-// toggle, since there's no free-but-admin-can-turn-off case here --
-// the subscription itself is the on/off switch.
+// (hasActiveModule(tenantId, 'aitrack') -- formerly its own 'ai_support'
+// module, migrated to the shared AITrack module) rather than a free/
+// disable toggle, since there's no free-but-admin-can-turn-off case here
+// -- the subscription itself is the on/off switch.
 
 export type SupportChatMessage = { role: 'user' | 'assistant'; content: string }
 

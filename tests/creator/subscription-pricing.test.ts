@@ -73,7 +73,7 @@ describe('Per-org tier change, price override, and bundle rebate', () => {
 
   it('applies a bundle rebate across every active module once all are enabled, without touching paystack_plans', async () => {
     // Activate every remaining priced module for this tenant.
-    for (const module of ['doctrack', 'hrtrack', 'ai_support']) {
+    for (const module of ['doctrack', 'hrtrack', 'ai_support', 'aitrack']) {
       await admin.fetch('/api/creator/update-subscription', {
         method: 'POST',
         body: JSON.stringify({ orgId: tenant.tenantId, module, is_active: true }),
@@ -89,7 +89,7 @@ describe('Per-org tier change, price override, and bundle rebate', () => {
     })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.updated.length).toBeGreaterThanOrEqual(8)
+    expect(body.updated.length).toBeGreaterThanOrEqual(9)
 
     const { data: subs } = await supabaseAdmin
       .from('subscriptions').select('module, tier, price_per_user').eq('tenant_id', tenant.tenantId).eq('is_active', true)

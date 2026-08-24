@@ -19,6 +19,7 @@ import {
   ChevronRightIcon,
   MenuIcon,
   XIcon,
+  SparkleIcon,
 } from '@/components/brand/icons'
 
 type SubItem = { key: string; label: string; href: string }
@@ -103,6 +104,13 @@ const MODULES: ModuleEntry[] = [
       { key: 'hrtrack', label: 'Payroll', href: '/hrtrack/payroll' },
       { key: 'hrtrack', label: 'Reports', href: '/hrtrack/reports' },
     ],
+  },
+  {
+    key: 'aitrack',
+    label: 'AITrack',
+    href: '/aitrack',
+    description: 'AI-assisted document review against a real uploaded file, plus configurable review playbooks.',
+    icon: SparkleIcon,
   },
   {
     key: 'calentrack',
@@ -231,7 +239,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {showSupportModal && (
         <SupportModal
-          aiSupportActive={activeModules.includes('ai_support')}
+          aiSupportActive={activeModules.includes('aitrack')}
           onClose={() => setShowSupportModal(false)}
         />
       )}

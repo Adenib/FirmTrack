@@ -54,7 +54,7 @@ describe('Support requests API', () => {
     expect(body.request.status).toBe('open')
   })
 
-  it('rejects an ai_assisted request when the firm has not subscribed to ai_support', async () => {
+  it('rejects an ai_assisted request when the firm has not subscribed to aitrack', async () => {
     const res = await tenant.fetch('/api/support/requests', {
       method: 'POST',
       body: JSON.stringify({ subject: 'AI help please', description: 'x', channel: 'ai_assisted' }),
@@ -62,9 +62,20 @@ describe('Support requests API', () => {
     expect(res.status).toBe(403)
   })
 
-  it('allows an ai_assisted request once ai_support is an active subscription', async () => {
+  it('an active ai_support subscription alone is no longer sufficient -- the gate moved to aitrack', async () => {
     await supabaseAdmin.from('subscriptions').insert({
       tenant_id: tenant.tenantId, module: 'ai_support', tier: 'basic', is_active: true, price_per_user: 2000,
+    })
+    const res = await tenant.fetch('/api/support/requests', {
+      method: 'POST',
+      body: JSON.stringify({ subject: 'AI help please', description: 'x', channel: 'ai_assisted' }),
+    })
+    expect(res.status).toBe(403)
+  })
+
+  it('allows an ai_assisted request once aitrack is an active subscription', async () => {
+    await supabaseAdmin.from('subscriptions').insert({
+      tenant_id: tenant.tenantId, module: 'aitrack', tier: 'basic', is_active: true, price_per_user: 2000,
     })
 
     const res = await tenant.fetch('/api/support/requests', {

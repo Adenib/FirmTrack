@@ -69,7 +69,7 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
     const res = await fetch('/api/payments/initialize', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ modules: ['ai_support'], tier: 'basic', currency: 'NGN' }),
+      body: JSON.stringify({ modules: ['aitrack'], tier: 'basic', currency: 'NGN' }),
     })
     const result = await res.json()
     if (!res.ok) {

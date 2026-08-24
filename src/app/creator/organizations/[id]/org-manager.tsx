@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 const MODULES = [
   'timetrack', 'movementtrack', 'tasktrack',
-  'billtrack', 'accounttrack', 'doctrack', 'hrtrack', 'admin', 'ai_support'
+  'billtrack', 'accounttrack', 'doctrack', 'hrtrack', 'admin', 'ai_support', 'aitrack'
 ]
 
 // Modules that participate in standard tier/rebate pricing -- 'admin' is

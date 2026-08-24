@@ -11,7 +11,8 @@ const MODULES = [
   { key: 'accounttrack', label: 'AccountTrack' },
   { key: 'doctrack', label: 'DocTrack' },
   { key: 'hrtrack', label: 'HRTrack' },
-  { key: 'ai_support', label: 'AI Support Assistant' },
+  { key: 'ai_support', label: 'AI Support Assistant (legacy)' },
+  { key: 'aitrack', label: 'AITrack' },
 ]
 
 const TIERS = ['basic', 'standard', 'elite']

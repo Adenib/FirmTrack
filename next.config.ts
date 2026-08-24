@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
     '/api/billtrack/invoices/send': ['./node_modules/@sparticuz/chromium/bin/**/*'],
     '/api/cron/billtrack-daily': ['./node_modules/@sparticuz/chromium/bin/**/*'],
   },
+  // pdf-parse (AITrack's PDF text extraction) resolves its pdf.js worker
+  // file via a runtime-relative path -- Next.js's Server Components
+  // bundler rewrites/moves the module into .next's chunk layout, breaking
+  // that resolution ("Setting up fake worker failed: Cannot find module
+  // .../pdf.worker.mjs"). Opting both packages out of bundling lets
+  // Node's native require resolve them straight from node_modules, same
+  // fix as every other native/runtime-path-dependent dependency here.
+  serverExternalPackages: ['pdf-parse', 'pdfjs-dist'],
   // Applies to every response Next.js serves, static/prerendered pages
   // included. A per-request CSP nonce (the stricter, more common approach)
   // was tried first in middleware.ts and reverted -- several of this app's

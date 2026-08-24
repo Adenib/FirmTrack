@@ -47,8 +47,10 @@ export async function POST(request: Request) {
   }
 
   // Defense-in-depth alongside the UI already disabling this option --
-  // the AI channel requires a real, active ai_support subscription.
-  if (channel === 'ai_assisted' && !(await hasActiveModule(profile.tenant_id, 'ai_support'))) {
+  // the AI channel requires a real, active aitrack subscription (formerly
+  // its own 'ai_support' module -- existing ai_support subscribers were
+  // grandfathered onto aitrack by the migration that introduced it).
+  if (channel === 'ai_assisted' && !(await hasActiveModule(profile.tenant_id, 'aitrack'))) {
     return NextResponse.json({ error: 'AI Support Assistant is not subscribed for this firm' }, { status: 403 })
   }
 

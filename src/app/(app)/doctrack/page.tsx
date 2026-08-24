@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import MatterSearchInput, { type MatterResult } from '@/components/timetrack/matter-search-input'
 
 type DocumentRow = {
@@ -874,6 +875,9 @@ export default function DocTrackPage() {
                       <button type="button" onClick={() => toggleExpand(doc.id)} className="text-sm text-gray-600 hover:underline">
                         {expandedId === doc.id ? 'Hide versions' : 'Versions'}
                       </button>
+                      <Link href={`/aitrack?document_id=${doc.id}`} className="text-sm text-brand-blue hover:underline">
+                        Review with AI
+                      </Link>
                     </>
                   )}
                   <button type="button" onClick={() => handleDelete(doc.id)} className="text-sm text-red-600 hover:underline">
