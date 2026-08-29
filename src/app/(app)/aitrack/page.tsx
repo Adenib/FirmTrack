@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import MatterSearchInput from '@/components/timetrack/matter-search-input'
 
 const PRIVILEGED_ROLES = ['owner', 'admin', 'manager']
 const SEVERITY_STYLES = {
@@ -16,6 +17,78 @@ const PLAYBOOK_STATUS_STYLES = {
 }
 
 const emptyPlaybookForm = () => ({ id: null, name: '', description: '', rules: [{ label: '', instructions: '' }] })
+
+const emptyDraftForm = () => ({ document_type: '', matter_id: '', matter_query: '', matter_label: '', prompt: '' })
+
+function DraftResult({ draft, canSaveToDocTrack, onSaved }) {
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [title, setTitle] = useState(`${draft.document_type} — ${new Date(draft.created_at).toLocaleDateString()}`)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(draft.content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    setSaveError('')
+    const formData = new FormData()
+    formData.append('title', title)
+    if (draft.matter_id) formData.append('matter_id', draft.matter_id)
+    formData.append('category', 'AI Draft')
+    formData.append('file', new File([draft.content], `${title}.txt`, { type: 'text/plain' }))
+
+    const res = await fetch('/api/doctrack/documents', { method: 'POST', body: formData })
+    const result = await res.json()
+    setSaving(false)
+    if (!res.ok) {
+      setSaveError(result.error || 'Could not save to DocTrack')
+      return
+    }
+    setSaved(true)
+    onSaved?.(result.document)
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+      <p className="text-xs text-gray-500">
+        {draft.document_type} · {new Date(draft.created_at).toLocaleString()}
+        {draft.author?.email ? ` · ${draft.author.email}` : ''}
+        {draft.matters?.case_name ? ` · ${draft.matters.case_name}` : ''}
+      </p>
+      <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded p-3 max-h-96 overflow-y-auto">{draft.content}</pre>
+      {draft.notes && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+          <span className="font-medium">Notes for review: </span>{draft.notes}
+        </p>
+      )}
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={handleCopy} className="text-xs text-blue-600 hover:underline">
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      {canSaveToDocTrack ? (
+        !saved ? (
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1 px-2 py-1.5 border rounded text-sm" />
+            <button type="button" onClick={handleSave} disabled={saving} className="text-sm bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-gray-900 disabled:opacity-50 whitespace-nowrap">
+              {saving ? 'Saving...' : 'Save to DocTrack'}
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-green-600 pt-2 border-t border-gray-100">Saved to DocTrack as &quot;{title}&quot;.</p>
+        )
+      ) : (
+        <p className="text-xs text-gray-400 pt-2 border-t border-gray-100">DocTrack isn&apos;t active for this firm, so this draft can&apos;t be saved as a document -- copy it instead.</p>
+      )}
+      {saveError && <p className="text-red-600 text-xs">{saveError}</p>}
+    </div>
+  )
+}
 
 function ReviewResults({ review }) {
   return (
@@ -113,12 +186,26 @@ export default function AITrackPage() {
   const [pbSubmitting, setPbSubmitting] = useState(false)
   const [pbError, setPbError] = useState('')
 
+  // Drafting tab
+  const [activeModules, setActiveModules] = useState([])
+  const [draftForm, setDraftForm] = useState(emptyDraftForm())
+  const [drafts, setDrafts] = useState([])
+  const [drafting, setDrafting] = useState(false)
+  const [draftError, setDraftError] = useState('')
+
   const isPrivileged = PRIVILEGED_ROLES.includes(role)
+  const canSaveToDocTrack = activeModules.includes('doctrack')
 
   const loadPlaybooks = async () => {
     const res = await fetch('/api/aitrack/playbooks')
     const result = await res.json()
     if (res.ok) setPlaybooks(result.playbooks || [])
+  }
+
+  const loadDrafts = async () => {
+    const res = await fetch('/api/aitrack/document-drafts')
+    const result = await res.json()
+    if (res.ok) setDrafts(result.drafts || [])
   }
 
   const loadDocument = async (id) => {
@@ -134,8 +221,12 @@ export default function AITrackPage() {
   }
 
   useEffect(() => {
-    fetch('/api/layout-data').then((r) => r.json()).then((r) => setRole(r.profile?.role || ''))
+    fetch('/api/layout-data').then((r) => r.json()).then((r) => {
+      setRole(r.profile?.role || '')
+      setActiveModules(r.activeModules || [])
+    })
     loadPlaybooks()
+    loadDrafts()
     const params = new URLSearchParams(window.location.search)
     const idFromUrl = params.get('document_id')
     if (idFromUrl) setDocumentId(idFromUrl)
@@ -220,15 +311,40 @@ export default function AITrackPage() {
     await loadPlaybooks()
   }
 
+  const handleGenerateDraft = async (e) => {
+    e.preventDefault()
+    setDrafting(true)
+    setDraftError('')
+
+    const res = await fetch('/api/aitrack/document-drafts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        document_type: draftForm.document_type,
+        matter_id: draftForm.matter_id || null,
+        prompt: draftForm.prompt,
+      }),
+    })
+    const result = await res.json()
+    setDrafting(false)
+    if (!res.ok) {
+      setDraftError(result.error || 'Could not generate draft')
+      return
+    }
+    setDraftForm(emptyDraftForm())
+    await loadDrafts()
+  }
+
   const TABS = [
     { key: 'reviews', label: 'Document Reviews' },
+    { key: 'drafting', label: 'Drafting' },
     { key: 'playbooks', label: 'Playbooks' },
   ]
 
   return (
     <div className="p-8 max-w-4xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">AITrack</h1>
-      <p className="text-gray-600 mb-4">AI-assisted document review, grounded in a real uploaded file, plus configurable review playbooks.</p>
+      <p className="text-gray-600 mb-4">AI-assisted document review grounded in a real uploaded file, document drafting, and configurable review playbooks.</p>
 
       <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200">
         {TABS.map((t) => (
@@ -316,6 +432,72 @@ export default function AITrackPage() {
           {document && !document.external_source && reviews.length === 0 && (
             <p className="text-gray-500 text-sm">No reviews yet for this document.</p>
           )}
+        </div>
+      )}
+
+      {tab === 'drafting' && (
+        <div>
+          <form onSubmit={handleGenerateDraft} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 mb-6">
+            <p className="font-medium text-gray-900">New draft</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Document type</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. NDA, Demand Letter, Engagement Letter"
+                  value={draftForm.document_type}
+                  onChange={(e) => setDraftForm((p) => ({ ...p, document_type: e.target.value }))}
+                  className="w-full px-2 py-1.5 border rounded text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Matter (optional)</label>
+                {draftForm.matter_label ? (
+                  <div className="flex items-center justify-between px-2 py-1.5 border rounded text-sm bg-gray-50">
+                    <span className="text-gray-700 truncate">{draftForm.matter_label}</span>
+                    <button type="button" onClick={() => setDraftForm((p) => ({ ...p, matter_id: '', matter_query: '', matter_label: '' }))} className="text-xs text-blue-600 hover:underline ml-2 shrink-0">
+                      Clear
+                    </button>
+                  </div>
+                ) : (
+                  <MatterSearchInput
+                    value={draftForm.matter_query}
+                    onChange={(v) => setDraftForm((p) => ({ ...p, matter_query: v, matter_id: v ? p.matter_id : '' }))}
+                    onSelect={(m) => setDraftForm((p) => ({ ...p, matter_id: m.id, matter_query: '', matter_label: `${m.matter_id} · ${m.case_name}` }))}
+                    placeholder="Search matter..."
+                  />
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Instructions</label>
+              <textarea
+                required
+                rows={4}
+                placeholder="Describe what to draft -- parties, key terms, purpose. Be specific; the assistant won't invent facts you don't provide."
+                value={draftForm.prompt}
+                onChange={(e) => setDraftForm((p) => ({ ...p, prompt: e.target.value }))}
+                className="w-full px-2 py-1.5 border rounded text-sm"
+              />
+            </div>
+
+            {draftError && <p className="text-red-600 text-xs">{draftError}</p>}
+            <button type="submit" disabled={drafting} className="text-sm bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+              {drafting ? 'Drafting... this can take a moment' : 'Generate draft'}
+            </button>
+            <p className="text-xs text-gray-400">Every draft is a starting point for attorney review, never a finished or filed document.</p>
+          </form>
+
+          <p className="font-medium text-gray-900 mb-2">Draft history</p>
+          <div className="space-y-3">
+            {drafts.length === 0 ? (
+              <p className="text-gray-500 text-sm">No drafts yet.</p>
+            ) : (
+              drafts.map((d) => <DraftResult key={d.id} draft={d} canSaveToDocTrack={canSaveToDocTrack} />)
+            )}
+          </div>
         </div>
       )}
 
