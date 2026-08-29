@@ -28,9 +28,20 @@ const nextConfig: NextConfig = {
     // npm resolves on Vercel's (Linux) build machine, not the win32 one
     // a local Windows install produces, so this can't be fully confirmed
     // from a local build -- only from the actual deployed trace/runtime.
+    //
+    // The canvas fix alone still wasn't enough: pdfjs-dist also loads
+    // pdf.worker.mjs (right next to pdf.mjs) via a runtime-constructed
+    // path the tracer can't follow either -- confirmed live ("Cannot
+    // find module '.../pdfjs-dist/legacy/build/pdf.worker.mjs'") even
+    // with pdfjs-dist already in serverExternalPackages below. Rather
+    // than chase individual missing files one deploy at a time, tracing
+    // both packages' entire directory trees (cmaps/standard_fonts/wasm
+    // included) covers whatever else pdf.js reaches for at runtime.
     '/api/aitrack/document-reviews': [
       './node_modules/**/@napi-rs/canvas/**/*',
       './node_modules/**/@napi-rs/canvas-linux-x64-gnu/**/*',
+      './node_modules/pdfjs-dist/**/*',
+      './node_modules/pdf-parse/**/*',
     ],
   },
   // pdf-parse (AITrack's PDF text extraction) resolves its pdf.js worker
