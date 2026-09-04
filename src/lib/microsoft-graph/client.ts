@@ -83,6 +83,28 @@ function toOutlookMessage(data: Record<string, unknown>): OutlookMessage {
   }
 }
 
+export type UnreadOutlookMessage = OutlookMessage & { bodyPreview: string }
+
+function toUnreadOutlookMessage(data: Record<string, unknown>): UnreadOutlookMessage {
+  return {
+    ...toOutlookMessage(data),
+    bodyPreview: (data.bodyPreview as string) || '',
+  }
+}
+
+// Powers the AITrack inbox digest cron -- bodyPreview is cheap to include
+// in the list call itself, so summarizing a user's unread mail needs no
+// per-message follow-up fetch.
+export async function listUnreadOutlookMessages(accessToken: string, limit = 50): Promise<UnreadOutlookMessage[]> {
+  const params = new URLSearchParams()
+  params.set('$filter', 'isRead eq false')
+  params.set('$orderby', 'receivedDateTime desc')
+  params.set('$top', String(limit))
+  params.set('$select', 'id,subject,from,receivedDateTime,hasAttachments,webLink,bodyPreview')
+  const data = await graphFetch(accessToken, `/me/messages?${params.toString()}`)
+  return (data.value || []).map(toUnreadOutlookMessage)
+}
+
 // Mail is naturally "recent + search," not a folder tree like OneDrive --
 // no browsing-by-folder needed here.
 export async function listOutlookMessages(accessToken: string, search?: string): Promise<OutlookMessage[]> {

@@ -19,6 +19,8 @@ export default function AccountPage() {
   const [hasFileAccess, setHasFileAccess] = useState(false)
   const [hasMailAccess, setHasMailAccess] = useState(false)
   const [hasSitesAccess, setHasSitesAccess] = useState(false)
+  const [digestEnabled, setDigestEnabled] = useState(false)
+  const [digestSaving, setDigestSaving] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -34,6 +36,12 @@ export default function AccountPage() {
       setHasFileAccess(status.hasFileAccess)
       setHasMailAccess(status.hasMailAccess)
       setHasSitesAccess(status.hasSitesAccess)
+    }
+
+    const digestRes = await fetch('/api/aitrack/inbox-digest-settings')
+    if (digestRes.ok) {
+      const digestStatus = await digestRes.json()
+      setDigestEnabled(digestStatus.enabled)
     }
 
     setLoading(false)
@@ -69,6 +77,24 @@ export default function AccountPage() {
     if (unlinkError) setError(unlinkError.message)
     setPending(null)
     await load()
+  }
+
+  const handleToggleDigest = async () => {
+    setError('')
+    setDigestSaving(true)
+    const next = !digestEnabled
+    const res = await fetch('/api/aitrack/inbox-digest-settings', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ enabled: next }),
+    })
+    if (res.ok) {
+      setDigestEnabled(next)
+    } else {
+      const body = await res.json().catch(() => ({}))
+      setError(body.error || 'Failed to update inbox digest setting')
+    }
+    setDigestSaving(false)
   }
 
   const linkedProviders = new Set(identities.map((i) => i.provider))
@@ -143,6 +169,32 @@ export default function AccountPage() {
           )}
 
           {error && <p className="text-red-600 text-xs">{error}</p>}
+        </div>
+      )}
+
+      {!loading && hasMailAccess && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mt-4 space-y-2">
+          <p className="text-sm font-medium text-gray-900">AITrack daily inbox digest</p>
+          <p className="text-xs text-gray-600">
+            Each day, send yourself a summary of your unread Outlook mail with a priority, a one-line summary,
+            and a suggested reply per message. Message content is sent to Claude (Anthropic) for summarization.
+            Suggested replies appear only in the digest email — no draft is created in Outlook.
+          </p>
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-sm text-gray-700">{digestEnabled ? 'Enabled' : 'Disabled'}</span>
+            <button
+              type="button"
+              disabled={digestSaving}
+              onClick={handleToggleDigest}
+              className={`text-xs rounded-md px-3 py-1.5 disabled:opacity-50 ${
+                digestEnabled
+                  ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  : 'bg-brand-blue text-white hover:opacity-90'
+              }`}
+            >
+              {digestSaving ? 'Saving...' : digestEnabled ? 'Turn off' : 'Turn on'}
+            </button>
+          </div>
         </div>
       )}
     </div>
