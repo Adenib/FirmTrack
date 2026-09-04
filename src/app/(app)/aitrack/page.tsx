@@ -20,6 +20,8 @@ const emptyPlaybookForm = () => ({ id: null, name: '', description: '', rules: [
 
 const emptyDraftForm = () => ({ document_type: '', matter_id: '', matter_query: '', matter_label: '', prompt: '' })
 
+const emptyResearchForm = () => ({ question: '', matter_id: '', matter_query: '', matter_label: '' })
+
 function DraftResult({ draft, canSaveToDocTrack, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -84,6 +86,93 @@ function DraftResult({ draft, canSaveToDocTrack, onSaved }) {
         )
       ) : (
         <p className="text-xs text-gray-400 pt-2 border-t border-gray-100">DocTrack isn&apos;t active for this firm, so this draft can&apos;t be saved as a document -- copy it instead.</p>
+      )}
+      {saveError && <p className="text-red-600 text-xs">{saveError}</p>}
+    </div>
+  )
+}
+
+function ResearchResult({ memo, canSaveToDocTrack, onSaved }) {
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [title, setTitle] = useState(`Research Memo — ${new Date(memo.created_at).toLocaleDateString()}`)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(memo.content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    setSaveError('')
+    const formData = new FormData()
+    formData.append('title', title)
+    if (memo.matter_id) formData.append('matter_id', memo.matter_id)
+    formData.append('category', 'AI Research Memo')
+    formData.append('file', new File([memo.content], `${title}.txt`, { type: 'text/plain' }))
+
+    const res = await fetch('/api/doctrack/documents', { method: 'POST', body: formData })
+    const result = await res.json()
+    setSaving(false)
+    if (!res.ok) {
+      setSaveError(result.error || 'Could not save to DocTrack')
+      return
+    }
+    setSaved(true)
+    onSaved?.(result.document)
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+      <p className="text-xs text-gray-500">
+        {memo.question} · {new Date(memo.created_at).toLocaleString()}
+        {memo.author?.email ? ` · ${memo.author.email}` : ''}
+        {memo.matters?.case_name ? ` · ${memo.matters.case_name}` : ''}
+      </p>
+      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+        AI-generated research starting point — not privileged, not filed work product. Verify every citation, holding, and legal conclusion independently before relying on it.
+      </p>
+      <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded p-3 max-h-96 overflow-y-auto">{memo.content}</pre>
+      {memo.notes && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+          <span className="font-medium">Notes for review: </span>{memo.notes}
+        </p>
+      )}
+      <div>
+        <p className="text-xs font-medium text-gray-500 mb-1">Sources</p>
+        {memo.sources?.length > 0 ? (
+          <ul className="space-y-1">
+            {memo.sources.map((s, i) => (
+              <li key={i} className="text-sm">
+                <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{s.title}</a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-gray-400">No web sources were found for this question.</p>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={handleCopy} className="text-xs text-blue-600 hover:underline">
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      {canSaveToDocTrack ? (
+        !saved ? (
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1 px-2 py-1.5 border rounded text-sm" />
+            <button type="button" onClick={handleSave} disabled={saving} className="text-sm bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-gray-900 disabled:opacity-50 whitespace-nowrap">
+              {saving ? 'Saving...' : 'Save to DocTrack'}
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-green-600 pt-2 border-t border-gray-100">Saved to DocTrack as &quot;{title}&quot;.</p>
+        )
+      ) : (
+        <p className="text-xs text-gray-400 pt-2 border-t border-gray-100">DocTrack isn&apos;t active for this firm, so this memo can&apos;t be saved as a document -- copy it instead.</p>
       )}
       {saveError && <p className="text-red-600 text-xs">{saveError}</p>}
     </div>
@@ -193,6 +282,12 @@ export default function AITrackPage() {
   const [drafting, setDrafting] = useState(false)
   const [draftError, setDraftError] = useState('')
 
+  // Legal Research tab
+  const [researchForm, setResearchForm] = useState(emptyResearchForm())
+  const [memos, setMemos] = useState([])
+  const [researching, setResearching] = useState(false)
+  const [researchError, setResearchError] = useState('')
+
   const isPrivileged = PRIVILEGED_ROLES.includes(role)
   const canSaveToDocTrack = activeModules.includes('doctrack')
 
@@ -206,6 +301,12 @@ export default function AITrackPage() {
     const res = await fetch('/api/aitrack/document-drafts')
     const result = await res.json()
     if (res.ok) setDrafts(result.drafts || [])
+  }
+
+  const loadMemos = async () => {
+    const res = await fetch('/api/aitrack/research-memos')
+    const result = await res.json()
+    if (res.ok) setMemos(result.memos || [])
   }
 
   const loadDocument = async (id) => {
@@ -227,6 +328,7 @@ export default function AITrackPage() {
     })
     loadPlaybooks()
     loadDrafts()
+    loadMemos()
     const params = new URLSearchParams(window.location.search)
     const idFromUrl = params.get('document_id')
     if (idFromUrl) setDocumentId(idFromUrl)
@@ -335,9 +437,33 @@ export default function AITrackPage() {
     await loadDrafts()
   }
 
+  const handleGenerateResearch = async (e) => {
+    e.preventDefault()
+    setResearching(true)
+    setResearchError('')
+
+    const res = await fetch('/api/aitrack/research-memos', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        question: researchForm.question,
+        matter_id: researchForm.matter_id || null,
+      }),
+    })
+    const result = await res.json()
+    setResearching(false)
+    if (!res.ok) {
+      setResearchError(result.error || 'Could not complete research')
+      return
+    }
+    setResearchForm(emptyResearchForm())
+    await loadMemos()
+  }
+
   const TABS = [
     { key: 'reviews', label: 'Document Reviews' },
     { key: 'drafting', label: 'Drafting' },
+    { key: 'research', label: 'Legal Research' },
     { key: 'playbooks', label: 'Playbooks' },
   ]
 
@@ -496,6 +622,59 @@ export default function AITrackPage() {
               <p className="text-gray-500 text-sm">No drafts yet.</p>
             ) : (
               drafts.map((d) => <DraftResult key={d.id} draft={d} canSaveToDocTrack={canSaveToDocTrack} />)
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'research' && (
+        <div>
+          <form onSubmit={handleGenerateResearch} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 mb-6">
+            <p className="font-medium text-gray-900">New research question</p>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Matter (optional)</label>
+              {researchForm.matter_label ? (
+                <div className="flex items-center justify-between px-2 py-1.5 border rounded text-sm bg-gray-50">
+                  <span className="text-gray-700 truncate">{researchForm.matter_label}</span>
+                  <button type="button" onClick={() => setResearchForm((p) => ({ ...p, matter_id: '', matter_query: '', matter_label: '' }))} className="text-xs text-blue-600 hover:underline ml-2 shrink-0">
+                    Clear
+                  </button>
+                </div>
+              ) : (
+                <MatterSearchInput
+                  value={researchForm.matter_query}
+                  onChange={(v) => setResearchForm((p) => ({ ...p, matter_query: v, matter_id: v ? p.matter_id : '' }))}
+                  onSelect={(m) => setResearchForm((p) => ({ ...p, matter_id: m.id, matter_query: '', matter_label: `${m.matter_id} · ${m.case_name}` }))}
+                  placeholder="Search matter..."
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Legal question</label>
+              <textarea
+                required
+                rows={4}
+                placeholder="Ask a legal research question -- be specific about jurisdiction and facts."
+                value={researchForm.question}
+                onChange={(e) => setResearchForm((p) => ({ ...p, question: e.target.value }))}
+                className="w-full px-2 py-1.5 border rounded text-sm"
+              />
+            </div>
+
+            {researchError && <p className="text-red-600 text-xs">{researchError}</p>}
+            <button type="submit" disabled={researching} className="text-sm bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+              {researching ? 'Researching... this can take a moment' : 'Research'}
+            </button>
+            <p className="text-xs text-gray-400">Grounded in real web search results, not just model recall -- still a starting point for attorney review, never a substitute for verified legal research.</p>
+          </form>
+
+          <p className="font-medium text-gray-900 mb-2">Research history</p>
+          <div className="space-y-3">
+            {memos.length === 0 ? (
+              <p className="text-gray-500 text-sm">No research memos yet.</p>
+            ) : (
+              memos.map((m) => <ResearchResult key={m.id} memo={m} canSaveToDocTrack={canSaveToDocTrack} />)
             )}
           </div>
         </div>
