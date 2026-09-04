@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { coalesceTurns } from './chat-utils'
 
 // Mirrors src/lib/ai/time-entry-draft.ts's shape (transport-injectable,
 // throws clearly when unconfigured). Gated by a real paid subscription
@@ -33,26 +34,6 @@ const SYSTEM_PROMPT =
   'Help the user with their support request as best you can. Be concise and practical. ' +
   "If the issue needs a human (billing disputes, data issues, bugs you can't resolve by " +
   'explaining), say so plainly and let them know a human agent will follow up.'
-
-// The Anthropic API requires strict user/assistant alternation. The
-// framing turn below is always 'user', so if the thread's first real
-// turn is also 'user' (the normal case -- a user opens the request and
-// sends the first message), two consecutive 'user' turns would result.
-// Coalescing consecutive same-role turns keeps this safe regardless of
-// how the history is shaped (including an 'agent' human reply, which
-// history.map already folds into 'assistant').
-function coalesceTurns(turns: SupportChatMessage[]): SupportChatMessage[] {
-  const merged: SupportChatMessage[] = []
-  for (const turn of turns) {
-    const last = merged[merged.length - 1]
-    if (last && last.role === turn.role) {
-      last.content += '\n\n' + turn.content
-    } else {
-      merged.push({ ...turn })
-    }
-  }
-  return merged
-}
 
 const anthropicTransport: SendTransport = async (input) => {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })

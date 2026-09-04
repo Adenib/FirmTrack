@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import MatterSearchInput from '@/components/timetrack/matter-search-input'
+import { createClient } from '@/lib/supabase/client'
 
 const PRIVILEGED_ROLES = ['owner', 'admin', 'manager']
 const SEVERITY_STYLES = {
@@ -21,6 +22,128 @@ const emptyPlaybookForm = () => ({ id: null, name: '', description: '', rules: [
 const emptyDraftForm = () => ({ document_type: '', matter_id: '', matter_query: '', matter_label: '', prompt: '' })
 
 const emptyResearchForm = () => ({ question: '', matter_id: '', matter_query: '', matter_label: '' })
+
+const emptyAgentForm = () => ({ id: null, name: '', description: '', instructions: '', visibility: 'private' })
+
+function ExpertAgentChat({ agent, currentUserId }) {
+  const [conversations, setConversations] = useState([])
+  const [viewingUserId, setViewingUserId] = useState(currentUserId)
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+
+  const loadConversations = async () => {
+    if (agent.visibility !== 'shared') return
+    const res = await fetch(`/api/aitrack/expert-agents/${agent.id}/conversations`)
+    const result = await res.json()
+    if (res.ok) setConversations(result.conversations || [])
+  }
+
+  const loadMessages = async (userId) => {
+    setLoading(true)
+    const res = await fetch(`/api/aitrack/expert-agents/${agent.id}/messages?user_id=${userId}`)
+    const result = await res.json()
+    if (res.ok) setMessages(result.messages || [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    setViewingUserId(currentUserId)
+    loadConversations()
+    loadMessages(currentUserId)
+  }, [agent.id])
+
+  useEffect(() => {
+    loadMessages(viewingUserId)
+  }, [viewingUserId])
+
+  const send = async () => {
+    if (!input.trim() || viewingUserId !== currentUserId) return
+    setSending(true)
+    setError('')
+    const body = input
+    setInput('')
+    setMessages((prev) => [...prev, { id: 'optimistic-' + Date.now(), sender_type: 'user', body, created_at: new Date().toISOString() }])
+
+    const res = await fetch(`/api/aitrack/expert-agents/${agent.id}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body }),
+    })
+    const result = await res.json()
+    if (!res.ok) {
+      setError(result.error || 'Message failed to send')
+    } else {
+      setMessages((prev) => [...prev, result.message])
+      await loadConversations()
+    }
+    setSending(false)
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="font-medium text-gray-900">{agent.name}</p>
+          {agent.description && <p className="text-xs text-gray-500">{agent.description}</p>}
+        </div>
+        {agent.visibility === 'shared' && conversations.length > 0 && (
+          <select
+            value={viewingUserId}
+            onChange={(e) => setViewingUserId(e.target.value)}
+            className="text-xs border rounded px-2 py-1"
+          >
+            <option value={currentUserId}>My conversation</option>
+            {conversations.filter((c) => c.user_id !== currentUserId).map((c) => (
+              <option key={c.user_id} value={c.user_id}>{c.email || c.user_id}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-500">Loading...</p>
+      ) : (
+        <div className="space-y-2 mb-3 max-h-64 overflow-y-auto">
+          {messages.length === 0 && <p className="text-sm text-gray-500">No messages yet -- say hello.</p>}
+          {messages.map((m) => (
+            <div key={m.id} className={`text-sm p-2 rounded-md ${m.sender_type === 'user' ? 'bg-blue-50' : 'bg-purple-50'}`}>
+              <p className="text-xs text-gray-400 capitalize">{m.sender_type === 'ai' ? agent.name : m.sender_type}</p>
+              <p>{m.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {viewingUserId === currentUserId ? (
+        <>
+          {error && <p className="text-amber-600 text-xs mb-2">{error}</p>}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && send()}
+              placeholder="Type a message..."
+              className="flex-1 px-3 py-2 border rounded-md text-sm"
+            />
+            <button
+              onClick={send}
+              disabled={sending}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+            >
+              Send
+            </button>
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-gray-400">Viewing another user&apos;s conversation -- read-only.</p>
+      )}
+    </div>
+  )
+}
 
 function DraftResult({ draft, canSaveToDocTrack, onSaved }) {
   const [saving, setSaving] = useState(false)
@@ -288,6 +411,14 @@ export default function AITrackPage() {
   const [researching, setResearching] = useState(false)
   const [researchError, setResearchError] = useState('')
 
+  // Expert Agents tab
+  const [currentUserId, setCurrentUserId] = useState('')
+  const [agents, setAgents] = useState([])
+  const [agentForm, setAgentForm] = useState(emptyAgentForm())
+  const [agentSubmitting, setAgentSubmitting] = useState(false)
+  const [agentError, setAgentError] = useState('')
+  const [chattingAgentId, setChattingAgentId] = useState('')
+
   const isPrivileged = PRIVILEGED_ROLES.includes(role)
   const canSaveToDocTrack = activeModules.includes('doctrack')
 
@@ -309,6 +440,12 @@ export default function AITrackPage() {
     if (res.ok) setMemos(result.memos || [])
   }
 
+  const loadAgents = async () => {
+    const res = await fetch('/api/aitrack/expert-agents')
+    const result = await res.json()
+    if (res.ok) setAgents(result.agents || [])
+  }
+
   const loadDocument = async (id) => {
     const res = await fetch(`/api/doctrack/documents/detail?id=${id}`)
     const result = await res.json()
@@ -326,9 +463,11 @@ export default function AITrackPage() {
       setRole(r.profile?.role || '')
       setActiveModules(r.activeModules || [])
     })
+    createClient().auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || ''))
     loadPlaybooks()
     loadDrafts()
     loadMemos()
+    loadAgents()
     const params = new URLSearchParams(window.location.search)
     const idFromUrl = params.get('document_id')
     if (idFromUrl) setDocumentId(idFromUrl)
@@ -460,10 +599,44 @@ export default function AITrackPage() {
     await loadMemos()
   }
 
+  const handleAgentSubmit = async (e) => {
+    e.preventDefault()
+    setAgentSubmitting(true)
+    setAgentError('')
+
+    const { id, ...payload } = agentForm
+    const res = await fetch(id ? `/api/aitrack/expert-agents?id=${id}` : '/api/aitrack/expert-agents', {
+      method: id ? 'PATCH' : 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const result = await res.json()
+    setAgentSubmitting(false)
+    if (!res.ok) {
+      setAgentError(result.error || 'Could not save expert agent')
+      return
+    }
+    setAgentForm(emptyAgentForm())
+    await loadAgents()
+  }
+
+  const handleEditAgent = (a) => {
+    setAgentForm({ id: a.id, name: a.name, description: a.description || '', instructions: a.instructions, visibility: a.visibility })
+  }
+
+  const handleDeleteAgent = async (a) => {
+    if (!confirm(`Delete "${a.name}"? This can't be undone.`)) return
+    await fetch(`/api/aitrack/expert-agents?id=${a.id}`, { method: 'DELETE' })
+    if (agentForm.id === a.id) setAgentForm(emptyAgentForm())
+    if (chattingAgentId === a.id) setChattingAgentId('')
+    await loadAgents()
+  }
+
   const TABS = [
     { key: 'reviews', label: 'Document Reviews' },
     { key: 'drafting', label: 'Drafting' },
     { key: 'research', label: 'Legal Research' },
+    { key: 'experts', label: 'Expert Agents' },
     { key: 'playbooks', label: 'Playbooks' },
   ]
 
@@ -675,6 +848,92 @@ export default function AITrackPage() {
               <p className="text-gray-500 text-sm">No research memos yet.</p>
             ) : (
               memos.map((m) => <ResearchResult key={m.id} memo={m} canSaveToDocTrack={canSaveToDocTrack} />)
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'experts' && (
+        <div>
+          {isPrivileged && (
+            <form onSubmit={handleAgentSubmit} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 mb-6">
+              <p className="font-medium text-gray-900">{agentForm.id ? 'Edit expert agent' : 'New expert agent'}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Name</label>
+                  <input type="text" required value={agentForm.name} onChange={(e) => setAgentForm((p) => ({ ...p, name: e.target.value }))} className="w-full px-2 py-1.5 border rounded text-sm" placeholder="e.g. Employment Law Expert" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Description (optional)</label>
+                  <input type="text" value={agentForm.description} onChange={(e) => setAgentForm((p) => ({ ...p, description: e.target.value }))} className="w-full px-2 py-1.5 border rounded text-sm" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Instructions</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Define this expert's persona and scope, e.g. 'You are our firm's employment law expert. Answer questions about Nigerian labor law, staff contracts, and disciplinary process...'"
+                  value={agentForm.instructions}
+                  onChange={(e) => setAgentForm((p) => ({ ...p, instructions: e.target.value }))}
+                  className="w-full px-2 py-1.5 border rounded text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Visibility</label>
+                <select value={agentForm.visibility} onChange={(e) => setAgentForm((p) => ({ ...p, visibility: e.target.value }))} className="w-full sm:w-64 px-2 py-1.5 border rounded text-sm">
+                  <option value="private">Private -- each staff member's conversation is their own</option>
+                  <option value="shared">Shared -- any staff member can read any conversation</option>
+                </select>
+              </div>
+
+              {agentError && <p className="text-red-600 text-xs">{agentError}</p>}
+              <div className="flex items-center gap-3">
+                <button type="submit" disabled={agentSubmitting} className="text-sm bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+                  {agentSubmitting ? 'Saving...' : agentForm.id ? 'Save changes' : 'Create expert agent'}
+                </button>
+                {agentForm.id && (
+                  <button type="button" onClick={() => setAgentForm(emptyAgentForm())} className="text-sm text-gray-500 hover:underline">Cancel edit</button>
+                )}
+              </div>
+            </form>
+          )}
+
+          <p className="font-medium text-gray-900 mb-2">Expert agents</p>
+          <div className="space-y-2">
+            {agents.length === 0 ? (
+              <p className="text-gray-500 text-sm">No expert agents yet.</p>
+            ) : (
+              agents.map((a) => (
+                <div key={a.id}>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900">{a.name} <span className="text-xs font-normal text-gray-400">({a.visibility})</span></p>
+                        {a.description && <p className="text-sm text-gray-600 mt-1">{a.description}</p>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => setChattingAgentId(chattingAgentId === a.id ? '' : a.id)} className="text-xs text-blue-600 hover:underline">
+                          {chattingAgentId === a.id ? 'Close chat' : 'Chat'}
+                        </button>
+                        {isPrivileged && (
+                          <>
+                            <button type="button" onClick={() => handleEditAgent(a)} className="text-xs text-blue-600 hover:underline">Edit</button>
+                            <button type="button" onClick={() => handleDeleteAgent(a)} className="text-xs text-red-600 hover:underline">Delete</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {chattingAgentId === a.id && currentUserId && (
+                    <div className="mt-2">
+                      <ExpertAgentChat agent={a} currentUserId={currentUserId} />
+                    </div>
+                  )}
+                </div>
+              ))
             )}
           </div>
         </div>

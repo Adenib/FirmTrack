@@ -200,6 +200,12 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     'security_audit_log',
     // ai_inbox_digest_runs.user_id -> users, no cascade, same reason.
     'ai_inbox_digest_runs',
+    // ai_expert_agent_messages.user_id -> users, no cascade, same reason
+    // -- must be cleared before ai_expert_agents too (its own FK cascade
+    // would handle that, but explicit is simpler here).
+    'ai_expert_agent_messages',
+    // ai_expert_agents.created_by -> users, no cascade, same reason.
+    'ai_expert_agents',
     // mfa_backup_codes.user_id -> users, on delete cascade -- listed
     // explicitly anyway for symmetry with the rest of this ordered cleanup.
     'mfa_backup_codes',
