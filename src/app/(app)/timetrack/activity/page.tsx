@@ -209,6 +209,13 @@ export default function ActivityLogPage() {
           your own key rather than sharing one.
         </p>
 
+        <a
+          href="/api/downloads/desktop-agent"
+          className="inline-block text-sm text-blue-600 hover:underline mb-3"
+        >
+          Download desktop agent (Windows)
+        </a>
+
         {newKey && (
           <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-3 text-sm">
             <p className="text-amber-800 mb-1">
