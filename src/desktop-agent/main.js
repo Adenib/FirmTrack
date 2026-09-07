@@ -17,7 +17,7 @@ if (!gotLock) {
 const settingsStore = new Store({
   name: 'settings',
   defaults: {
-    serverUrl: 'https://firmtrack.example.com',
+    serverUrl: 'https://firmtracks.com',
     apiKey: '',
     interval: 30,
     startOnLogin: false,

@@ -1,6 +1,6 @@
 {
   "name": "firmtrack-tracker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "FirmTrack Time Tracker Agent",
   "private": true,
   "main": "main.js",
