@@ -19,6 +19,8 @@ export type SecurityEventType =
   | 'mfa_enrolled'
   | 'mfa_reset'
   | 'terms_accepted'
+  | 'signup_gate_paused'
+  | 'signup_gate_resumed'
 
 export type LogSecurityEventInput = {
   tenantId?: string | null
@@ -41,7 +43,13 @@ export function getClientIp(request: Request): string | null {
 // `await logSecurityEvent(...)` with no try/catch of its own.
 export async function logSecurityEvent(input: LogSecurityEventInput): Promise<void> {
   try {
-    await supabaseAdmin.from('security_audit_log').insert({
+    // supabase-js resolves with { data, error } on a DB-level failure (a
+    // constraint violation, say) rather than throwing -- it only throws
+    // on a network-level failure. Checking .error explicitly is what
+    // makes a silent, unlogged failure impossible here; relying on the
+    // catch block alone would miss exactly the errors this function
+    // exists to never lose (found via a real FK violation going unheard).
+    const { error } = await supabaseAdmin.from('security_audit_log').insert({
       tenant_id: input.tenantId || null,
       user_id: input.userId || null,
       event_type: input.eventType,
@@ -50,6 +58,7 @@ export async function logSecurityEvent(input: LogSecurityEventInput): Promise<vo
       user_agent: input.request.headers.get('user-agent'),
       metadata: input.metadata || {},
     })
+    if (error) console.error('logSecurityEvent failed:', error)
   } catch (err) {
     console.error('logSecurityEvent failed:', err)
   }

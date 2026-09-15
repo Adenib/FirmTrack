@@ -5,6 +5,7 @@ import { DEFAULT_LEAVE_TYPES } from '@/lib/hrtrack/default-leave-types'
 import { logSecurityEvent } from '@/lib/audit-log'
 import { currencyForPhone } from '@/lib/currency/calling-codes'
 import { notifyNewSignup } from '@/lib/creator/notify-signup'
+import { isSignupGatePaused } from '@/lib/signup-gate'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,10 +39,14 @@ export async function POST(request: Request) {
     // is_active starts false -- every new signup is created pending until
     // a FirmTrack team member approves it via the Creator Console
     // (src/app/creator/signups/). Enforced at login (src/app/api/auth/login/route.ts)
-    // and on every request (middleware.ts).
+    // and on every request (middleware.ts). Creator Console staff can pause
+    // this gate (src/lib/signup-gate.ts) -- while paused, new orgs are
+    // activated immediately instead of joining the pending queue; orgs
+    // already pending from before a pause are unaffected.
+    const gatePaused = await isSignupGatePaused()
     const { data: org, error: orgError } = await supabaseAdmin
       .from('organizations')
-      .insert({ name: orgName, slug, plan: 'free', phone: phone || null, base_currency: currencyForPhone(phone), is_active: false })
+      .insert({ name: orgName, slug, plan: 'free', phone: phone || null, base_currency: currencyForPhone(phone), is_active: gatePaused })
       .select()
       .single()
 

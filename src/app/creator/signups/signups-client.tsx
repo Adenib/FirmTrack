@@ -9,6 +9,11 @@ export default function SignupsClient() {
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
 
+  const [paused, setPaused] = useState(false)
+  const [gateLoading, setGateLoading] = useState(true)
+  const [gateBusy, setGateBusy] = useState(false)
+  const [gateError, setGateError] = useState('')
+
   const load = async () => {
     setLoading(true)
     setError('')
@@ -19,9 +24,33 @@ export default function SignupsClient() {
     setLoading(false)
   }
 
+  const loadGateState = async () => {
+    setGateLoading(true)
+    const res = await fetch('/api/creator/signup-gate')
+    const result = await res.json()
+    if (res.ok) setPaused(!!result.paused)
+    setGateLoading(false)
+  }
+
   useEffect(() => {
     load()
+    loadGateState()
   }, [])
+
+  const handleToggleGate = async () => {
+    setGateBusy(true)
+    setGateError('')
+    const next = !paused
+    const res = await fetch('/api/creator/signup-gate', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ paused: next }),
+    })
+    const result = await res.json()
+    if (!res.ok) setGateError(result.error || 'Could not update the approval gate')
+    else setPaused(result.paused)
+    setGateBusy(false)
+  }
 
   const handleApprove = async (org) => {
     setBusyId(org.id)
@@ -58,6 +87,34 @@ export default function SignupsClient() {
       <p className="text-gray-600 mb-6">
         New organizations awaiting approval. They can&apos;t log in until you approve them here.
       </p>
+
+      {!gateLoading && (
+        <div className={`border rounded-lg p-4 mb-6 flex items-center justify-between gap-4 ${paused ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200'}`}>
+          <div>
+            <p className="font-medium text-gray-900">
+              Approval gate is {paused ? 'paused' : 'on'}
+            </p>
+            <p className="text-xs text-gray-500">
+              {paused
+                ? 'New signups are activated immediately -- no approval needed. Orgs already pending below are unaffected.'
+                : 'New signups land in this pending list and need approval before they can log in.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleGate}
+            disabled={gateBusy}
+            className={`text-sm px-3 py-2 rounded-md disabled:opacity-50 shrink-0 ${
+              paused
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'border border-amber-300 text-amber-700 hover:bg-amber-50'
+            }`}
+          >
+            {gateBusy ? 'Saving...' : paused ? 'Resume approval' : 'Pause approval'}
+          </button>
+        </div>
+      )}
+      {gateError && <p className="text-red-600 text-sm mb-4">{gateError}</p>}
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
