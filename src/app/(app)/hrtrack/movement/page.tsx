@@ -11,6 +11,7 @@ type Movement = {
   purpose: string | null
   status: string
   moved_at: string
+  users: { email: string } | null
 }
 
 const STATUS_OPTIONS = ['pending', 'approved', 'rejected']
@@ -35,7 +36,7 @@ export default function HRTrackMovementPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('movements')
-      .select('*')
+      .select('*, users(email)')
       .order('moved_at', { ascending: false })
     setMovements(data || [])
     setLoading(false)
@@ -136,7 +137,7 @@ export default function HRTrackMovementPage() {
                 </p>
                 {m.purpose && <p className="text-sm text-gray-500">{m.purpose}</p>}
                 <p className="text-xs text-gray-400 mt-1">
-                  {new Date(m.moved_at).toLocaleString()}
+                  {m.users?.email || 'Unknown staff'} · {new Date(m.moved_at).toLocaleString()}
                 </p>
               </div>
               <div className="flex items-center gap-2">
