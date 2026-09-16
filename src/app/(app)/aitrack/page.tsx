@@ -780,7 +780,7 @@ export default function AITrackPage() {
   return (
     <div className="p-8 max-w-4xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">AITrack</h1>
-      <p className="text-gray-600 mb-4">AI-assisted document review, drafting, legal research, expert agents, tabular batch review, and configurable playbooks — all grounded in your firm&apos;s real documents and matters, not generic guesses.</p>
+      <p className="text-gray-600 mb-4">AI-assisted document review grounded in a real uploaded file, document drafting, and configurable review playbooks.</p>
 
       <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200">
         {TABS.map((t) => (

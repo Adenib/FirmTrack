@@ -104,7 +104,7 @@ export default function BillTrackPage() {
         </div>
       </div>
       <p className="text-gray-600 mb-6">
-        Generate itemized invoices straight from unbilled time and disbursements, then send notifications, track reminders, and record payments — all without leaving BillTrack.
+        Firmwide invoices — send notifications, track reminders, and record payments without leaving BillTrack.
       </p>
 
       <div className="flex flex-wrap items-end gap-3 mb-6">

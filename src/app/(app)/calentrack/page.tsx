@@ -141,7 +141,7 @@ export default function CalenTrackPage() {
           Reports →
         </Link>
       </div>
-      <p className="text-gray-600 mb-6">Every hearing, filing deadline, and client meeting on one firm-wide calendar, linked straight to the matter it belongs to.</p>
+      <p className="text-gray-600 mb-6">Schedule and manage meetings, shifts, leave, and deadlines.</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <div className="bg-white border border-gray-200 rounded-lg p-3">

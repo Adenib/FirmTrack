@@ -13,7 +13,7 @@ export default function HRTrackHubPage() {
   return (
     <div className="p-8 max-w-4xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">HRTrack</h1>
-      <p className="text-gray-600 mb-6">Attendance, movement, performance reviews, leave, and payroll in one place — with work-from-home monitoring that actually checks in with remote staff, not just a badge swipe.</p>
+      <p className="text-gray-600 mb-6">Attendance, movement, and performance in one place.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {SECTIONS.map((s) => (
