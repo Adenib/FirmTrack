@@ -25,6 +25,52 @@ const emptyResearchForm = () => ({ question: '', matter_id: '', matter_query: ''
 
 const emptyAgentForm = () => ({ id: null, name: '', description: '', instructions: '', visibility: 'private' })
 
+const MAX_TABULAR_DOCUMENTS = 15
+
+const emptyTabularForm = () => ({ name: '', fields: [{ label: '', instructions: '' }], selectedDocs: [] })
+
+function TabularReviewTable({ review, rows }) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+      <p className="text-xs text-gray-500">
+        {review.name || 'Untitled review'} · {new Date(review.created_at).toLocaleString()} · {rows.length} document{rows.length === 1 ? '' : 's'}
+      </p>
+      <div className="overflow-x-auto border border-gray-200 rounded">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left px-3 py-2 font-medium text-gray-500 whitespace-nowrap">Document</th>
+              {review.fields.map((f, i) => (
+                <th key={i} className="text-left px-3 py-2 font-medium text-gray-500">{f.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id} className="border-b border-gray-100 last:border-0 align-top">
+                <td className="px-3 py-2 text-gray-900 font-medium whitespace-nowrap">{row.document_title}</td>
+                {row.error ? (
+                  <td colSpan={review.fields.length} className="px-3 py-2 text-red-600 text-xs">{row.error}</td>
+                ) : (
+                  review.fields.map((f, i) => {
+                    const cell = (row.values || []).find((v) => v.label === f.label)
+                    return (
+                      <td key={i} className="px-3 py-2 text-gray-700">
+                        {cell?.value || '—'}
+                        {cell?.notes && <p className="text-xs text-gray-400 mt-0.5">{cell.notes}</p>}
+                      </td>
+                    )
+                  })
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 function ExpertAgentChat({ agent, currentUserId }) {
   const [conversations, setConversations] = useState([])
   const [viewingUserId, setViewingUserId] = useState(currentUserId)
@@ -419,6 +465,17 @@ export default function AITrackPage() {
   const [agentError, setAgentError] = useState('')
   const [chattingAgentId, setChattingAgentId] = useState('')
 
+  // Tabular Review tab
+  const [tabularForm, setTabularForm] = useState(emptyTabularForm())
+  const [tabDocQuery, setTabDocQuery] = useState('')
+  const [tabDocResults, setTabDocResults] = useState([])
+  const [tabularReviews, setTabularReviews] = useState([])
+  const [tabularRunning, setTabularRunning] = useState(false)
+  const [tabularError, setTabularError] = useState('')
+  const [viewingTabularId, setViewingTabularId] = useState('')
+  const [viewingTabularDetail, setViewingTabularDetail] = useState(null)
+  const [viewingTabularLoading, setViewingTabularLoading] = useState(false)
+
   const isPrivileged = PRIVILEGED_ROLES.includes(role)
   const canSaveToDocTrack = activeModules.includes('doctrack')
 
@@ -446,6 +503,20 @@ export default function AITrackPage() {
     if (res.ok) setAgents(result.agents || [])
   }
 
+  const loadTabularReviews = async () => {
+    const res = await fetch('/api/aitrack/tabular-reviews')
+    const result = await res.json()
+    if (res.ok) setTabularReviews(result.reviews || [])
+  }
+
+  const loadTabularDetail = async (id) => {
+    setViewingTabularLoading(true)
+    const res = await fetch(`/api/aitrack/tabular-reviews/${id}`)
+    const result = await res.json()
+    if (res.ok) setViewingTabularDetail(result)
+    setViewingTabularLoading(false)
+  }
+
   const loadDocument = async (id) => {
     const res = await fetch(`/api/doctrack/documents/detail?id=${id}`)
     const result = await res.json()
@@ -468,6 +539,7 @@ export default function AITrackPage() {
     loadDrafts()
     loadMemos()
     loadAgents()
+    loadTabularReviews()
     const params = new URLSearchParams(window.location.search)
     const idFromUrl = params.get('document_id')
     if (idFromUrl) setDocumentId(idFromUrl)
@@ -495,6 +567,19 @@ export default function AITrackPage() {
     }, 250)
     return () => clearTimeout(t)
   }, [docQuery])
+
+  useEffect(() => {
+    if (!tabDocQuery) {
+      setTabDocResults([])
+      return
+    }
+    const t = setTimeout(async () => {
+      const res = await fetch(`/api/doctrack/documents?q=${encodeURIComponent(tabDocQuery)}`)
+      const result = await res.json()
+      if (res.ok) setTabDocResults((result.documents || []).slice(0, 8))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [tabDocQuery])
 
   const handleRunReview = async () => {
     setRunning(true)
@@ -632,11 +717,63 @@ export default function AITrackPage() {
     await loadAgents()
   }
 
+  const updateTabularField = (index, patch) => {
+    setTabularForm((prev) => ({ ...prev, fields: prev.fields.map((f, i) => (i === index ? { ...f, ...patch } : f)) }))
+  }
+  const addTabularField = () => setTabularForm((prev) => ({ ...prev, fields: [...prev.fields, { label: '', instructions: '' }] }))
+  const removeTabularField = (index) => setTabularForm((prev) => ({ ...prev, fields: prev.fields.filter((_, i) => i !== index) }))
+
+  const addTabularDoc = (d) => {
+    if (d.external_source) return
+    setTabularForm((prev) => {
+      if (prev.selectedDocs.some((sd) => sd.id === d.id) || prev.selectedDocs.length >= MAX_TABULAR_DOCUMENTS) return prev
+      return { ...prev, selectedDocs: [...prev.selectedDocs, d] }
+    })
+    setTabDocQuery('')
+    setTabDocResults([])
+  }
+  const removeTabularDoc = (id) => {
+    setTabularForm((prev) => ({ ...prev, selectedDocs: prev.selectedDocs.filter((d) => d.id !== id) }))
+  }
+
+  const handleViewTabularReview = async (id) => {
+    setViewingTabularId(id)
+    await loadTabularDetail(id)
+  }
+
+  const handleRunTabularReview = async (e) => {
+    e.preventDefault()
+    setTabularRunning(true)
+    setTabularError('')
+
+    const cleanFields = tabularForm.fields.filter((f) => f.label.trim() && f.instructions.trim())
+    const res = await fetch('/api/aitrack/tabular-reviews', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: tabularForm.name || null,
+        fields: cleanFields,
+        document_ids: tabularForm.selectedDocs.map((d) => d.id),
+      }),
+    })
+    const result = await res.json()
+    setTabularRunning(false)
+    if (!res.ok) {
+      setTabularError(result.error || 'Could not run tabular review')
+      return
+    }
+    setTabularForm(emptyTabularForm())
+    await loadTabularReviews()
+    setViewingTabularId(result.review.id)
+    setViewingTabularDetail({ review: result.review, rows: result.rows })
+  }
+
   const TABS = [
     { key: 'reviews', label: 'Document Reviews' },
     { key: 'drafting', label: 'Drafting' },
     { key: 'research', label: 'Legal Research' },
     { key: 'experts', label: 'Expert Agents' },
+    { key: 'tabular', label: 'Tabular Review' },
     { key: 'playbooks', label: 'Playbooks' },
   ]
 
@@ -936,6 +1073,131 @@ export default function AITrackPage() {
               ))
             )}
           </div>
+        </div>
+      )}
+
+      {tab === 'tabular' && (
+        <div>
+          <form onSubmit={handleRunTabularReview} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 mb-6">
+            <p className="font-medium text-gray-900">New tabular review</p>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Name (optional)</label>
+              <input
+                type="text"
+                value={tabularForm.name}
+                onChange={(e) => setTabularForm((p) => ({ ...p, name: e.target.value }))}
+                className="w-full sm:w-64 px-2 py-1.5 border rounded text-sm"
+                placeholder="e.g. Q3 Lease Review"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Fields to extract</label>
+              <div className="space-y-2">
+                {tabularForm.fields.map((field, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <input
+                      type="text"
+                      placeholder="Field label, e.g. Effective Date"
+                      value={field.label}
+                      onChange={(e) => updateTabularField(i, { label: e.target.value })}
+                      className="w-48 px-2 py-1.5 border rounded text-sm"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Instructions, e.g. Extract the contract's effective date"
+                      value={field.instructions}
+                      onChange={(e) => updateTabularField(i, { instructions: e.target.value })}
+                      className="flex-1 px-2 py-1.5 border rounded text-sm"
+                    />
+                    {tabularForm.fields.length > 1 && (
+                      <button type="button" onClick={() => removeTabularField(i)} className="text-xs text-red-600 hover:underline py-1.5">Remove</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={addTabularField} className="text-sm text-blue-600 hover:underline mt-2">+ Add field</button>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Documents ({tabularForm.selectedDocs.length} / {MAX_TABULAR_DOCUMENTS})</label>
+              {tabularForm.selectedDocs.length > 0 && (
+                <div className="space-y-1 mb-2">
+                  {tabularForm.selectedDocs.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between px-2 py-1.5 border rounded text-sm bg-gray-50">
+                      <span className="text-gray-700 truncate">{d.title}</span>
+                      <button type="button" onClick={() => removeTabularDoc(d.id)} className="text-xs text-blue-600 hover:underline ml-2 shrink-0">Remove</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {tabularForm.selectedDocs.length < MAX_TABULAR_DOCUMENTS && (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={tabDocQuery}
+                    onChange={(e) => setTabDocQuery(e.target.value)}
+                    placeholder="Search documents to add..."
+                    className="w-full px-2 py-1.5 border rounded text-sm"
+                  />
+                  {tabDocResults.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg">
+                      {tabDocResults.map((d) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          disabled={!!d.external_source}
+                          onClick={() => addTabularDoc(d)}
+                          className={`w-full text-left px-3 py-2 text-sm border-b border-gray-100 last:border-0 ${d.external_source ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+                        >
+                          <p className="font-medium text-gray-900">{d.title}</p>
+                          <p className="text-xs text-gray-500">{d.matters?.case_name || 'No matter'}{d.external_source ? ' · Linked (no local file -- not reviewable)' : ''}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {tabularError && <p className="text-red-600 text-xs">{tabularError}</p>}
+            <button
+              type="submit"
+              disabled={tabularRunning || tabularForm.selectedDocs.length === 0}
+              className="text-sm bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {tabularRunning
+                ? `Processing ${tabularForm.selectedDocs.length} document${tabularForm.selectedDocs.length === 1 ? '' : 's'}... this can take a few minutes`
+                : `Run tabular review (${tabularForm.selectedDocs.length} document${tabularForm.selectedDocs.length === 1 ? '' : 's'})`}
+            </button>
+          </form>
+
+          <p className="font-medium text-gray-900 mb-2">Review history</p>
+          <div className="space-y-2 mb-3">
+            {tabularReviews.length === 0 ? (
+              <p className="text-gray-500 text-sm">No tabular reviews yet.</p>
+            ) : (
+              tabularReviews.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => handleViewTabularReview(r.id)}
+                  className={`w-full text-left bg-white border rounded-lg p-3 text-sm hover:bg-gray-50 ${viewingTabularId === r.id ? 'border-blue-400' : 'border-gray-200'}`}
+                >
+                  <span className="font-medium text-gray-900">{r.name || 'Untitled review'}</span>
+                  <span className="text-xs text-gray-500 ml-2">
+                    {r.fields.length} field{r.fields.length === 1 ? '' : 's'} · {r.rows?.[0]?.count ?? 0} document{(r.rows?.[0]?.count ?? 0) === 1 ? '' : 's'} · {new Date(r.created_at).toLocaleString()}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+
+          {viewingTabularLoading ? (
+            <p className="text-gray-500 text-sm">Loading...</p>
+          ) : viewingTabularDetail && (
+            <TabularReviewTable review={viewingTabularDetail.review} rows={viewingTabularDetail.rows} />
+          )}
         </div>
       )}
 

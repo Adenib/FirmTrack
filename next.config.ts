@@ -43,6 +43,15 @@ const nextConfig: NextConfig = {
       './node_modules/pdfjs-dist/**/*',
       './node_modules/pdf-parse/**/*',
     ],
+    // Same extractDocumentText() call, same blind spot -- this key is
+    // per-route-path, not global, so a new route that also extracts
+    // PDF text needs its own copy of the same globs above.
+    '/api/aitrack/tabular-reviews': [
+      './node_modules/**/@napi-rs/canvas/**/*',
+      './node_modules/**/@napi-rs/canvas-linux-x64-gnu/**/*',
+      './node_modules/pdfjs-dist/**/*',
+      './node_modules/pdf-parse/**/*',
+    ],
   },
   // pdf-parse (AITrack's PDF text extraction) resolves its pdf.js worker
   // file via a runtime-relative path -- Next.js's Server Components
