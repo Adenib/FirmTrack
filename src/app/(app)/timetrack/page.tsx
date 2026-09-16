@@ -366,7 +366,7 @@ export default function TimeTrackPage() {
           </Link>
         </div>
       </div>
-      <p className="text-gray-600 mb-1">Log billable time against matters.</p>
+      <p className="text-gray-600 mb-1">Log billable and non-billable time against any matter — by hand, or let the desktop agent track your day automatically and convert it with one click.</p>
       {aiDraftingEnabled && (
         <button
           type="button"

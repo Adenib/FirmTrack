@@ -109,7 +109,7 @@ const MODULES: ModuleEntry[] = [
     key: 'aitrack',
     label: 'AITrack',
     href: '/aitrack',
-    description: 'AI-assisted document review against a real uploaded file, plus configurable review playbooks.',
+    description: 'AI-assisted document review, drafting, legal research, expert agents, tabular batch review, and configurable playbooks.',
     icon: SparkleIcon,
   },
   {

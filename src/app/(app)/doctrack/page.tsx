@@ -432,7 +432,7 @@ export default function DocTrackPage() {
   return (
     <div className="p-8 max-w-5xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">DocTrack</h1>
-      <p className="text-gray-600 mb-6">Matter-linked document storage, with version history and an audit trail.</p>
+      <p className="text-gray-600 mb-6">Matter-linked document storage, with version history and an audit trail — upload files directly, or link them from OneDrive, Outlook, and SharePoint.</p>
 
       <form onSubmit={handleUpload} className="bg-white border border-gray-200 rounded-lg p-4 mb-6 space-y-3">
         <p className="text-sm font-medium text-gray-900">Upload a document</p>
