@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getExchangeRate, ExchangeRateError } from '@/lib/accounttrack/exchange-rate'
+import { resolveInternalCostRate } from '@/lib/accounttrack/internal-cost-rate'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -83,6 +84,11 @@ export async function POST(request: Request) {
   // Cache lookups per (currency, date) pair to avoid redundant DB calls
   // when a batch shares the same matter/date across many lines.
   const rateCache = new Map<string, number>()
+  // Internal cost rate is resolved per (lawyer, date) -- a DB lookup, not
+  // just an FX rate -- and cached the same way to avoid redundant calls
+  // across a batch. Unset for that lawyer/date, it stays null rather than
+  // failing the whole submission (see resolveInternalCostRate's doc comment).
+  const costRateCache = new Map<string, { rate: number; currency: string } | null>()
   let entryRows
   try {
     entryRows = await Promise.all(
@@ -95,6 +101,25 @@ export async function POST(request: Request) {
           rate = await getExchangeRate(profile.tenant_id, currency, baseCurrency, entryDate)
           rateCache.set(cacheKey, rate)
         }
+
+        let internalCostAmount: number | null = null
+        let internalCostRateValue: number | null = null
+        if (r.lawyer_id && r.hours) {
+          const costCacheKey = `${r.lawyer_id}->${entryDate}`
+          let costRate = costRateCache.get(costCacheKey)
+          if (costRate === undefined) {
+            costRate = await resolveInternalCostRate(profile.tenant_id, r.lawyer_id, entryDate)
+            costRateCache.set(costCacheKey, costRate)
+          }
+          if (costRate) {
+            const costFxRate = costRate.currency === currency
+              ? 1
+              : await getExchangeRate(profile.tenant_id, costRate.currency, currency, entryDate)
+            internalCostRateValue = costRate.rate * costFxRate
+            internalCostAmount = internalCostRateValue * Number(r.hours)
+          }
+        }
+
         return {
           tenant_id: profile.tenant_id,
           lawyer_id: r.lawyer_id || null,
@@ -106,6 +131,8 @@ export async function POST(request: Request) {
           amount: r.amount || null,
           currency,
           base_currency_amount: r.amount ? Number(r.amount) * rate : null,
+          internal_cost_rate: internalCostRateValue,
+          internal_cost_amount: internalCostAmount,
           expl_code: r.expl_code || null,
           explanation: r.explanation || null,
           notes: r.notes || null,
@@ -142,16 +169,22 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
   const { data: profile } = await supabase
-    .from('users').select('tenant_id').eq('id', user.id).single()
+    .from('users').select('tenant_id, role').eq('id', user.id).single()
   if (!profile) return NextResponse.json({ error: 'No profile' }, { status: 403 })
 
-  const { id, status, hold, billable } = await request.json()
+  const { id, status, hold, billable, write_off_amount, write_off_reason } = await request.json()
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  if (write_off_amount !== undefined && !['owner', 'admin', 'accounts'].includes(profile.role)) {
+    return NextResponse.json({ error: 'Not authorized to write off time' }, { status: 403 })
+  }
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (status !== undefined) updates.status = status
   if (hold !== undefined) updates.hold = hold
   if (billable !== undefined) updates.billable = billable
+  if (write_off_amount !== undefined) updates.write_off_amount = write_off_amount
+  if (write_off_reason !== undefined) updates.write_off_reason = write_off_reason
 
   const { data, error } = await supabaseAdmin
     .from('time_entries')

@@ -34,6 +34,17 @@ type Lawyer = {
   lawyer_rates: LawyerRate[]
 }
 
+type InternalCostRate = {
+  id: string
+  lawyer_id: string | null
+  category_id: string | null
+  rate: number
+  currency: string
+  effective_from: string
+  lawyers: { full_name: string; nickname: string } | null
+  lawyer_categories: { name: string } | null
+}
+
 const RATE_TYPES = ['A', 'B', 'C', 'D', 'E']
 
 const formatNGN = (n: number) =>
@@ -61,6 +72,16 @@ export default function LawyersPage() {
   const [rateAmount, setRateAmount] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const [costRates, setCostRates] = useState<InternalCostRate[]>([])
+  const [costScope, setCostScope] = useState<'lawyer' | 'category'>('category')
+  const [costLawyerId, setCostLawyerId] = useState('')
+  const [costCategoryId, setCostCategoryId] = useState('')
+  const [costRateAmount, setCostRateAmount] = useState('')
+  const [costRateCurrency, setCostRateCurrency] = useState('NGN')
+  const [costRateEffectiveFrom, setCostRateEffectiveFrom] = useState('')
+  const [costRateError, setCostRateError] = useState('')
+  const [costRateSubmitting, setCostRateSubmitting] = useState(false)
+
   const loadData = async () => {
     setLoading(true)
     setError('')
@@ -81,9 +102,48 @@ export default function LawyersPage() {
     setLoading(false)
   }
 
+  const loadCostRates = async () => {
+    const response = await fetch('/api/admin/internal-cost-rates')
+    const result = await response.json()
+    if (response.ok) setCostRates(result.rates || [])
+  }
+
   useEffect(() => {
     loadData()
+    loadCostRates()
   }, [])
+
+  const handleAddCostRate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCostRateSubmitting(true)
+    setCostRateError('')
+
+    const response = await fetch('/api/admin/internal-cost-rates', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        lawyer_id: costScope === 'lawyer' ? costLawyerId : null,
+        category_id: costScope === 'category' ? costCategoryId : null,
+        rate: Number(costRateAmount),
+        currency: costRateCurrency,
+        effective_from: costRateEffectiveFrom || undefined,
+      }),
+    })
+    const result = await response.json()
+
+    if (!response.ok) {
+      setCostRateError(result.error || 'Could not save internal cost rate')
+      setCostRateSubmitting(false)
+      return
+    }
+
+    setCostLawyerId('')
+    setCostCategoryId('')
+    setCostRateAmount('')
+    setCostRateEffectiveFrom('')
+    setCostRateSubmitting(false)
+    await loadCostRates()
+  }
 
   const ngnToUsd = (ngn: number) => (exchangeRate > 0 ? ngn / exchangeRate : 0)
 
@@ -390,6 +450,127 @@ export default function LawyersPage() {
                   </tr>
                 )
               })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h2 className="text-xl font-bold text-gray-900 mt-10 mb-1">Internal cost rates</h2>
+      <p className="text-gray-600 mb-6">
+        Used only for AccountTrack Profitability's internal cost math — never real salary data. Set a rate per
+        grade, or override for an individual lawyer. Rates are effective-dated: a new rate never changes
+        profitability already recorded before its effective date.
+      </p>
+
+      <form onSubmit={handleAddCostRate} className="bg-white border border-gray-200 rounded-lg p-4 mb-6 space-y-3">
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="radio"
+              checked={costScope === 'category'}
+              onChange={() => setCostScope('category')}
+            />
+            By grade
+          </label>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="radio"
+              checked={costScope === 'lawyer'}
+              onChange={() => setCostScope('lawyer')}
+            />
+            By individual lawyer
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {costScope === 'category' ? (
+            <select
+              required
+              value={costCategoryId}
+              onChange={(e) => setCostCategoryId(e.target.value)}
+              className="px-3 py-2 border rounded-md text-sm"
+            >
+              <option value="">Select grade...</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          ) : (
+            <select
+              required
+              value={costLawyerId}
+              onChange={(e) => setCostLawyerId(e.target.value)}
+              className="px-3 py-2 border rounded-md text-sm"
+            >
+              <option value="">Select lawyer...</option>
+              {lawyers.map((l) => (
+                <option key={l.id} value={l.id}>{l.full_name} ({l.nickname})</option>
+              ))}
+            </select>
+          )}
+
+          <input
+            type="number"
+            required
+            min="0"
+            step="0.01"
+            placeholder="Rate per hour"
+            value={costRateAmount}
+            onChange={(e) => setCostRateAmount(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm"
+          />
+
+          <input
+            type="text"
+            placeholder="Currency (e.g. NGN)"
+            value={costRateCurrency}
+            onChange={(e) => setCostRateCurrency(e.target.value.toUpperCase())}
+            className="px-3 py-2 border rounded-md text-sm"
+          />
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Effective from (defaults to today)</label>
+            <input
+              type="date"
+              value={costRateEffectiveFrom}
+              onChange={(e) => setCostRateEffectiveFrom(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md text-sm"
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={costRateSubmitting}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+        >
+          {costRateSubmitting ? 'Saving...' : 'Add cost rate'}
+        </button>
+        {costRateError && <p className="text-red-600 text-sm">{costRateError}</p>}
+      </form>
+
+      {costRates.length === 0 ? (
+        <p className="text-gray-500">No internal cost rates set yet.</p>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-gray-500">
+                <th className="px-4 py-2 font-medium">Applies to</th>
+                <th className="px-4 py-2 font-medium">Rate</th>
+                <th className="px-4 py-2 font-medium">Effective from</th>
+              </tr>
+            </thead>
+            <tbody>
+              {costRates.map((r) => (
+                <tr key={r.id} className="border-b border-gray-100 last:border-0">
+                  <td className="px-4 py-2 text-gray-700">
+                    {r.lawyers ? `${r.lawyers.full_name} (${r.lawyers.nickname})` : r.lawyer_categories?.name || '—'}
+                  </td>
+                  <td className="px-4 py-2 text-gray-700">{r.currency} {Number(r.rate).toLocaleString()}/hr</td>
+                  <td className="px-4 py-2 text-gray-700">{r.effective_from}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

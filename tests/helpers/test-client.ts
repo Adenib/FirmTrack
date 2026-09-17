@@ -212,6 +212,9 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     'agent_api_keys',
     'accounts_staff',
     'accounts_categories',
+    // internal_cost_rates.lawyer_id/category_id -> lawyers/lawyer_categories,
+    // no cascade, so it must be cleared before both below.
+    'internal_cost_rates',
     'lawyer_rates',
     'lawyers',
     'lawyer_categories',

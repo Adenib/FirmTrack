@@ -51,13 +51,13 @@ export async function createInvoiceForMatter(input: CreateInvoiceInput) {
     entryIds.length > 0
       ? supabaseAdmin
           .from('time_entries')
-          .select('id, amount')
+          .select('id, amount, write_off_amount')
           .eq('tenant_id', input.tenantId)
           .eq('matter_id', input.matterId)
           .eq('billable', true)
           .in('status', ['draft', 'submitted'])
           .in('id', entryIds)
-      : Promise.resolve({ data: [] as { id: string; amount: number }[] }),
+      : Promise.resolve({ data: [] as { id: string; amount: number; write_off_amount: number | null }[] }),
     disbIds.length > 0
       ? supabaseAdmin
           .from('disbursements')
@@ -76,7 +76,10 @@ export async function createInvoiceForMatter(input: CreateInvoiceInput) {
     throw new InvoiceCreationError('None of the selected items are still unbilled')
   }
 
-  const feesAmount = entries.reduce((sum, e) => sum + Number(e.amount || 0), 0)
+  // A write-off reduces what actually gets invoiced without touching the
+  // entry's own recorded `amount` -- that recorded figure stays the
+  // "recorded billable value" input to the realisation-rate calculation.
+  const feesAmount = entries.reduce((sum, e) => sum + Math.max(0, Number(e.amount || 0) - Number(e.write_off_amount || 0)), 0)
   const disbursementsAmount = disbursements.reduce((sum, d) => sum + Number(d.amount || 0), 0)
   const invoiceNumber = await generateInvoiceNumber(input.tenantId)
   const invoiceDate = new Date().toISOString().split('T')[0]

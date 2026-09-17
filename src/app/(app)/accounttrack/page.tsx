@@ -237,6 +237,9 @@ export default function AccountTrackPage() {
           <Link href="/accounttrack/lawyer-overview" className="text-sm text-blue-600 hover:underline">
             Lawyer Overview
           </Link>
+          <Link href="/accounttrack/profitability" className="text-sm text-blue-600 hover:underline">
+            Profitability
+          </Link>
           <Link href="/accounttrack/currencies" className="text-sm text-blue-600 hover:underline">
             Currencies
           </Link>
