@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import Logo from '@/components/brand/logo'
@@ -46,6 +47,18 @@ export default async function ModulePage({ params }: { params: Promise<{ slug: s
           </div>
           <h1 className="text-4xl font-bold mb-4">{mod.title}</h1>
           <p className="text-lg text-blue-100 max-w-xl mx-auto">{mod.tagline}</p>
+        </div>
+      </section>
+
+      <section className="max-w-5xl mx-auto px-6 pt-12 w-full">
+        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden">
+          <Image
+            src={`/marketing/modules/${mod.slug}.png`}
+            alt={mod.screenshotAlt}
+            width={1440}
+            height={845}
+            className="w-full h-auto"
+          />
         </div>
       </section>
 

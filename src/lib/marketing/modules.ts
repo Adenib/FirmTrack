@@ -14,6 +14,7 @@ export type MarketingModule = {
   tagline: string
   icon: React.ComponentType<{ className?: string }>
   features: string[]
+  screenshotAlt: string
 }
 
 // Slugs match the sidebar's own module keys (src/app/(app)/layout.tsx) --
@@ -31,6 +32,7 @@ export const MARKETING_MODULES: MarketingModule[] = [
       'Firmwide activity log and reporting',
       'Desktop agent integration for automatic activity tracking',
     ],
+    screenshotAlt: 'The TimeTrack time sheet, showing saved entries logged against real matters',
   },
   {
     slug: 'billtrack',
@@ -43,6 +45,7 @@ export const MARKETING_MODULES: MarketingModule[] = [
       'Pause or resume reminders on a per-invoice basis',
       'Firmwide billing reports and outstanding balances',
     ],
+    screenshotAlt: 'A BillTrack invoice showing its total, amount paid, status, and due date',
   },
   {
     slug: 'accounttrack',
@@ -56,6 +59,7 @@ export const MARKETING_MODULES: MarketingModule[] = [
       'Accounting period close/reopen controls',
       'Financial statements at a glance',
     ],
+    screenshotAlt: 'AccountTrack registers showing a trust ledger entry for a client matter',
   },
   {
     slug: 'doctrack',
@@ -69,6 +73,7 @@ export const MARKETING_MODULES: MarketingModule[] = [
       'Configurable document retention policies',
       'Role-based access down to the matter level',
     ],
+    screenshotAlt: 'DocTrack showing uploaded documents linked to their matters, with AI review available',
   },
   {
     slug: 'hrtrack',
@@ -81,6 +86,7 @@ export const MARKETING_MODULES: MarketingModule[] = [
       'Performance evaluations',
       'Payroll runs with automatic payslip generation',
     ],
+    screenshotAlt: 'HRTrack attendance, showing clock-in status and a firmwide attendance log',
   },
   {
     slug: 'calentrack',
@@ -92,6 +98,7 @@ export const MARKETING_MODULES: MarketingModule[] = [
       'Events linked to matters and time entries',
       'Calendar reporting',
     ],
+    screenshotAlt: 'CalenTrack showing scheduled meetings and deadlines linked to matters',
   },
   {
     slug: 'admin',
@@ -106,6 +113,7 @@ export const MARKETING_MODULES: MarketingModule[] = [
       'Security audit log and multi-factor authentication enforcement',
       'Full data backup, and restore into a new organization',
     ],
+    screenshotAlt: 'The Admin section, showing every management area from Users to Security Log',
   },
 ]
 
