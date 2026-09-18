@@ -24,6 +24,7 @@ const KEY_BENEFITS = [
   'Time tracking',
   'Billing & invoicing',
   'Trust accounting',
+  'Client/matter profitability',
   'Payroll',
   'Secure document management',
   'Reports & analytics',
