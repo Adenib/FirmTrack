@@ -1,5 +1,8 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest'
-import { createTestTenant, destroyTestTenant, createTestUser, supabaseAdmin, type TestTenant } from '../helpers/test-client'
+import {
+  createTestTenant, destroyTestTenant, createTestUser, createTestPlatformAdmin, destroyTestPlatformAdmin,
+  supabaseAdmin, type TestTenant,
+} from '../helpers/test-client'
 
 const APP_URL = 'http://localhost:3000'
 const TEST_PASSWORD = 'TestPassword123!'
@@ -201,5 +204,56 @@ describe('Security audit log', () => {
     const event = await latestEventFor(tenant.tenantId, 'logout', staff.email)
     expect(event).toBeTruthy()
     expect(event.user_id).toBe(staff.userId)
+  })
+})
+
+// Platform admins (Creator Console staff) have no public.users row --
+// security_audit_log.user_id FKs there, so a naive insert with their auth
+// id violates that FK and (before the fix this covers) silently vanished,
+// meaning platform-admin logins/logouts left no audit trail at all.
+describe('Security audit log for platform admins', () => {
+  let admin: Awaited<ReturnType<typeof createTestPlatformAdmin>>
+
+  async function latestPlatformAdminEvent(eventType: string, email: string) {
+    const { data } = await supabaseAdmin
+      .from('security_audit_log')
+      .select('*')
+      .is('tenant_id', null)
+      .eq('event_type', eventType)
+      .eq('email', email)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    return data?.[0]
+  }
+
+  afterAll(async () => {
+    await destroyTestPlatformAdmin(admin)
+  })
+
+  it('login_success is logged (with no user_id, since none can be FK-satisfied) instead of silently failing', async () => {
+    admin = await createTestPlatformAdmin('admin')
+
+    const event = await latestPlatformAdminEvent('login_success', admin.email)
+    expect(event).toBeTruthy()
+    expect(event.user_id).toBeNull()
+    expect(event.metadata).toMatchObject({ accountType: 'platform_admin' })
+  })
+
+  it('logout is logged the same way', async () => {
+    const loginRes = await fetch(`${APP_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: admin.email, password: 'TestPassword123!' }),
+    })
+    const getSetCookie = (loginRes.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie
+    const cookieHeader = (typeof getSetCookie === 'function' ? getSetCookie.call(loginRes.headers) : [])
+      .map((c) => c.split(';')[0]).join('; ')
+
+    await fetch(`${APP_URL}/auth/signout`, { headers: { cookie: cookieHeader } })
+
+    const event = await latestPlatformAdminEvent('logout', admin.email)
+    expect(event).toBeTruthy()
+    expect(event.user_id).toBeNull()
+    expect(event.metadata).toMatchObject({ accountType: 'platform_admin' })
   })
 })

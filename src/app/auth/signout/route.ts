@@ -9,12 +9,16 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
     const { data: profile } = await supabase.from('users').select('tenant_id').eq('id', user.id).single()
+    // See the matching comment in api/auth/login/route.ts -- platform
+    // admins have no public.users row, so user_id must be omitted for
+    // them or the FK-constrained insert silently fails.
     await logSecurityEvent({
       eventType: 'logout',
       email: user.email,
-      userId: user.id,
+      userId: profile ? user.id : null,
       tenantId: profile?.tenant_id,
       request,
+      metadata: profile ? undefined : { accountType: 'platform_admin' },
     })
   }
 

@@ -111,12 +111,18 @@ export async function POST(request: Request) {
     // "revoked" timestamp after the user has legitimately logged back in.
     await supabaseAdmin.from('users').update({ sessions_revoked_at: null }).eq('id', data.user.id)
 
+    // security_audit_log.user_id FKs to public.users, which platform
+    // admins (Creator Console staff) never have a row in -- passing their
+    // auth id here would violate that FK and silently drop the whole log
+    // entry (logSecurityEvent only console.errors, it never throws).
+    // Omitting userId for them still keeps the entry, correlated by email.
     await logSecurityEvent({
       eventType: 'login_success',
       email,
-      userId: data.user.id,
+      userId: profile ? data.user.id : null,
       tenantId: profile?.tenant_id,
       request,
+      metadata: profile ? undefined : { accountType: 'platform_admin' },
     })
 
     // Password was correct and the account is active -- but that's only

@@ -29,12 +29,16 @@ export async function POST(request: Request) {
     }
   }
 
+  // See the matching comment in api/auth/login/route.ts -- platform
+  // admins have no public.users row, so user_id must be omitted for
+  // them or the FK-constrained insert silently fails.
   await logSecurityEvent({
     eventType: 'mfa_enrolled',
     email: user.email,
-    userId: user.id,
+    userId: profile ? user.id : null,
     tenantId: profile?.tenant_id,
     request,
+    metadata: profile ? undefined : { accountType: 'platform_admin' },
   })
 
   return NextResponse.json({ success: true })
