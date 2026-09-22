@@ -29,12 +29,16 @@
   background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-blue) 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* This app has no actual dark theme anywhere -- every page hardcodes
+   light-mode Tailwind classes (bg-white, text-gray-900, etc.). A
+   prefers-color-scheme: dark override here used to flip the base
+   --foreground to near-white on a device/browser in dark mode, but
+   plain <input>/<textarea>/<select> elements never got an explicit text
+   color and so inherited that near-white body color -- against their
+   white background, the typed text became nearly illegible. Since
+   nothing in this app is actually designed for dark mode, the fix is to
+   just stay on the light palette always, matching every other element
+   that already hardcodes it. */
 
 body {
   background: var(--background);
