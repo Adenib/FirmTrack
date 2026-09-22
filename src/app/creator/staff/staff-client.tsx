@@ -94,8 +94,8 @@ export default function StaffClient({ currentAdminId }) {
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-2 py-1.5 border rounded text-sm" />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Password</label>
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-2 py-1.5 border rounded text-sm" />
+            <label className="block text-xs text-gray-500 mb-1">Password (only if they don&apos;t already have a FirmTrack login)</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-2 py-1.5 border rounded text-sm" />
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">Full name</label>
