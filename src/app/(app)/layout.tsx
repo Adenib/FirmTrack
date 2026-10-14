@@ -159,7 +159,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   })
   const [upgradeModule, setUpgradeModule] = useState<string | null>(null)
   const [showSupportModal, setShowSupportModal] = useState(false)
-  const [paymentMessage, setPaymentMessage] = useState<string | null>(null)
   // Off-canvas sidebar on narrow (phone) viewports -- closed by default,
   // opened via the mobile top bar's hamburger button, and auto-closed on
   // navigation below (a real page change is the only thing that should
@@ -192,16 +191,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       .then((r) => r.json())
       .then(setData)
       .catch(console.error)
-
-    // Check for payment result in URL
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('payment') === 'success') {
-      setPaymentMessage('Payment successful! Your module is now active.')
-      window.history.replaceState({}, '', window.location.pathname)
-    } else if (params.get('payment') === 'failed') {
-      setPaymentMessage('Payment failed. Please try again.')
-      window.history.replaceState({}, '', window.location.pathname)
-    }
   }, [])
 
   useEffect(() => {
@@ -414,11 +403,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="p-4 border-t border-gray-200">
-          {paymentMessage && (
-            <p className={`text-xs mb-2 ${paymentMessage.includes('successful') ? 'text-green-600' : 'text-red-600'}`}>
-              {paymentMessage}
-            </p>
-          )}
           <p className="text-sm font-medium text-gray-900 truncate">{profile?.email || ''}</p>
           <p className="text-xs text-gray-500 capitalize">{profile?.role || ''}</p>
           <Link href="/account" className="text-xs text-brand-blue hover:underline mt-1 inline-block mr-3">

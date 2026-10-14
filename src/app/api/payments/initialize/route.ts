@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       currency,
       ...(paystackPlanCode ? { plan: paystackPlanCode } : {}),
       metadata,
-      callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/payments/verify`,
+      callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/billing/order`,
     }),
   })
 

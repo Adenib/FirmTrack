@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { activateSubscriptions } from '@/lib/billing/activate-subscription'
 
+// Called client-side by /billing/order to display order status. The
+// Paystack webhook (api/webhooks/paystack) is the reliable, browser-
+// independent activation path; activateSubscriptions() here is a fast-path
+// duplicate call so the order page doesn't have to wait on the webhook --
+// it's a plain upsert, so calling it twice for the same transaction is safe.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const reference = searchParams.get('reference')
@@ -9,10 +14,9 @@ export async function GET(request: Request) {
   const ref = reference || trxref
 
   if (!ref) {
-    return NextResponse.redirect(new URL('/dashboard?payment=failed', request.url))
+    return NextResponse.json({ status: 'failed', error: 'Missing payment reference' }, { status: 400 })
   }
 
-  // Verify with Paystack
   const response = await fetch(`https://api.paystack.co/transaction/verify/${ref}`, {
     headers: {
       Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
@@ -22,11 +26,11 @@ export async function GET(request: Request) {
   const data = await response.json()
 
   if (!data.status || data.data.status !== 'success') {
-    return NextResponse.redirect(new URL('/dashboard?payment=failed', request.url))
+    return NextResponse.json({ status: 'failed', error: data.data?.gateway_response || 'Payment was not successful' })
   }
 
   const metadata = data.data.metadata
-  const { tenant_id, tier } = metadata
+  const { tier } = metadata
 
   // Bundle purchase (the pricing calculator) carries modules/module_prices;
   // a legacy single-module purchase (the sidebar upsell) carries just
@@ -38,16 +42,23 @@ export async function GET(request: Request) {
     modulePrices = { [metadata.module]: metadata.price_per_user }
   }
 
-  if (!tenant_id || !tier || !modulePrices) {
-    return NextResponse.redirect(new URL('/dashboard?payment=failed', request.url))
+  if (!metadata.tenant_id || !tier || !modulePrices) {
+    return NextResponse.json({ status: 'failed', error: 'Payment succeeded but order details were incomplete' })
   }
 
   await activateSubscriptions({
-    tenantId: tenant_id,
+    tenantId: metadata.tenant_id,
     tier,
     modulePrices,
     paystackSubscriptionCode: data.data.subscription_code,
   })
 
-  return NextResponse.redirect(new URL('/dashboard?payment=success', request.url))
+  return NextResponse.json({
+    status: 'success',
+    tier,
+    seats: metadata.seat_count,
+    amount: data.data.amount / 100,
+    currency: data.data.currency,
+    modules: Object.entries(modulePrices).map(([key, pricePerUser]) => ({ key, pricePerUser })),
+  })
 }

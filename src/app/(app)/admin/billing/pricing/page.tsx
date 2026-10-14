@@ -14,6 +14,7 @@ export default function PricingCalculatorPage() {
   )
   const [subscribing, setSubscribing] = useState(false)
   const [subscribeError, setSubscribeError] = useState('')
+  const [agreementAccepted, setAgreementAccepted] = useState(false)
 
   // Live standard pricing (editable via the Creator Console) -- fetched
   // once so what's shown here is exactly what checkout will charge.
@@ -79,7 +80,7 @@ export default function PricingCalculatorPage() {
     window.location.href = result.authorization_url
   }
 
-  const canSubscribe = billing === 'monthly' && selectedModules.size > 0
+  const canSubscribe = billing === 'monthly' && selectedModules.size > 0 && agreementAccepted
 
   return (
     <div className="p-8 max-w-3xl">
@@ -176,7 +177,35 @@ export default function PricingCalculatorPage() {
           </div>
         </div>
 
-        <div className="pt-2 border-t border-gray-100">
+        <div className="pt-2 border-t border-gray-100 space-y-3">
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={agreementAccepted}
+              onChange={(e) => setAgreementAccepted(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              I have read and agreed to all FirmTrack&apos;s{' '}
+              <a href="/legal/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-brand-blue hover:underline">
+                Terms of Service
+              </a>
+              ,{' '}
+              <a href="/legal/subscription-billing-refund-policy" target="_blank" rel="noopener noreferrer" className="text-brand-blue hover:underline">
+                Subscription, Billing and Refund Policy
+              </a>
+              ,{' '}
+              <a href="/legal/acceptable-use-policy" target="_blank" rel="noopener noreferrer" className="text-brand-blue hover:underline">
+                Acceptable Use Policy
+              </a>
+              , and{' '}
+              <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-brand-blue hover:underline">
+                Privacy Policy
+              </a>
+              .
+            </span>
+          </label>
+
           <button
             type="button"
             onClick={handleSubscribe}

@@ -23,6 +23,7 @@ export default function UpgradeModal({ module, onClose }: Props) {
   const [selectedTier, setSelectedTier] = useState('basic')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [agreementAccepted, setAgreementAccepted] = useState(false)
 
   const handleUpgrade = async () => {
     setLoading(true)
@@ -102,11 +103,39 @@ export default function UpgradeModal({ module, onClose }: Props) {
             </ul>
           </div>
 
+          <label className="flex items-start gap-2 text-sm text-gray-700 mb-4">
+            <input
+              type="checkbox"
+              checked={agreementAccepted}
+              onChange={(e) => setAgreementAccepted(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              I have read and agreed to all FirmTrack&apos;s{' '}
+              <a href="/legal/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                Terms of Service
+              </a>
+              ,{' '}
+              <a href="/legal/subscription-billing-refund-policy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                Subscription, Billing and Refund Policy
+              </a>
+              ,{' '}
+              <a href="/legal/acceptable-use-policy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                Acceptable Use Policy
+              </a>
+              , and{' '}
+              <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                Privacy Policy
+              </a>
+              .
+            </span>
+          </label>
+
           {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
           <button
             onClick={handleUpgrade}
-            disabled={loading}
+            disabled={loading || !agreementAccepted}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? 'Redirecting to payment...' : `Pay with Paystack`}
