@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Microsoft 365 Integration and Permissions | FirmTrack Legal</title>
+<meta name="description" content="What happens when your organization approves FirmTrack in Microsoft 365, which permissions we request, and how to revoke them.">
+<link rel="canonical" href="https://firmtracks.com/legal/microsoft-365-integration/">
+<link rel="stylesheet" href="/legal/style.css">
+</head><body>
+<header class="site"><div class="wrap"><a class="logo" href="https://firmtracks.com/">Firm<span>Track</span></a>
+<nav class="top"><a href="https://firmtracks.com/">Home</a><a href="/legal/">Legal</a><a href="mailto:support@firmtracks.com">Contact</a></nav></div></header>
+<main class="wrap"><p class="crumbs"><a href="/legal/">Legal</a> &rsaquo; Microsoft 365 Integration and Permissions</p>
+<article><aside class="toc"><b>On this page</b><a href="#how-firmtrack-connects">1. How FirmTrack connects</a><a href="#permissions-we-request">2. Permissions we request</a><a href="#what-we-do-not-do">3. What we do not do</a><a href="#tokens-and-storage">4. Tokens and storage</a><a href="#revoking-access">5. Revoking access</a><a href="#who-can-approve">6. Who can approve</a><a href="#related">7. Related</a></aside>
+<div class="doc"><h1>Microsoft 365 Integration and Permissions</h1><div class="meta">Last updated 14 October 2026</div><h2 id="how-firmtrack-connects">1. How FirmTrack connects</h2>
+<p>FirmTrack is a multi-tenant application registered in Microsoft Entra ID. Users sign in with their work Microsoft account. The first time a person from your organization signs in, Microsoft may require a tenant administrator to review and grant consent for the permissions FirmTrack requests.</p>
+<h2 id="permissions-we-request">2. Permissions we request</h2>
+<p>We request only the permissions needed for the modules you use. Microsoft shows the full list on the consent screen. <mark class="todo">To confirm: replace the rows below with the exact scopes registered in the app, and delete any that are not requested</mark></p>
+<table>
+<tr><th>Permission</th><th>Why we need it</th></tr>
+<tr><td>openid, profile, email</td><td>Sign users in and identify them in their workspace</td></tr>
+<tr><td>User.Read</td><td>Read the signed-in user's basic profile (name, email, job title)</td></tr>
+<tr><td>offline_access</td><td>Keep users signed in without repeated prompts</td></tr>
+<tr><td><mark class="todo">To confirm: Calendars.ReadWrite or similar, for CalenTrack bookings, if used</mark></td><td>Create and read bookings on the user's calendar</td></tr>
+<tr><td><mark class="todo">To confirm: User.ReadBasic.All or Directory permissions, if used for staff import</mark></td><td>Let administrators pick colleagues from their directory</td></tr>
+</table>
+<h2 id="what-we-do-not-do">3. What we do not do</h2>
+<ul>
+<li>We never see or store your Microsoft password.</li>
+<li>We do not read email content or files unless your organization grants a permission for it and enables a feature that needs it.</li>
+<li>We do not use Microsoft data for advertising.</li>
+</ul>
+<h2 id="tokens-and-storage">4. Tokens and storage</h2>
+<p>Access and refresh tokens issued by Microsoft are kept on the server and are not exposed to the browser. <mark class="todo">To confirm: confirm whether refresh tokens are stored and whether they are encrypted at rest</mark></p>
+<h2 id="revoking-access">5. Revoking access</h2>
+<p>A tenant administrator can remove FirmTrack at any time in the Microsoft Entra admin center under <em>Enterprise applications &gt; FirmTrack &gt; Properties &gt; Delete</em>, or can revoke specific permissions. Users will no longer be able to sign in, and we stop receiving new data from Microsoft. Existing Customer Data stays in your workspace under the Terms until you cancel and the export window passes.</p>
+<h2 id="who-can-approve">6. Who can approve</h2>
+<p>Only a Microsoft 365 administrator with the right to consent for the organization can grant tenant-wide approval. Individuals may be able to consent for themselves, depending on your tenant's settings.</p>
+<h2 id="related">7. Related</h2>
+<p><a href="/legal/privacy-policy/">Privacy Policy</a> &middot; <a href="/legal/data-processing-addendum/">Data Processing Addendum</a> &middot; <a href="/legal/security-and-subprocessors/">Security and Sub-processors</a></p>
+
+<div class="also"><b>Other legal documents</b><ul><li><a href="/legal/terms-of-service/">Terms of Service</a></li><li><a href="/legal/privacy-policy/">Privacy Policy</a></li><li><a href="/legal/data-processing-addendum/">Data Processing Addendum</a></li><li><a href="/legal/acceptable-use-policy/">Acceptable Use Policy</a></li><li><a href="/legal/subscription-billing-refund-policy/">Subscription, Billing and Refund Policy</a></li><li><a href="/legal/cookie-policy/">Cookie Policy</a></li><li><a href="/legal/security-and-subprocessors/">Security and Sub-processors</a></li><li><a href="/legal/timetrack-desktop-agent-notice/">TimeTrack Desktop Agent Notice</a></li></ul></div></div></article></main>
+<footer class="site"><div class="wrap"><p><a href="/legal/terms-of-service/">Terms</a><a href="/legal/privacy-policy/">Privacy</a><a href="/legal/cookie-policy/">Cookies</a><a href="/legal/">All legal documents</a></p>
+<p>&copy; 2026 Compnet Systems. FirmTrack is a trademark of Compnet Systems.</p></div></footer>
+</body></html>

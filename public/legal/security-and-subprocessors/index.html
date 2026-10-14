@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Security and Sub-processors | FirmTrack Legal</title>
+<meta name="description" content="How FirmTrack protects firm data, how to report issues, and the third parties that help us run the service.">
+<link rel="canonical" href="https://firmtracks.com/legal/security-and-subprocessors/">
+<link rel="stylesheet" href="/legal/style.css">
+</head><body>
+<header class="site"><div class="wrap"><a class="logo" href="https://firmtracks.com/">Firm<span>Track</span></a>
+<nav class="top"><a href="https://firmtracks.com/">Home</a><a href="/legal/">Legal</a><a href="mailto:support@firmtracks.com">Contact</a></nav></div></header>
+<main class="wrap"><p class="crumbs"><a href="/legal/">Legal</a> &rsaquo; Security and Sub-processors</p>
+<article><aside class="toc"><b>On this page</b><a href="#our-approach">1. Our approach</a><a href="#technical-and-organizational-measures">2. Technical and organizational measures</a><a href="#incident-response">3. Incident response</a><a href="#reporting-a-vulnerability">4. Reporting a vulnerability</a><a href="#sub-processors">5. Sub-processors</a></aside>
+<div class="doc"><h1>Security and Sub-processors</h1><div class="meta">Last updated 14 October 2026</div><h2 id="our-approach">1. Our approach</h2>
+<p>Law firms hold some of the most sensitive information there is. FirmTrack is built so that each firm's data is separated from every other firm's, and so that access is limited to what each person needs.</p>
+<h2 id="technical-and-organizational-measures">2. Technical and organizational measures</h2>
+<ul>
+<li><strong>Tenant isolation:</strong> every record belongs to an organization and is protected by database row-level security, so one firm's users cannot read another firm's data.</li>
+<li><strong>Server-side secrets:</strong> privileged keys and credentials are held only on the server and never sent to the browser.</li>
+<li><strong>Encryption:</strong> data is encrypted in transit with TLS, and at rest by our database provider. <mark class="todo">To confirm: confirm encryption-at-rest and backup details with Supabase plan in use</mark></li>
+<li><strong>Sign-in:</strong> authentication goes through Microsoft Entra ID, so your firm's own multi-factor authentication and conditional access policies apply.</li>
+<li><strong>Least privilege:</strong> role-based access within each workspace, and restricted staff access to production systems. <mark class="todo">To confirm: confirm internal access controls and logging</mark></li>
+<li><strong>Audit logging:</strong> key actions in workspaces are logged.</li>
+<li><strong>Backups and recovery:</strong> <mark class="todo">To confirm: backup frequency, retention and restore testing</mark></li>
+<li><strong>Secure development:</strong> code review, dependency updates and separate environments for development and production. <mark class="todo">To confirm: CONFIRM</mark></li>
+</ul>
+<h2 id="incident-response">3. Incident response</h2>
+<p>We maintain an incident response process. If a breach affects customer data we notify affected customers without undue delay and within 72 hours of becoming aware, as set out in the <a href="/legal/data-processing-addendum/">Data Processing Addendum</a>.</p>
+<h2 id="reporting-a-vulnerability">4. Reporting a vulnerability</h2>
+<p>Email <a href="mailto:security@firmtracks.com">security@firmtracks.com</a>. See the Security testing section of the <a href="/legal/acceptable-use-policy/">Acceptable Use Policy</a>.</p>
+<h2 id="sub-processors">5. Sub-processors</h2>
+<p>These providers process personal data on our behalf. We will update this list and notify customers at least 30 days before adding or replacing a sub-processor, as described in the DPA.</p>
+<table>
+<tr><th>Provider</th><th>Purpose</th><th>Data</th><th>Location</th></tr>
+<tr><td>Supabase</td><td>Database, authentication and storage</td><td>Customer Data, account data</td><td><mark class="todo">To confirm: region</mark></td></tr>
+<tr><td>Microsoft (Entra ID, Microsoft Graph)</td><td>Sign-in and directory/calendar integration</td><td>Identity data, as permitted by your tenant</td><td>Per customer's Microsoft 365 tenant</td></tr>
+<tr><td>Paystack</td><td>Payment processing</td><td>Billing contact, payment status; card details handled by Paystack</td><td>Per Paystack's policies</td></tr>
+<tr><td><mark class="todo">To confirm: web hosting / app hosting provider</mark></td><td>Application hosting</td><td>Customer Data in transit and logs</td><td><mark class="todo">To confirm: CONFIRM</mark></td></tr>
+<tr><td><mark class="todo">To confirm: transactional email provider</mark></td><td>Service emails</td><td>Name, email address</td><td><mark class="todo">To confirm: CONFIRM</mark></td></tr>
+</table>
+
+<div class="also"><b>Other legal documents</b><ul><li><a href="/legal/terms-of-service/">Terms of Service</a></li><li><a href="/legal/privacy-policy/">Privacy Policy</a></li><li><a href="/legal/data-processing-addendum/">Data Processing Addendum</a></li><li><a href="/legal/acceptable-use-policy/">Acceptable Use Policy</a></li><li><a href="/legal/subscription-billing-refund-policy/">Subscription, Billing and Refund Policy</a></li><li><a href="/legal/cookie-policy/">Cookie Policy</a></li><li><a href="/legal/microsoft-365-integration/">Microsoft 365 Integration and Permissions</a></li><li><a href="/legal/timetrack-desktop-agent-notice/">TimeTrack Desktop Agent Notice</a></li></ul></div></div></article></main>
+<footer class="site"><div class="wrap"><p><a href="/legal/terms-of-service/">Terms</a><a href="/legal/privacy-policy/">Privacy</a><a href="/legal/cookie-policy/">Cookies</a><a href="/legal/">All legal documents</a></p>
+<p>&copy; 2026 Compnet Systems. FirmTrack is a trademark of Compnet Systems.</p></div></footer>
+</body></html>

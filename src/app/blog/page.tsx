@@ -78,9 +78,17 @@ export default async function BlogIndexPage() {
       <footer className="border-t border-gray-200 mt-auto">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
           <p>&copy; {new Date().getFullYear()} FirmTrack. All rights reserved.</p>
-          <Link href="/terms" className="hover:text-brand-blue">
-            User Agreement
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link href="/legal/terms-of-service" className="hover:text-brand-blue">
+              Terms
+            </Link>
+            <Link href="/legal/privacy-policy" className="hover:text-brand-blue">
+              Privacy
+            </Link>
+            <Link href="/legal" className="hover:text-brand-blue">
+              All legal documents
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

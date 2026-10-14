@@ -148,8 +148,8 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Built with security in mind</h2>
           <p className="text-gray-600 text-center mb-10">
             Real safeguards, not just a promise —{' '}
-            <Link href="/terms" className="text-brand-blue hover:underline">
-              see our Security Guaranty
+            <Link href="/legal/security-and-subprocessors" className="text-brand-blue hover:underline">
+              see our security practices
             </Link>
             .
           </p>
@@ -177,9 +177,17 @@ export default function HomePage() {
       <footer className="border-t border-gray-200 mt-auto">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
           <p>&copy; {new Date().getFullYear()} FirmTrack. All rights reserved.</p>
-          <Link href="/terms" className="hover:text-brand-blue">
-            User Agreement
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link href="/legal/terms-of-service" className="hover:text-brand-blue">
+              Terms
+            </Link>
+            <Link href="/legal/privacy-policy" className="hover:text-brand-blue">
+              Privacy
+            </Link>
+            <Link href="/legal" className="hover:text-brand-blue">
+              All legal documents
+            </Link>
+          </div>
         </div>
       </footer>
 

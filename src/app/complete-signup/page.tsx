@@ -106,10 +106,14 @@ export default function CompleteSignupPage() {
             />
             <span>
               I have read and agree to the{' '}
-              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-brand-blue hover:underline">
-                User Agreement
+              <a href="/legal/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-brand-blue hover:underline">
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-brand-blue hover:underline">
+                Privacy Policy
               </a>
-              , including the Security Guaranty.
+              .
             </span>
           </label>
 
