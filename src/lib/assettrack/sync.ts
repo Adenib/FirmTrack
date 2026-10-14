@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getValidGraphToken } from '@/lib/microsoft-graph/tokens'
-import { listSharePointListItems } from '@/lib/microsoft-graph/client'
+import { listSharePointListItems, findDirectoryUserByDisplayName } from '@/lib/microsoft-graph/client'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,9 +13,17 @@ const supabaseAdmin = createClient(
 // indexes into it. The settings UI shows displayName to the admin but
 // stores the internal name underneath, same as any label/value select.
 const MAPPABLE_FIELDS = [
-  'asset_tag', 'serial_number', 'make', 'model',
-  'assignee', 'purchase_date', 'warranty_end_date', 'replacement_cost',
+  'asset_tag', 'serial_number', 'make', 'model', 'assignee',
+  'purchase_date', 'warranty_end_date', 'replacement_cost',
+  'status', 'condition',
 ] as const
+
+// Some lists tuck extra commentary onto a name, e.g. "Ngozi Efobi (left
+// with the laptop)" -- stripped before matching/searching so it doesn't
+// defeat an otherwise-exact name lookup.
+export function stripParenthetical(name: string): string {
+  return name.replace(/\s*\([^)]*\)\s*$/, '').trim()
+}
 
 export type SyncSummary = {
   created: number
@@ -81,6 +89,36 @@ export async function runAssetSync(tenantId: string, userId: string): Promise<Sy
   const { data: tenantUsers } = await supabaseAdmin.from('users').select('id, email').eq('tenant_id', tenantId)
   const usersByEmail = new Map((tenantUsers || []).map((u) => [u.email.toLowerCase(), u.id]))
 
+  // Caches a display-name -> resolved-email lookup for the life of this
+  // run (the same person is often the assignee on several rows), and
+  // stops retrying Graph once it's clear the lookup can't succeed (e.g.
+  // User.ReadBasic.All not yet admin-consented) -- one error in the
+  // summary instead of one per row.
+  const directoryLookupCache = new Map<string, string | null>()
+  let directoryLookupDisabled = false
+
+  async function resolveAssigneeEmail(raw: string): Promise<string | null> {
+    if (raw.includes('@')) return raw
+
+    const cleaned = stripParenthetical(raw)
+    if (!cleaned) return null
+    if (directoryLookupCache.has(cleaned)) return directoryLookupCache.get(cleaned)!
+    if (directoryLookupDisabled) return null
+
+    try {
+      const match = await findDirectoryUserByDisplayName(accessToken!, cleaned)
+      const email = match?.email || null
+      directoryLookupCache.set(cleaned, email)
+      return email
+    } catch (err) {
+      directoryLookupDisabled = true
+      summary.errors.push(
+        `Directory name lookup unavailable (${err instanceof Error ? err.message : 'unknown error'}) -- assignees will be left unresolved by name. Grant User.ReadBasic.All admin consent in Entra ID and reconnect Microsoft to enable it.`
+      )
+      return null
+    }
+  }
+
   const summary: SyncSummary = { created: 0, updated: 0, skipped: 0, unresolvedAssignees: [], errors: [] }
   let mappedAnyAssetTag = false
 
@@ -97,7 +135,8 @@ export async function runAssetSync(tenantId: string, userId: string): Promise<Sy
     let assignedTo: string | null = null
     let unresolvedAssignee: string | null = null
     if (assigneeRaw) {
-      const matchedId = assigneeRaw.includes('@') ? usersByEmail.get(assigneeRaw.toLowerCase()) : undefined
+      const resolvedEmail = await resolveAssigneeEmail(assigneeRaw)
+      const matchedId = resolvedEmail ? usersByEmail.get(resolvedEmail.toLowerCase()) : undefined
       if (matchedId) {
         assignedTo = matchedId
       } else {
@@ -117,6 +156,8 @@ export async function runAssetSync(tenantId: string, userId: string): Promise<Sy
       purchase_date: mapping.purchase_date ? fieldToDate(item.fields[mapping.purchase_date]) : null,
       warranty_end_date: mapping.warranty_end_date ? fieldToDate(item.fields[mapping.warranty_end_date]) : null,
       replacement_cost: mapping.replacement_cost ? fieldToNumber(item.fields[mapping.replacement_cost]) : null,
+      status_note: mapping.status ? fieldToString(item.fields[mapping.status]) : null,
+      condition_note: mapping.condition ? fieldToString(item.fields[mapping.condition]) : null,
       external_source: 'sharepoint' as const,
       external_item_id: item.id,
       created_by: userId,

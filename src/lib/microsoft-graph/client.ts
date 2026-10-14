@@ -294,6 +294,40 @@ export type SharePointListItem = { id: string; fields: Record<string, unknown> }
 // Paginated via @odata.nextLink, which is a full absolute URL -- fetched
 // directly rather than through graphFetch (which always prepends
 // GRAPH_BASE to a relative path).
+// Resolves a plain display name (no email) to a real address via the
+// tenant's Microsoft 365 directory -- used by AssetTrack's sync when a
+// source list only records an assignee's name (e.g. "Munachimso Odibo"),
+// not an email. $search is fuzzier than $filter startswith and tolerates
+// minor spacing/casing differences; requires the ConsistencyLevel header
+// per Graph's documented $search-on-/users requirement.
+export async function findDirectoryUserByDisplayName(
+  accessToken: string,
+  displayName: string
+): Promise<{ displayName: string; email: string } | null> {
+  const params = new URLSearchParams()
+  params.set('$search', `"displayName:${displayName.replace(/"/g, '')}"`)
+  params.set('$select', 'displayName,mail,userPrincipalName')
+  params.set('$top', '1')
+
+  const response = await fetch(`${GRAPH_BASE}/users?${params.toString()}`, {
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      ConsistencyLevel: 'eventual',
+    },
+  })
+  if (!response.ok) {
+    throw new GraphApiError(`Microsoft Graph request failed: ${response.status} ${await response.text()}`)
+  }
+  const data: { value?: Array<{ displayName?: string; mail?: string; userPrincipalName?: string }> } = await response.json()
+  const match = data.value?.[0]
+  if (!match) return null
+
+  const email = match.mail || match.userPrincipalName
+  if (!email) return null
+
+  return { displayName: match.displayName || displayName, email }
+}
+
 export async function listSharePointListItems(
   accessToken: string,
   siteId: string,

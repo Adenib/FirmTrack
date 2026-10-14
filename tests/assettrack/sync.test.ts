@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest'
-import { fieldToString, fieldToNumber, fieldToDate } from '@/lib/assettrack/sync'
+import { fieldToString, fieldToNumber, fieldToDate, stripParenthetical } from '@/lib/assettrack/sync'
 import {
   createTestTenant,
   createTestUser,
@@ -41,6 +41,14 @@ describe('AssetTrack Graph field mapping (pure)', () => {
 
   it('fieldToDate returns null for an unparseable value', () => {
     expect(fieldToDate('not a date')).toBeNull()
+  })
+
+  it('stripParenthetical removes trailing commentary from a name', () => {
+    expect(stripParenthetical('Ngozi Efobi (left with the laptop)')).toBe('Ngozi Efobi')
+  })
+
+  it('stripParenthetical leaves a plain name untouched', () => {
+    expect(stripParenthetical('Munachimso Odibo')).toBe('Munachimso Odibo')
   })
 })
 

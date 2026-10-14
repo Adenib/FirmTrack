@@ -13,6 +13,7 @@ const ASSET_STATUSES = ['active', 'in_repair', 'loaned', 'retired']
 const EDITABLE_FIELDS = [
   'asset_tag', 'serial_number', 'make', 'model', 'assigned_to',
   'purchase_date', 'warranty_end_date', 'replacement_cost', 'asset_status',
+  'status_note', 'condition_note',
 ] as const
 
 async function getProfile(supabase: Awaited<ReturnType<typeof createServerClient>>, userId: string) {

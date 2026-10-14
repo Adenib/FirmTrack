@@ -9,10 +9,12 @@ const FIELD_LABELS = {
   serial_number: 'Serial number',
   make: 'Make',
   model: 'Model',
-  assignee: 'Assignee (email)',
+  assignee: 'Assignee (name or email)',
   purchase_date: 'Purchase date',
   warranty_end_date: 'Warranty end date',
   replacement_cost: 'Replacement cost',
+  status: 'Status note',
+  condition: 'Condition note',
 }
 
 export default function AssetTrackSettingsPage() {

@@ -32,6 +32,7 @@ function classifyLaptop(asset, today = new Date()) {
 const emptyForm = {
   asset_tag: '', serial_number: '', make: '', model: '',
   purchase_date: '', warranty_end_date: '', replacement_cost: '', asset_status: 'active',
+  status_note: '', condition_note: '',
 }
 
 export default function AssetTrackAssetsPage() {
@@ -81,6 +82,8 @@ export default function AssetTrackAssetsPage() {
       warranty_end_date: asset.warranty_end_date || '',
       replacement_cost: asset.replacement_cost ?? '',
       asset_status: asset.asset_status || 'active',
+      status_note: asset.status_note || '',
+      condition_note: asset.condition_note || '',
     })
     setShowForm(true)
   }
@@ -165,6 +168,8 @@ export default function AssetTrackAssetsPage() {
           <select value={form.asset_status} onChange={(e) => setForm({ ...form, asset_status: e.target.value })} className="w-full px-3 py-2 border rounded-md text-sm">
             {ASSET_STATUSES.map((s) => <option key={s} value={s}>{s.replaceAll('_', ' ')}</option>)}
           </select>
+          <input placeholder="Status note (e.g. In Use, Decommissioned)" value={form.status_note} onChange={(e) => setForm({ ...form, status_note: e.target.value })} className="w-full px-3 py-2 border rounded-md text-sm" />
+          <textarea placeholder="Condition note" value={form.condition_note} onChange={(e) => setForm({ ...form, condition_note: e.target.value })} rows={2} className="w-full px-3 py-2 border rounded-md text-sm" />
           <div className="flex items-center gap-2">
             <button type="submit" disabled={saving} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50">
               {saving ? 'Saving...' : editingId ? 'Save changes' : 'Add laptop'}
@@ -188,6 +193,7 @@ export default function AssetTrackAssetsPage() {
                 <th className="px-3 py-2">Assignee</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Age / warranty</th>
+                <th className="px-3 py-2">Notes</th>
                 {isStaff && <th className="px-3 py-2"></th>}
               </tr>
             </thead>
@@ -201,6 +207,9 @@ export default function AssetTrackAssetsPage() {
                   <td className="px-3 py-2 text-gray-700">{a.assignee?.email || a.unresolved_assignee || '—'}</td>
                   <td className="px-3 py-2"><span className={`text-xs px-2 py-0.5 rounded ${statusColor[a.asset_status]}`}>{a.asset_status.replaceAll('_', ' ')}</span></td>
                   <td className="px-3 py-2 text-xs text-gray-500">{classificationLabel[classifyLaptop(a)]}</td>
+                  <td className="px-3 py-2 text-xs text-gray-500 max-w-[14rem] truncate" title={[a.status_note, a.condition_note].filter(Boolean).join(' — ')}>
+                    {[a.status_note, a.condition_note].filter(Boolean).join(' — ') || '—'}
+                  </td>
                   {isStaff && (
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       <button type="button" onClick={() => startEdit(a)} className="text-xs text-blue-600 hover:underline mr-3">Edit</button>
