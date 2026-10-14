@@ -167,13 +167,30 @@ export async function runAssetSync(tenantId: string, userId: string): Promise<Sy
       updated_at: new Date().toISOString(),
     }
 
-    const { data: existing } = await supabaseAdmin
+    // Match by asset_tag first -- it's the human-meaningful key (and the
+    // one with a uniqueness constraint), so a reissued/duplicated list
+    // entry that shares a tag with an already-synced or manually-created
+    // asset updates that same row instead of colliding on insert. Falls
+    // back to external_item_id so a renamed tag on an already-tracked
+    // item still updates in place rather than creating a duplicate.
+    const { data: existingByTag } = await supabaseAdmin
       .from('assettrack_assets')
       .select('id')
       .eq('tenant_id', tenantId)
-      .eq('external_source', 'sharepoint')
-      .eq('external_item_id', item.id)
+      .eq('asset_tag', assetTag)
       .maybeSingle()
+
+    const existing =
+      existingByTag ||
+      (
+        await supabaseAdmin
+          .from('assettrack_assets')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('external_source', 'sharepoint')
+          .eq('external_item_id', item.id)
+          .maybeSingle()
+      ).data
 
     if (existing) {
       const { error } = await supabaseAdmin.from('assettrack_assets').update(row).eq('id', existing.id)
