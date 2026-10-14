@@ -86,6 +86,17 @@ describe('AssetTrack SharePoint sync routes: gating (no live Graph round-trip sc
     expect(res.status).toBe(400)
   })
 
+  it('GET /api/assettrack/sync/resolve-site requires owner/admin and a url', async () => {
+    const staffRes = await staff.fetch('/api/assettrack/sync/resolve-site?url=https://example-my.sharepoint.com/personal/a_b_com/Lists/Foo')
+    expect(staffRes.status).toBe(403)
+
+    const missingUrlRes = await tenant.fetch('/api/assettrack/sync/resolve-site')
+    expect(missingUrlRes.status).toBe(400)
+
+    const badUrlRes = await tenant.fetch('/api/assettrack/sync/resolve-site?url=not-a-url')
+    expect(badUrlRes.status).toBe(400)
+  })
+
   it('POST /api/assettrack/sync/run requires owner/admin', async () => {
     const res = await staff.fetch('/api/assettrack/sync/run', { method: 'POST' })
     expect(res.status).toBe(403)

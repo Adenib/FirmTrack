@@ -32,6 +32,8 @@ export default function AssetTrackSettingsPage() {
   const [message, setMessage] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [pasteUrl, setPasteUrl] = useState('')
+  const [resolving, setResolving] = useState(false)
 
   const isAllowed = ['owner', 'admin'].includes(role)
 
@@ -74,13 +76,47 @@ export default function AssetTrackSettingsPage() {
     else setError(body.error || 'Could not load lists')
   }
 
-  const pickList = async (id, name) => {
-    setListId(id)
-    setListName(name)
-    const res = await fetch(`/api/assettrack/sync/columns?site_id=${encodeURIComponent(siteId)}&list_id=${encodeURIComponent(id)}`)
+  const loadColumns = async (forSiteId, listIdToLoad) => {
+    const res = await fetch(`/api/assettrack/sync/columns?site_id=${encodeURIComponent(forSiteId)}&list_id=${encodeURIComponent(listIdToLoad)}`)
     const body = await res.json()
     if (res.ok) setColumns(body.columns || [])
     else setError(body.error || 'Could not load columns')
+  }
+
+  const pickList = async (id, name) => {
+    setListId(id)
+    setListName(name)
+    await loadColumns(siteId, id)
+  }
+
+  const resolveFromUrl = async () => {
+    if (!pasteUrl.trim()) return
+    setResolving(true)
+    setError('')
+    const res = await fetch(`/api/assettrack/sync/resolve-site?url=${encodeURIComponent(pasteUrl.trim())}`)
+    const body = await res.json()
+    if (!res.ok) {
+      setError(body.error || 'Could not resolve this URL')
+      setResolving(false)
+      return
+    }
+
+    setSiteId(body.site.id)
+    setSiteName(body.site.name)
+    setLists(body.lists || [])
+    setColumns([])
+
+    if (body.matchedListId) {
+      const matched = (body.lists || []).find((l) => l.id === body.matchedListId)
+      setListId(body.matchedListId)
+      setListName(matched?.name || '')
+      await loadColumns(body.site.id, body.matchedListId)
+    } else {
+      setListId('')
+      setListName('')
+      setMessage('Site found -- pick the right list below (its name couldn\'t be matched automatically from the URL).')
+    }
+    setResolving(false)
   }
 
   const saveSettings = async () => {
@@ -146,7 +182,32 @@ export default function AssetTrackSettingsPage() {
       ) : (
         <div className="space-y-6">
           <section className="bg-white border border-gray-200 rounded-lg p-4">
-            <h2 className="font-semibold text-gray-900 mb-2">1. Site</h2>
+            <h2 className="font-semibold text-gray-900 mb-2">Paste a list URL (recommended for OneDrive/personal-site lists)</h2>
+            <p className="text-xs text-gray-500 mb-2">
+              A Microsoft List hosted on a personal OneDrive site (a URL containing <code>-my.sharepoint.com/personal/</code>)
+              won&apos;t show up in the browser below -- paste its full URL here instead.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={pasteUrl}
+                onChange={(e) => setPasteUrl(e.target.value)}
+                placeholder="https://yourtenant-my.sharepoint.com/personal/.../Lists/..."
+                className="flex-1 px-3 py-2 border rounded-md text-sm"
+              />
+              <button
+                type="button"
+                onClick={resolveFromUrl}
+                disabled={resolving || !pasteUrl.trim()}
+                className="bg-gray-800 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-900 disabled:opacity-50 whitespace-nowrap"
+              >
+                {resolving ? 'Looking...' : 'Find it'}
+              </button>
+            </div>
+          </section>
+
+          <section className="bg-white border border-gray-200 rounded-lg p-4">
+            <h2 className="font-semibold text-gray-900 mb-2">1. Site (or use the paste box above)</h2>
             {siteName && <p className="text-sm text-gray-700 mb-2">Selected: {siteName}</p>}
             <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-md divide-y">
               {sites.map((s) => (

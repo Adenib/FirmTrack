@@ -190,6 +190,22 @@ export async function searchSharePointSites(accessToken: string, query: string):
   return (data.value || []).map(toSharePointSite)
 }
 
+// Resolves a site directly by its hostname + server-relative path (Graph's
+// "/sites/{hostname}:{path}" addressing). Needed for personal OneDrive
+// sites ("*-my.sharepoint.com/personal/<user>") hosting a Microsoft List --
+// those never show up in /me/followedSites or the /sites search above
+// (both only surface team/communication sites), so a pasted list URL is
+// the only reliable way to reach one.
+export async function getSiteByServerRelativePath(
+  accessToken: string,
+  hostname: string,
+  path: string
+): Promise<SharePointSite> {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  const data = await graphFetch(accessToken, `/sites/${hostname}:${cleanPath}`)
+  return toSharePointSite(data)
+}
+
 // v1 scope: a site's default document library only, not every library
 // a site might have -- enumerating multiple libraries per site is a
 // separate follow-up if needed.
