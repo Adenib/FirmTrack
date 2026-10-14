@@ -54,6 +54,7 @@ export default function AssetTrackTicketsPage() {
   const [message, setMessage] = useState('')
 
   const [assetId, setAssetId] = useState('')
+  const [assetSearch, setAssetSearch] = useState('')
   const [category, setCategory] = useState('hardware')
   const [impact, setImpact] = useState('normal')
   const [description, setDescription] = useState('')
@@ -161,11 +162,28 @@ export default function AssetTrackTicketsPage() {
       <section className="bg-white border border-gray-200 rounded-lg p-5 mb-8 max-w-lg">
         <h2 className="font-semibold text-gray-900 mb-3">Report a laptop problem</h2>
         <form onSubmit={submitRequest} className="space-y-3">
-          <select value={assetId} onChange={(e) => setAssetId(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm">
+          <input
+            type="text"
+            value={assetSearch}
+            onChange={(e) => setAssetSearch(e.target.value)}
+            placeholder="Search by your name or the laptop's tag/model..."
+            className="w-full px-3 py-2 border rounded-md text-sm"
+          />
+          <select value={assetId} onChange={(e) => setAssetId(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" size={assetSearch ? 6 : undefined}>
             <option value="">Which laptop? (optional)</option>
-            {assets.map((a) => (
-              <option key={a.id} value={a.id}>{a.asset_tag} — {a.make} {a.model}</option>
-            ))}
+            {assets
+              .filter((a) => {
+                if (!assetSearch.trim()) return true
+                const q = assetSearch.trim().toLowerCase()
+                return [a.asset_tag, a.make, a.model, a.assignee_name, a.assignee?.email]
+                  .filter(Boolean)
+                  .some((field) => field.toLowerCase().includes(q))
+              })
+              .map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.asset_tag} — {a.make} {a.model}{a.assignee_name ? ` (${a.assignee_name})` : ''}
+                </option>
+              ))}
           </select>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm">
             {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}

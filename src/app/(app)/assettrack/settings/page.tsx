@@ -36,6 +36,8 @@ export default function AssetTrackSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [pasteUrl, setPasteUrl] = useState('')
   const [resolving, setResolving] = useState(false)
+  const [notificationEmail, setNotificationEmail] = useState('')
+  const [savingNotification, setSavingNotification] = useState(false)
 
   const isAllowed = ['owner', 'admin'].includes(role)
 
@@ -54,6 +56,7 @@ export default function AssetTrackSettingsPage() {
         setListName(settingsBody.settings.sharepoint_list_name || '')
         setMapping(settingsBody.settings.field_mapping || {})
         setSlaDays(settingsBody.settings.sla_days || 14)
+        setNotificationEmail(settingsBody.settings.notification_email || '')
       }
 
       const sitesRes = await fetch('/api/assettrack/sync/sites')
@@ -121,6 +124,23 @@ export default function AssetTrackSettingsPage() {
     setResolving(false)
   }
 
+  const saveNotificationEmail = async () => {
+    setSavingNotification(true)
+    setError('')
+    const res = await fetch('/api/assettrack/sync/settings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ notification_email: notificationEmail.trim() || null }),
+    })
+    const body = await res.json()
+    if (!res.ok) setError(body.error || 'Could not save notification email')
+    else {
+      setSettings(body.settings)
+      setMessage('Notification email saved.')
+    }
+    setSavingNotification(false)
+  }
+
   const saveSettings = async () => {
     setSaving(true)
     setError('')
@@ -183,6 +203,30 @@ export default function AssetTrackSettingsPage() {
         <p className="text-gray-500 text-sm">Loading...</p>
       ) : (
         <div className="space-y-6">
+          <section className="bg-white border border-gray-200 rounded-lg p-4">
+            <h2 className="font-semibold text-gray-900 mb-2">Notifications</h2>
+            <p className="text-xs text-gray-500 mb-2">
+              Sent an email to this address whenever a new ticket is submitted. Leave blank to turn notifications off.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="email"
+                value={notificationEmail}
+                onChange={(e) => setNotificationEmail(e.target.value)}
+                placeholder="it@yourfirm.com"
+                className="flex-1 px-3 py-2 border rounded-md text-sm"
+              />
+              <button
+                type="button"
+                onClick={saveNotificationEmail}
+                disabled={savingNotification}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+              >
+                {savingNotification ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </section>
+
           <section className="bg-white border border-gray-200 rounded-lg p-4">
             <h2 className="font-semibold text-gray-900 mb-2">Paste a list URL (recommended for OneDrive/personal-site lists)</h2>
             <p className="text-xs text-gray-500 mb-2">

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
 import { ASSETTRACK_STAFF_ROLES } from '@/lib/assettrack/roles'
 import { assessRepairCost } from '@/lib/assettrack/policy'
+import { notifyAssetTicketSubmitted } from '@/lib/assettrack/notify-ticket'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -139,14 +140,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'issue_description is required' }, { status: 400 })
   }
 
+  let asset: { id: string; asset_tag: string; make: string | null; model: string | null } | null = null
   if (asset_id) {
-    const { data: asset } = await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from('assettrack_assets')
-      .select('id')
+      .select('id, asset_tag, make, model')
       .eq('id', asset_id)
       .eq('tenant_id', profile.tenant_id)
       .single()
-    if (!asset) return NextResponse.json({ error: 'Unknown asset_id' }, { status: 400 })
+    if (!data) return NextResponse.json({ error: 'Unknown asset_id' }, { status: 400 })
+    asset = data
   }
 
   const { data: ticket, error } = await supabaseAdmin
@@ -172,6 +175,32 @@ export async function POST(request: Request) {
     event_type: 'created',
     metadata: { to_status: 'submitted' },
   })
+
+  // Best-effort IT notification -- a missing/unconfigured recipient or a
+  // transport failure must never fail ticket creation itself.
+  const { data: settings } = await supabaseAdmin
+    .from('assettrack_sync_settings')
+    .select('notification_email')
+    .eq('tenant_id', profile.tenant_id)
+    .maybeSingle()
+
+  if (settings?.notification_email) {
+    const reference = `AT-${ticket.id.slice(0, 8).toUpperCase()}`
+    const assetLine = asset ? `${asset.asset_tag} — ${asset.make || ''} ${asset.model || ''}`.trim() : 'No device linked'
+    await notifyAssetTicketSubmitted({
+      to: settings.notification_email,
+      subject: `New AssetTrack ticket ${reference}: ${category}`,
+      html: `
+        <p>A new laptop repair ticket was submitted on FirmTrack.</p>
+        <p><strong>Reference:</strong> ${reference}<br/>
+        <strong>Reported by:</strong> ${user.email}<br/>
+        <strong>Device:</strong> ${assetLine}<br/>
+        <strong>Category:</strong> ${category}<br/>
+        <strong>Impact:</strong> ${impact || 'normal'}</p>
+        <p><strong>Description:</strong><br/>${issue_description.trim()}</p>
+      `,
+    })
+  }
 
   return NextResponse.json({ ticket }, { status: 201 })
 }

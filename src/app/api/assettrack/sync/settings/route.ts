@@ -55,28 +55,33 @@ export async function POST(request: Request) {
   const body = await request.json()
   const {
     sharepoint_site_id, sharepoint_site_name, sharepoint_list_id, sharepoint_list_name,
-    field_mapping, sla_days,
+    field_mapping, sla_days, notification_email,
   } = body
 
-  if (!sharepoint_site_id || !sharepoint_list_id) {
-    return NextResponse.json({ error: 'sharepoint_site_id and sharepoint_list_id are required' }, { status: 400 })
+  // SharePoint fields are a pair -- either both are provided (wiring up or
+  // changing the connection) or neither is, so a caller can save just
+  // notification_email or sla_days without resending the whole mapping.
+  if ((sharepoint_site_id || sharepoint_list_id) && !(sharepoint_site_id && sharepoint_list_id)) {
+    return NextResponse.json({ error: 'sharepoint_site_id and sharepoint_list_id must be set together' }, { status: 400 })
   }
   if (sla_days != null && (!Number.isFinite(Number(sla_days)) || Number(sla_days) <= 0)) {
     return NextResponse.json({ error: 'sla_days must be a positive number' }, { status: 400 })
   }
 
+  const patch: Record<string, unknown> = { tenant_id: profile.tenant_id, updated_at: new Date().toISOString() }
+  if (sharepoint_site_id) {
+    patch.sharepoint_site_id = sharepoint_site_id
+    patch.sharepoint_site_name = sharepoint_site_name || null
+    patch.sharepoint_list_id = sharepoint_list_id
+    patch.sharepoint_list_name = sharepoint_list_name || null
+  }
+  if (field_mapping !== undefined) patch.field_mapping = field_mapping || {}
+  if (sla_days !== undefined) patch.sla_days = Number(sla_days)
+  if (notification_email !== undefined) patch.notification_email = notification_email || null
+
   const { data: settings, error } = await supabaseAdmin
     .from('assettrack_sync_settings')
-    .upsert({
-      tenant_id: profile.tenant_id,
-      sharepoint_site_id,
-      sharepoint_site_name: sharepoint_site_name || null,
-      sharepoint_list_id,
-      sharepoint_list_name: sharepoint_list_name || null,
-      field_mapping: field_mapping || {},
-      sla_days: sla_days != null ? Number(sla_days) : 14,
-      updated_at: new Date().toISOString(),
-    })
+    .upsert(patch, { onConflict: 'tenant_id' })
     .select()
     .single()
 
