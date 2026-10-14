@@ -131,16 +131,19 @@ export async function runAssetSync(tenantId: string, userId: string): Promise<Sy
     }
     mappedAnyAssetTag = true
 
+    // assignee_name holds the source value verbatim regardless of match
+    // status -- a list often records a plain name even when it DOES
+    // resolve to a FirmTrack user, and that original label is worth
+    // keeping visible (e.g. the Asset Register shows both side by side),
+    // not just discarded once assigned_to is set.
     const assigneeRaw = mapping.assignee ? fieldToString(item.fields[mapping.assignee]) : null
     let assignedTo: string | null = null
-    let unresolvedAssignee: string | null = null
     if (assigneeRaw) {
       const resolvedEmail = await resolveAssigneeEmail(assigneeRaw)
       const matchedId = resolvedEmail ? usersByEmail.get(resolvedEmail.toLowerCase()) : undefined
       if (matchedId) {
         assignedTo = matchedId
       } else {
-        unresolvedAssignee = assigneeRaw
         summary.unresolvedAssignees.push(assigneeRaw)
       }
     }
@@ -152,7 +155,7 @@ export async function runAssetSync(tenantId: string, userId: string): Promise<Sy
       make: mapping.make ? fieldToString(item.fields[mapping.make]) : null,
       model: mapping.model ? fieldToString(item.fields[mapping.model]) : null,
       assigned_to: assignedTo,
-      unresolved_assignee: unresolvedAssignee,
+      assignee_name: assigneeRaw,
       purchase_date: mapping.purchase_date ? fieldToDate(item.fields[mapping.purchase_date]) : null,
       warranty_end_date: mapping.warranty_end_date ? fieldToDate(item.fields[mapping.warranty_end_date]) : null,
       replacement_cost: mapping.replacement_cost ? fieldToNumber(item.fields[mapping.replacement_cost]) : null,

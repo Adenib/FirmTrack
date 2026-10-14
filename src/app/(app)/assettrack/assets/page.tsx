@@ -204,7 +204,10 @@ export default function AssetTrackAssetsPage() {
                     <Link href={`/assettrack/tickets?asset_id=${a.id}`} className="hover:underline">{a.asset_tag}</Link>
                   </td>
                   <td className="px-3 py-2 text-gray-700">{a.make} {a.model}</td>
-                  <td className="px-3 py-2 text-gray-700">{a.assignee?.email || a.unresolved_assignee || '—'}</td>
+                  <td className="px-3 py-2 text-gray-700">
+                    <div>{a.assignee_name || '—'}</div>
+                    <div className="text-xs text-gray-400">{a.assignee?.email || '—'}</div>
+                  </td>
                   <td className="px-3 py-2"><span className={`text-xs px-2 py-0.5 rounded ${statusColor[a.asset_status]}`}>{a.asset_status.replaceAll('_', ' ')}</span></td>
                   <td className="px-3 py-2 text-xs text-gray-500">{classificationLabel[classifyLaptop(a)]}</td>
                   <td className="px-3 py-2 text-xs text-gray-500 max-w-[14rem] truncate" title={[a.status_note, a.condition_note].filter(Boolean).join(' — ')}>
