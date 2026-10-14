@@ -275,7 +275,13 @@ export async function listSharePointListColumns(
 ): Promise<SharePointListColumn[]> {
   const data = await graphFetch(accessToken, `/sites/${siteId}/lists/${listId}/columns`)
   return (data.value || [])
-    .filter((item: Record<string, unknown>) => !item.hidden && !item.readOnly)
+    // Microsoft Lists (the templated "Lists" app) marks its own custom
+    // columns readOnly=true at the schema level -- that means "can't edit
+    // this column's definition via classic list settings," not "this
+    // column has no usable data." Filtering those out hid every custom
+    // column a Lists-created list had, leaving only built-ins like Title.
+    // `hidden` is the real signal for internal/system fields to exclude.
+    .filter((item: Record<string, unknown>) => !item.hidden)
     .map((item: Record<string, unknown>) => ({
       name: item.name as string,
       displayName: (item.displayName as string) || (item.name as string),
