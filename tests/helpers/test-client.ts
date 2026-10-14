@@ -176,6 +176,15 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     // deleted before payroll_runs; payroll_line_items before payroll_runs
     // (its own FK) too.
     'requests',
+    // assettrack_tickets.reported_by/decision_by and assettrack_assets.
+    // assigned_to/created_by all -> users with no ON DELETE clause (default
+    // NO ACTION), so both must be cleared before 'users' below.
+    // assettrack_ticket_events is NOT listed -- it has UPDATE/DELETE
+    // revoked from service_role and cleans up via ON DELETE CASCADE once
+    // assettrack_tickets is deleted here, same as document_events.
+    'assettrack_tickets',
+    'assettrack_assets',
+    'assettrack_sync_settings',
     'payroll_line_items',
     'payroll_runs',
     'payroll_salaries',

@@ -6,6 +6,7 @@ import {
   CalendarIcon,
   SettingsIcon,
   FileCheckIcon,
+  LaptopIcon,
 } from '@/components/brand/icons'
 
 export type MarketingModule = {
@@ -114,6 +115,19 @@ export const MARKETING_MODULES: MarketingModule[] = [
       'Full data backup, and restore into a new organization',
     ],
     screenshotAlt: 'The Admin section, showing every management area from Users to Security Log',
+  },
+  {
+    slug: 'assettrack',
+    title: 'AssetTrack',
+    tagline: 'Every laptop fault, decision, and repair -- tracked to closure.',
+    icon: LaptopIcon,
+    features: [
+      'Employee-reported laptop tickets with status tracking end to end',
+      'Repair-vs-replace cost guidance based on your own replacement costs',
+      'A full IT asset register with warranty and lifecycle status',
+      'Vendor referral, parts, and resolution tracking with a full audit trail',
+    ],
+    screenshotAlt: 'AssetTrack showing a laptop repair ticket moving through triage to resolution',
   },
 ]
 

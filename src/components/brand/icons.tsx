@@ -239,3 +239,12 @@ export function SparkleIcon({ className = base }: IconProps) {
     </svg>
   )
 }
+
+export function LaptopIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <rect x="3.5" y="5" width="17" height="11" rx="1.2" />
+      <path d="M2 19h20" strokeLinecap="round" />
+    </svg>
+  )
+}

@@ -224,3 +224,74 @@ export async function getDriveItemMetadata(accessToken: string, driveId: string,
     mimeType: data.file?.mimeType || null,
   }
 }
+
+// -- SharePoint Lists (AssetTrack's asset-register sync) --------------
+// Nothing above this point reads a List (only sites/drives/files), so
+// this is net-new. Unlike the drive functions above, a list's "fields"
+// are caller-defined (whatever columns the list's owner created), so
+// these return raw/typed-enough shapes for AssetTrack's own mapping UI
+// to interpret, rather than a fixed app-specific shape.
+
+export type SharePointList = { id: string; name: string; webUrl: string }
+
+// System lists (document libraries' own backing lists, "Site Pages," etc.)
+// come back with list.hidden -- filtered out so the picker only shows
+// lists a site owner actually created, like AELEX's asset register.
+export async function listSharePointLists(accessToken: string, siteId: string): Promise<SharePointList[]> {
+  const data = await graphFetch(accessToken, `/sites/${siteId}/lists`)
+  return (data.value || [])
+    .filter((item: Record<string, unknown>) => !(item.list as Record<string, unknown> | undefined)?.hidden)
+    .map((item: Record<string, unknown>) => ({
+      id: item.id as string,
+      name: (item.displayName as string) || (item.name as string) || 'Untitled list',
+      webUrl: item.webUrl as string,
+    }))
+}
+
+export type SharePointListColumn = { name: string; displayName: string; type: string }
+
+const COLUMN_TYPE_FACETS = ['text', 'number', 'boolean', 'dateTime', 'choice', 'currency', 'personOrGroup', 'lookup']
+
+export async function listSharePointListColumns(
+  accessToken: string,
+  siteId: string,
+  listId: string
+): Promise<SharePointListColumn[]> {
+  const data = await graphFetch(accessToken, `/sites/${siteId}/lists/${listId}/columns`)
+  return (data.value || [])
+    .filter((item: Record<string, unknown>) => !item.hidden && !item.readOnly)
+    .map((item: Record<string, unknown>) => ({
+      name: item.name as string,
+      displayName: (item.displayName as string) || (item.name as string),
+      type: COLUMN_TYPE_FACETS.find((facet) => facet in item) || 'text',
+    }))
+}
+
+export type SharePointListItem = { id: string; fields: Record<string, unknown> }
+
+// Paginated via @odata.nextLink, which is a full absolute URL -- fetched
+// directly rather than through graphFetch (which always prepends
+// GRAPH_BASE to a relative path).
+export async function listSharePointListItems(
+  accessToken: string,
+  siteId: string,
+  listId: string
+): Promise<SharePointListItem[]> {
+  const items: SharePointListItem[] = []
+  let url: string | undefined =
+    `${GRAPH_BASE}/sites/${siteId}/lists/${listId}/items?expand=fields&$top=200`
+
+  while (url) {
+    const response: Response = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } })
+    if (!response.ok) {
+      throw new GraphApiError(`Microsoft Graph request failed: ${response.status} ${await response.text()}`)
+    }
+    const data: { value?: Array<{ id: string; fields?: Record<string, unknown> }>; '@odata.nextLink'?: string } = await response.json()
+    for (const item of data.value || []) {
+      items.push({ id: item.id, fields: item.fields || {} })
+    }
+    url = data['@odata.nextLink']
+  }
+
+  return items
+}

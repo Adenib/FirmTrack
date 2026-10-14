@@ -20,6 +20,7 @@ import {
   MenuIcon,
   XIcon,
   SparkleIcon,
+  LaptopIcon,
 } from '@/components/brand/icons'
 
 type SubItem = { key: string; label: string; href: string }
@@ -111,6 +112,19 @@ const MODULES: ModuleEntry[] = [
     href: '/aitrack',
     description: 'AI-assisted document review against a real uploaded file, plus configurable review playbooks.',
     icon: SparkleIcon,
+  },
+  {
+    key: 'assettrack',
+    label: 'AssetTrack',
+    href: '/assettrack',
+    description: 'Laptop repair tickets and IT asset lifecycle tracking, from fault report to return and closure.',
+    icon: LaptopIcon,
+    subItems: [
+      { key: 'assettrack', label: 'Tickets', href: '/assettrack/tickets' },
+      { key: 'assettrack', label: 'Asset Register', href: '/assettrack/assets' },
+      { key: 'assettrack', label: 'Reports', href: '/assettrack/reports' },
+      { key: 'assettrack', label: 'Settings', href: '/assettrack/settings' },
+    ],
   },
   {
     key: 'calentrack',
