@@ -304,9 +304,18 @@ export async function findDirectoryUserByDisplayName(
   accessToken: string,
   displayName: string
 ): Promise<{ displayName: string; email: string } | null> {
+  // $search="displayName:..." does per-word PREFIX matching and doesn't
+  // reliably handle a multi-word phrase after the colon (every name here
+  // is "First Last") -- startswith() over the full string is what
+  // actually matches a complete display name. startswith is one of
+  // Graph's "advanced query" capabilities on /users, which requires both
+  // ConsistencyLevel: eventual and $count=true even though the count
+  // itself isn't used here.
+  const escaped = displayName.replace(/'/g, "''")
   const params = new URLSearchParams()
-  params.set('$search', `"displayName:${displayName.replace(/"/g, '')}"`)
+  params.set('$filter', `startswith(displayName,'${escaped}')`)
   params.set('$select', 'displayName,mail,userPrincipalName')
+  params.set('$count', 'true')
   params.set('$top', '1')
 
   const response = await fetch(`${GRAPH_BASE}/users?${params.toString()}`, {
