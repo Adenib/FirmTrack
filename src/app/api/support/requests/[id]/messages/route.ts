@@ -3,6 +3,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendSupportMessage, AiSupportError, type SupportChatMessage } from '@/lib/ai/support-chat'
 import { MAX_HISTORY_MESSAGES, MONTHLY_AI_MESSAGE_LIMIT } from '@/lib/ai/usage-limits'
+import { notifySupportTicket } from '@/lib/support/notify-ticket'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,12 +80,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const supportRequest = await loadOwnRequest(profile.tenant_id, id)
   if (!supportRequest) return NextResponse.json({ error: 'Request not found' }, { status: 404 })
-  if (supportRequest.channel !== 'ai_assisted') {
-    return NextResponse.json({ error: 'This request does not use the AI Assistant channel' }, { status: 400 })
-  }
 
   const { body } = await request.json()
   if (!body) return NextResponse.json({ error: 'body is required' }, { status: 400 })
+
+  // Standard channel is a plain human-agent thread -- just record the
+  // message and let support know, no AI call or usage quota involved.
+  if (supportRequest.channel !== 'ai_assisted') {
+    const { data: message, error } = await supabaseAdmin
+      .from('support_messages')
+      .insert({ tenant_id: profile.tenant_id, request_id: id, sender_type: 'user', sender_user_id: user.id, body })
+      .select()
+      .single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    await notifySupportTicket({
+      subject: `New message on support request: ${supportRequest.subject}`,
+      html: `<p>${body}</p><p>Request ID: ${id}</p>`,
+    })
+
+    return NextResponse.json({ message })
+  }
 
   // Checked before saving anything -- an over-quota message is rejected
   // outright, not saved-then-unanswered.

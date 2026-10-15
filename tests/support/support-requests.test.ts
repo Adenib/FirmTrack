@@ -110,7 +110,7 @@ describe('Support requests API', () => {
     expect(usageLogs![0].output_tokens).toBeGreaterThan(0)
   })
 
-  it('rejects posting a message to a standard-channel request', async () => {
+  it('accepts a plain user message on a standard-channel request (live human chat, no AI call)', async () => {
     const createRes = await tenant.fetch('/api/support/requests', {
       method: 'POST',
       body: JSON.stringify({ subject: 'Standard one', description: 'x', channel: 'standard' }),
@@ -119,9 +119,16 @@ describe('Support requests API', () => {
 
     const msgRes = await tenant.fetch(`/api/support/requests/${request.id}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ body: 'hello' }),
+      body: JSON.stringify({ body: 'hello, following up on this' }),
     })
-    expect(msgRes.status).toBe(400)
+    expect(msgRes.status).toBe(200)
+    const msgBody = await msgRes.json()
+    expect(msgBody.message.sender_type).toBe('user')
+    expect(msgBody.message.body).toBe('hello, following up on this')
+
+    const getRes = await tenant.fetch(`/api/support/requests/${request.id}/messages`)
+    const getBody = await getRes.json()
+    expect(getBody.messages.some((m: { body: string }) => m.body === 'hello, following up on this')).toBe(true)
   })
 
   it('scopes the history list to the requesting tenant only', async () => {

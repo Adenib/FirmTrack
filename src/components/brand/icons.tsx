@@ -248,3 +248,12 @@ export function LaptopIcon({ className = base }: IconProps) {
     </svg>
   )
 }
+
+export function ChatBubbleIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <path d="M4 5.5h16v11H9l-4 3.5v-3.5H4z" strokeLinejoin="round" />
+      <path d="M8 10h8M8 13h5" strokeLinecap="round" />
+    </svg>
+  )
+}

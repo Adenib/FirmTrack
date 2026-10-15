@@ -21,6 +21,7 @@ import {
   XIcon,
   SparkleIcon,
   LaptopIcon,
+  ChatBubbleIcon,
 } from '@/components/brand/icons'
 
 type SubItem = { key: string; label: string; href: string }
@@ -245,6 +246,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           aiSupportActive={activeModules.includes('aitrack')}
           onClose={() => setShowSupportModal(false)}
         />
+      )}
+
+      {/* Persistent floating launcher -- reachable from any page, not just
+          the sidebar's "Get Support" link, which stays as a secondary
+          entry point. Hidden while the modal itself is open. */}
+      {!showSupportModal && (
+        <button
+          type="button"
+          onClick={() => setShowSupportModal(true)}
+          aria-label="Open support chat"
+          className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-brand-blue text-white shadow-lg flex items-center justify-center hover:bg-brand-blue-hover"
+        >
+          <ChatBubbleIcon className="w-6 h-6" />
+        </button>
       )}
 
       {/* Mobile-only top bar -- the sidebar itself is off-canvas below sm,

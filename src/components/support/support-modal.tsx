@@ -97,6 +97,7 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
       return
     }
     setCreated(result.request)
+    setMessages([])
     setSubmitting(false)
   }
 
@@ -204,7 +205,7 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
                   />
                   <span>
                     <span className="block text-sm font-medium text-gray-900">Standard (free)</span>
-                    <span className="block text-xs text-gray-500">A human replies via support@firmtracks.com within 24 hours.</span>
+                    <span className="block text-xs text-gray-500">Chat with a human here -- usually replies within 24 hours.</span>
                   </span>
                 </label>
 
@@ -252,7 +253,33 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
           {tab === 'new' && created && created.channel === 'standard' && (
             <div className="text-sm text-gray-700">
               <p className="font-medium text-gray-900 mb-1">Request submitted.</p>
-              <p>We&apos;ll respond via support@firmtracks.com within 24 hours.</p>
+              <p className="mb-3">A human will reply here, usually within 24 hours -- you can keep chatting in this thread.</p>
+              <div className="space-y-2 mb-3 max-h-64 overflow-y-auto">
+                {messages.map((m) => (
+                  <div key={m.id} className={`text-sm p-2 rounded-md ${m.sender_type === 'user' ? 'bg-blue-50' : 'bg-gray-50'}`}>
+                    <p className="text-xs text-gray-400 capitalize">{m.sender_type}</p>
+                    <p>{m.body}</p>
+                  </div>
+                ))}
+              </div>
+              {chatError && <p className="text-amber-600 text-xs mb-2">{chatError}</p>}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendChatMessage(created.id)}
+                  placeholder="Type a message..."
+                  className="flex-1 px-3 py-2 border rounded-md text-sm"
+                />
+                <button
+                  onClick={() => sendChatMessage(created.id)}
+                  disabled={chatSending}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Send
+                </button>
+              </div>
             </div>
           )}
 
@@ -301,8 +328,31 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
                 ))}
                 {messages.length === 0 && <p className="text-sm text-gray-500">{openRequest.description}</p>}
               </div>
-              {openRequest.channel === 'ai_assisted' && (
+              {openRequest.channel === 'ai_assisted' ? (
                 <AiChatThread requestId={openRequest.id} initialMessages={messages} />
+              ) : (
+                openRequest.status !== 'resolved' && (
+                  <div>
+                    {chatError && <p className="text-amber-600 text-xs mb-2">{chatError}</p>}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && sendChatMessage(openRequest.id)}
+                        placeholder="Type a message..."
+                        className="flex-1 px-3 py-2 border rounded-md text-sm"
+                      />
+                      <button
+                        onClick={() => sendChatMessage(openRequest.id)}
+                        disabled={chatSending}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                )
               )}
             </div>
           )}
