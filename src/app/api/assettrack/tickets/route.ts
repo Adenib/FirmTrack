@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { hasActiveModule } from '@/lib/require-module'
 import { ASSETTRACK_STAFF_ROLES } from '@/lib/assettrack/roles'
 import { assessRepairCost } from '@/lib/assettrack/policy'
-import { notifyAssetTicketSubmitted } from '@/lib/assettrack/notify-ticket'
+import { notifyAssetTicketSubmitted, notifyAssetTicketReporter } from '@/lib/assettrack/notify-ticket'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { asset_id, category, impact, issue_description } = body
+  const { asset_id, category, impact, issue_description, notify_email } = body
 
   if (!CATEGORIES.includes(category)) {
     return NextResponse.json({ error: `category must be one of: ${CATEGORIES.join(', ')}` }, { status: 400 })
@@ -138,6 +138,9 @@ export async function POST(request: Request) {
   }
   if (typeof issue_description !== 'string' || !issue_description.trim()) {
     return NextResponse.json({ error: 'issue_description is required' }, { status: 400 })
+  }
+  if (notify_email != null && !/^\S+@\S+\.\S+$/.test(notify_email)) {
+    return NextResponse.json({ error: 'notify_email is not a valid email address' }, { status: 400 })
   }
 
   let asset: { id: string; asset_tag: string; make: string | null; model: string | null } | null = null
@@ -161,6 +164,7 @@ export async function POST(request: Request) {
       category,
       impact: impact || 'normal',
       issue_description: issue_description.trim(),
+      notify_email: notify_email || null,
       status: 'submitted',
     })
     .select()
@@ -357,6 +361,30 @@ export async function PATCH(request: Request) {
   const assessment = 'decision' in patch || 'estimated_repair_cost' in patch || 'estimated_replacement_cost' in patch
     ? assessRepairCost(updated.estimated_repair_cost, updated.estimated_replacement_cost)
     : null
+
+  // Best-effort update to the reporter -- the two moments that actually
+  // need their attention (collect the device, or it's fully settled),
+  // not every internal triage/parts tweak. Never blocks the response.
+  if (statusChanged && ['returned', 'closed'].includes(newStatus)) {
+    let recipient = updated.notify_email as string | null
+    if (!recipient) {
+      const { data: reporter } = await supabaseAdmin.from('users').select('email').eq('id', updated.reported_by).single()
+      recipient = reporter?.email || null
+    }
+    if (recipient) {
+      const reference = `AT-${updated.id.slice(0, 8).toUpperCase()}`
+      const subject = newStatus === 'returned'
+        ? `Your laptop is ready -- ${reference}`
+        : `Ticket ${reference} closed`
+      const html = newStatus === 'returned'
+        ? `<p>Your laptop repair ticket <strong>${reference}</strong> is ready for collection.</p>
+           <p><strong>Notes:</strong><br/>${updated.resolution_notes || ''}</p>
+           <p>Please confirm receipt on FirmTrack once you have it back.</p>`
+        : `<p>Your laptop repair ticket <strong>${reference}</strong> has been closed.</p>
+           <p><strong>Notes:</strong><br/>${updated.resolution_notes || ''}</p>`
+      await notifyAssetTicketReporter({ to: recipient, subject, html })
+    }
+  }
 
   return NextResponse.json({ ticket: isStaff ? updated : stripStaffOnlyFields([updated])[0], assessment })
 }

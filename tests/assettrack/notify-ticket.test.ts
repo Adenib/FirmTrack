@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { notifyAssetTicketSubmitted } from '@/lib/assettrack/notify-ticket'
+import { notifyAssetTicketSubmitted, notifyAssetTicketReporter } from '@/lib/assettrack/notify-ticket'
 
 const ENV_KEYS = ['RESEND_API_KEY', 'ASSETTRACK_FROM_EMAIL', 'SUPPORT_FROM_EMAIL', 'BILLTRACK_FROM_EMAIL'] as const
 let savedEnv: Record<string, string | undefined>
@@ -72,5 +72,32 @@ describe('notifyAssetTicketSubmitted', () => {
 
     expect(result.sent).toBe(false)
     expect(result.error).toMatch(/boom/)
+  })
+})
+
+describe('notifyAssetTicketReporter', () => {
+  it('reports not sent with a reporter-specific message when there is no recipient', async () => {
+    process.env.RESEND_API_KEY = 'test-key'
+    process.env.ASSETTRACK_FROM_EMAIL = 'noreply@firmtracks.com'
+
+    const result = await notifyAssetTicketReporter({ to: '', subject: 'x', html: '<p>x</p>' })
+    expect(result.sent).toBe(false)
+    expect(result.error).toMatch(/no reporter email/i)
+  })
+
+  it('calls the transport and reports sent on success', async () => {
+    process.env.RESEND_API_KEY = 'test-key'
+    process.env.ASSETTRACK_FROM_EMAIL = 'noreply@firmtracks.com'
+
+    const calls: unknown[] = []
+    const result = await notifyAssetTicketReporter(
+      { to: 'staff@example.com', subject: 'Your laptop is ready', html: '<p>ready</p>' },
+      async (args) => {
+        calls.push(args)
+      }
+    )
+
+    expect(result.sent).toBe(true)
+    expect(calls[0]).toMatchObject({ to: 'staff@example.com', subject: 'Your laptop is ready' })
   })
 })

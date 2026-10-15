@@ -58,6 +58,7 @@ export default function AssetTrackTicketsPage() {
   const [category, setCategory] = useState('hardware')
   const [impact, setImpact] = useState('normal')
   const [description, setDescription] = useState('')
+  const [notifyEmail, setNotifyEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const [drafts, setDrafts] = useState({})
@@ -80,6 +81,7 @@ export default function AssetTrackTicketsPage() {
         fetch('/api/assettrack/assets').then((r) => r.json()),
       ])
       setRole(layoutRes.profile?.role || '')
+      setNotifyEmail(layoutRes.profile?.email || '')
       setAssets(assetsRes.assets || [])
       await load()
     }
@@ -97,7 +99,7 @@ export default function AssetTrackTicketsPage() {
     const res = await fetch('/api/assettrack/tickets', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ asset_id: assetId || null, category, impact, issue_description: description }),
+      body: JSON.stringify({ asset_id: assetId || null, category, impact, issue_description: description, notify_email: notifyEmail.trim() || null }),
     })
     const result = await res.json()
     if (!res.ok) {
@@ -200,6 +202,17 @@ export default function AssetTrackTicketsPage() {
             placeholder="Describe the symptoms, when they started, and any error messages."
             className="w-full px-3 py-2 border rounded-md text-sm"
           />
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Email for updates on this ticket</label>
+            <input
+              type="email"
+              required
+              value={notifyEmail}
+              onChange={(e) => setNotifyEmail(e.target.value)}
+              placeholder="you@yourfirm.com"
+              className="w-full px-3 py-2 border rounded-md text-sm"
+            />
+          </div>
           <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50">
             {submitting ? 'Submitting...' : 'Submit ticket'}
           </button>

@@ -34,9 +34,10 @@ const resendTransport: SendTransport = async ({ apiKey, fromEmail, fromName, to,
   }
 }
 
-export async function notifyAssetTicketSubmitted(
+async function sendAssetTrackEmail(
   args: { to: string; subject: string; html: string },
-  transport: SendTransport = resendTransport
+  transport: SendTransport,
+  missingRecipientError: string
 ): Promise<{ sent: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY
   const fromEmail = process.env.ASSETTRACK_FROM_EMAIL || process.env.SUPPORT_FROM_EMAIL || process.env.BILLTRACK_FROM_EMAIL
@@ -46,7 +47,7 @@ export async function notifyAssetTicketSubmitted(
     return { sent: false, error: 'Email sending is not configured (RESEND_API_KEY / ASSETTRACK_FROM_EMAIL)' }
   }
   if (!args.to) {
-    return { sent: false, error: 'No IT notification email configured for this tenant (see AssetTrack Settings)' }
+    return { sent: false, error: missingRecipientError }
   }
 
   try {
@@ -55,4 +56,23 @@ export async function notifyAssetTicketSubmitted(
   } catch (err) {
     return { sent: false, error: err instanceof Error ? err.message : String(err) }
   }
+}
+
+// IT's "a ticket was submitted" notification -- recipient is the
+// per-tenant assettrack_sync_settings.notification_email.
+export async function notifyAssetTicketSubmitted(
+  args: { to: string; subject: string; html: string },
+  transport: SendTransport = resendTransport
+): Promise<{ sent: boolean; error?: string }> {
+  return sendAssetTrackEmail(args, transport, 'No IT notification email configured for this tenant (see AssetTrack Settings)')
+}
+
+// The reporting employee's own status-update notification -- recipient is
+// the ticket's notify_email override, falling back to their FirmTrack
+// account email.
+export async function notifyAssetTicketReporter(
+  args: { to: string; subject: string; html: string },
+  transport: SendTransport = resendTransport
+): Promise<{ sent: boolean; error?: string }> {
+  return sendAssetTrackEmail(args, transport, 'No reporter email on file')
 }

@@ -77,6 +77,22 @@ describe('AssetTrack tickets', () => {
     expect(body.events[0].event_type).toBe('created')
   })
 
+  it('accepts a notify_email override and rejects an invalid one', async () => {
+    const badRes = await staff.fetch('/api/assettrack/tickets', {
+      method: 'POST',
+      body: JSON.stringify({ category: 'software', issue_description: 'Testing notify_email validation.', notify_email: 'not-an-email' }),
+    })
+    expect(badRes.status).toBe(400)
+
+    const goodRes = await staff.fetch('/api/assettrack/tickets', {
+      method: 'POST',
+      body: JSON.stringify({ category: 'software', issue_description: 'Testing notify_email validation.', notify_email: 'alt-contact@example.com' }),
+    })
+    expect(goodRes.status).toBe(201)
+    const body = await goodRes.json()
+    expect(body.ticket.notify_email).toBe('alt-contact@example.com')
+  })
+
   it('a non-staff caller cannot change ticket status', async () => {
     const res = await staff.fetch('/api/assettrack/tickets', {
       method: 'PATCH',
