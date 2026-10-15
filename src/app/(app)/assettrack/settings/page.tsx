@@ -174,7 +174,7 @@ export default function AssetTrackSettingsPage() {
     if (!res.ok) setError(body.error || 'Sync failed')
     else {
       const s = body.summary
-      setMessage(`Sync complete: ${s.created} created, ${s.updated} updated, ${s.skipped} skipped.`)
+      setMessage(`Sync complete: ${s.created} created, ${s.updated} updated, ${s.skipped} skipped, ${s.deleted || 0} removed.`)
       setSettings((prev) => (prev ? { ...prev, last_sync_summary: s, last_synced_at: new Date().toISOString() } : prev))
     }
     setSyncing(false)
@@ -340,7 +340,7 @@ export default function AssetTrackSettingsPage() {
                 <p className="text-xs text-gray-500 mb-2">
                   Last synced: {new Date(settings.last_synced_at).toLocaleString()}
                   {settings.last_sync_summary && (
-                    <> — {settings.last_sync_summary.created} created, {settings.last_sync_summary.updated} updated, {settings.last_sync_summary.skipped} skipped</>
+                    <> — {settings.last_sync_summary.created} created, {settings.last_sync_summary.updated} updated, {settings.last_sync_summary.skipped} skipped, {settings.last_sync_summary.deleted || 0} removed</>
                   )}
                 </p>
               )}

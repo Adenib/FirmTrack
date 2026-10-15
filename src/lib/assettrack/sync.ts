@@ -29,6 +29,7 @@ export type SyncSummary = {
   created: number
   updated: number
   skipped: number
+  deleted: number
   unresolvedAssignees: string[]
   errors: string[]
 }
@@ -119,7 +120,7 @@ export async function runAssetSync(tenantId: string, userId: string): Promise<Sy
     }
   }
 
-  const summary: SyncSummary = { created: 0, updated: 0, skipped: 0, unresolvedAssignees: [], errors: [] }
+  const summary: SyncSummary = { created: 0, updated: 0, skipped: 0, deleted: 0, unresolvedAssignees: [], errors: [] }
   let mappedAnyAssetTag = false
 
   for (const item of items) {
@@ -205,6 +206,35 @@ export async function runAssetSync(tenantId: string, userId: string): Promise<Sy
 
   if (items.length > 0 && !mappedAnyAssetTag) {
     throw new Error('None of the list items had a value in the mapped asset_tag column -- the mapping is likely wrong (a renamed or deleted SharePoint column).')
+  }
+
+  // Remove assets whose source row no longer exists in the list (deleted
+  // or filtered out in SharePoint since the last sync). Safe to hard
+  // delete: assettrack_tickets.asset_id is ON DELETE SET NULL, so a
+  // ticket just loses its asset link, never its own history. Only ever
+  // touches previously-synced rows (external_source = 'sharepoint'),
+  // never a manually-created asset. Guarded on items.length > 0 so a
+  // transient empty response from Graph can't wipe the whole register.
+  if (items.length > 0) {
+    const seenItemIds = new Set(items.map((i) => i.id))
+    const { data: previouslySynced } = await supabaseAdmin
+      .from('assettrack_assets')
+      .select('id, external_item_id')
+      .eq('tenant_id', tenantId)
+      .eq('external_source', 'sharepoint')
+
+    const staleIds = (previouslySynced || [])
+      .filter((a) => a.external_item_id && !seenItemIds.has(a.external_item_id))
+      .map((a) => a.id)
+
+    if (staleIds.length > 0) {
+      const { error, count } = await supabaseAdmin
+        .from('assettrack_assets')
+        .delete({ count: 'exact' })
+        .in('id', staleIds)
+      if (error) summary.errors.push(`Could not remove ${staleIds.length} asset(s) deleted from the source list: ${error.message}`)
+      else summary.deleted = count || staleIds.length
+    }
   }
 
   await supabaseAdmin
