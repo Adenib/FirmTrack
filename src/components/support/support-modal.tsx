@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ADDON_PRICE_BASIC } from '@/lib/billing/pricing'
+
+const POLL_INTERVAL_MS = 3000
+const TYPING_PING_THROTTLE_MS = 2000
 
 type Props = {
   aiSupportActive: boolean
@@ -51,6 +54,8 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
   const [chatInput, setChatInput] = useState('')
   const [chatSending, setChatSending] = useState(false)
   const [chatError, setChatError] = useState('')
+  const [agentTyping, setAgentTyping] = useState(false)
+  const lastTypingPingRef = useRef(0)
 
   const loadHistory = async () => {
     setLoadingHistory(true)
@@ -135,6 +140,50 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
     }
     setChatSending(false)
   }
+
+  // Throttled -- fires at most once per TYPING_PING_THROTTLE_MS, not on
+  // every keystroke, since the server only needs to know "still typing,"
+  // not each individual character.
+  const pingTyping = (requestId: string) => {
+    const now = Date.now()
+    if (now - lastTypingPingRef.current < TYPING_PING_THROTTLE_MS) return
+    lastTypingPingRef.current = now
+    fetch(`/api/support/requests/${requestId}/typing`, { method: 'POST' }).catch(() => {})
+  }
+
+  const handleChatInputChange = (value: string, requestId: string) => {
+    setChatInput(value)
+    if (value) pingTyping(requestId)
+  }
+
+  // Active Standard-channel thread (either just submitted or reopened
+  // from history) -- polled for new messages and the other side's typing
+  // status so replies/typing show up without the subscriber doing
+  // anything. AI Assistant doesn't need this: its reply comes back
+  // synchronously in the same request that sends the message.
+  const activeStandardThreadId =
+    tab === 'new' && created?.channel === 'standard'
+      ? created.id
+      : tab === 'history' && openRequest?.channel === 'standard'
+        ? openRequest.id
+        : null
+
+  useEffect(() => {
+    if (!activeStandardThreadId) {
+      setAgentTyping(false)
+      return
+    }
+    const poll = async () => {
+      const res = await fetch(`/api/support/requests/${activeStandardThreadId}/messages`)
+      const result = await res.json()
+      if (res.ok) {
+        setMessages(result.messages || [])
+        setAgentTyping(!!result.agentTyping)
+      }
+    }
+    const interval = setInterval(poll, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [activeStandardThreadId])
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -263,11 +312,12 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
                 ))}
               </div>
               {chatError && <p className="text-amber-600 text-xs mb-2">{chatError}</p>}
+              {agentTyping && <p className="text-xs text-gray-400 italic mb-1">Agent is typing...</p>}
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
+                  onChange={(e) => handleChatInputChange(e.target.value, created.id)}
                   onKeyDown={(e) => e.key === 'Enter' && sendChatMessage(created.id)}
                   placeholder="Type a message..."
                   className="flex-1 px-3 py-2 border rounded-md text-sm"
@@ -334,11 +384,12 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
                 openRequest.status !== 'resolved' && (
                   <div>
                     {chatError && <p className="text-amber-600 text-xs mb-2">{chatError}</p>}
+                    {agentTyping && <p className="text-xs text-gray-400 italic mb-1">Agent is typing...</p>}
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
+                        onChange={(e) => handleChatInputChange(e.target.value, openRequest.id)}
                         onKeyDown={(e) => e.key === 'Enter' && sendChatMessage(openRequest.id)}
                         placeholder="Type a message..."
                         className="flex-1 px-3 py-2 border rounded-md text-sm"

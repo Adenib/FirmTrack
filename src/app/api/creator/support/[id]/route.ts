@@ -27,6 +27,15 @@ async function requireSupportAccess() {
 
 const STATUSES = ['open', 'agent_assigned', 'resolved']
 
+// A typing ping goes stale (reads back as "not typing") after this long
+// with no further keystroke -- no explicit "stopped typing" signal needed.
+const TYPING_WINDOW_MS = 4000
+
+function isTypingRecently(timestamp: string | null): boolean {
+  if (!timestamp) return false
+  return Date.now() - new Date(timestamp).getTime() < TYPING_WINDOW_MS
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const { error } = await requireSupportAccess()
@@ -45,7 +54,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .eq('request_id', id)
     .order('created_at', { ascending: true })
 
-  return NextResponse.json({ request: supportRequest, messages: messages || [] })
+  return NextResponse.json({
+    request: supportRequest,
+    messages: messages || [],
+    userTyping: isTypingRecently(supportRequest.user_typing_at),
+  })
 }
 
 // A creator support agent replying and/or updating status/assignment.

@@ -1,7 +1,10 @@
 // @ts-nocheck
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+const POLL_INTERVAL_MS = 3000
+const TYPING_PING_THROTTLE_MS = 2000
 
 const STATUS_LABEL = {
   open: 'Open',
@@ -25,6 +28,8 @@ export default function SupportClient() {
   const [thread, setThread] = useState(null)
   const [replyBody, setReplyBody] = useState('')
   const [busy, setBusy] = useState(false)
+  const [userTyping, setUserTyping] = useState(false)
+  const lastTypingPingRef = useRef(0)
 
   const load = async () => {
     setLoading(true)
@@ -44,8 +49,43 @@ export default function SupportClient() {
     setSelected(req)
     const res = await fetch(`/api/creator/support/${req.id}`)
     const result = await res.json()
-    if (res.ok) setThread(result)
+    if (res.ok) {
+      setThread(result)
+      setUserTyping(!!result.userTyping)
+    }
   }
+
+  // Throttled -- fires at most once per TYPING_PING_THROTTLE_MS, not on
+  // every keystroke.
+  const pingTyping = (requestId) => {
+    const now = Date.now()
+    if (now - lastTypingPingRef.current < TYPING_PING_THROTTLE_MS) return
+    lastTypingPingRef.current = now
+    fetch(`/api/creator/support/${requestId}/typing`, { method: 'POST' }).catch(() => {})
+  }
+
+  const handleReplyChange = (value) => {
+    setReplyBody(value)
+    if (value && selected) pingTyping(selected.id)
+  }
+
+  // Polls the open thread for new agent/user messages and the
+  // subscriber's typing status -- the reply itself already refreshes via
+  // openRequest(), this just picks up what happens on their side without
+  // requiring the agent to do anything.
+  useEffect(() => {
+    if (!selected) return
+    const poll = async () => {
+      const res = await fetch(`/api/creator/support/${selected.id}`)
+      const result = await res.json()
+      if (res.ok) {
+        setThread(result)
+        setUserTyping(!!result.userTyping)
+      }
+    }
+    const interval = setInterval(poll, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [selected])
 
   const handleReply = async (e) => {
     e.preventDefault()
@@ -161,11 +201,12 @@ export default function SupportClient() {
                 ))}
               </div>
 
+              {userTyping && <p className="text-xs text-gray-400 italic mb-1">Subscriber is typing...</p>}
               <form onSubmit={handleReply} className="flex gap-2">
                 <input
                   type="text"
                   value={replyBody}
-                  onChange={(e) => setReplyBody(e.target.value)}
+                  onChange={(e) => handleReplyChange(e.target.value)}
                   placeholder="Reply..."
                   className="flex-1 px-3 py-2 border rounded-md text-sm"
                 />

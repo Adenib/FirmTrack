@@ -183,6 +183,38 @@ describe('Support requests API', () => {
     expect((await res.json()).error).toMatch(/monthly AI Assistant usage limit/i)
   })
 
+  it('typing indicators: each side sees the other typing, and it goes stale on its own', async () => {
+    const createRes = await tenant.fetch('/api/support/requests', {
+      method: 'POST',
+      body: JSON.stringify({ subject: 'Typing test', description: 'x', channel: 'standard' }),
+    })
+    const { request } = await createRes.json()
+
+    // Before either side pings, neither sees the other typing.
+    const initialRes = await tenant.fetch(`/api/support/requests/${request.id}/messages`)
+    expect((await initialRes.json()).agentTyping).toBe(false)
+
+    // Agent pings -- the subscriber's GET reflects it.
+    const agentPingRes = await supportAdmin.fetch(`/api/creator/support/${request.id}/typing`, { method: 'POST' })
+    expect(agentPingRes.status).toBe(200)
+    const afterAgentPing = await tenant.fetch(`/api/support/requests/${request.id}/messages`)
+    expect((await afterAgentPing.json()).agentTyping).toBe(true)
+
+    // Subscriber pings -- the agent's GET reflects it.
+    const userPingRes = await tenant.fetch(`/api/support/requests/${request.id}/typing`, { method: 'POST' })
+    expect(userPingRes.status).toBe(200)
+    const afterUserPing = await supportAdmin.fetch(`/api/creator/support/${request.id}`)
+    expect((await afterUserPing.json()).userTyping).toBe(true)
+
+    // A stale ping (older than the typing window) reads back as not typing.
+    await supabaseAdmin
+      .from('support_requests')
+      .update({ agent_typing_at: new Date(Date.now() - 60_000).toISOString() })
+      .eq('id', request.id)
+    const afterStale = await tenant.fetch(`/api/support/requests/${request.id}/messages`)
+    expect((await afterStale.json()).agentTyping).toBe(false)
+  })
+
   it('creator can reply and update status', async () => {
     const listRes = await supportAdmin.fetch('/api/creator/support')
     const { requests } = await listRes.json()

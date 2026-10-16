@@ -10,6 +10,15 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// A typing ping goes stale (reads back as "not typing") after this long
+// with no further keystroke -- no explicit "stopped typing" signal needed.
+const TYPING_WINDOW_MS = 4000
+
+function isTypingRecently(timestamp: string | null): boolean {
+  if (!timestamp) return false
+  return Date.now() - new Date(timestamp).getTime() < TYPING_WINDOW_MS
+}
+
 async function loadOwnRequest(tenantId: string, requestId: string) {
   const { data } = await supabaseAdmin
     .from('support_requests')
@@ -65,7 +74,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .order('created_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ messages })
+  return NextResponse.json({ messages, agentTyping: isTypingRecently(supportRequest.agent_typing_at) })
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
