@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import Logo from '@/components/brand/logo'
+import FaqChatWidget from '@/components/marketing/faq-chat-widget'
 import { MARKETING_MODULES, getMarketingModule } from '@/lib/marketing/modules'
 
 export function generateStaticParams() {
@@ -122,6 +123,8 @@ export default async function ModulePage({ params }: { params: Promise<{ slug: s
           </div>
         </div>
       </footer>
+
+      <FaqChatWidget />
     </div>
   )
 }

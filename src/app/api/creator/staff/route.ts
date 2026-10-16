@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const CADRES = ['admin', 'accounts', 'developer']
+const CADRES = ['admin', 'accounts', 'developer', 'sales']
 
 async function requireStaffAccess() {
   const supabase = await createServerClient()

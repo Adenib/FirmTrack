@@ -3,12 +3,13 @@
 
 import { useEffect, useState } from 'react'
 
-const CADRES = ['admin', 'accounts', 'developer']
+const CADRES = ['admin', 'accounts', 'developer', 'sales']
 
 const cadreBadge = {
   admin: 'bg-purple-100 text-purple-700',
   accounts: 'bg-blue-100 text-blue-700',
   developer: 'bg-green-100 text-green-700',
+  sales: 'bg-pink-100 text-pink-700',
   creator: 'bg-gray-200 text-gray-700',
 }
 

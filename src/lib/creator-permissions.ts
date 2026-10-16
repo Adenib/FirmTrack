@@ -3,7 +3,7 @@
 // admins) — kept equivalent to 'admin' so their access is unaffected.
 // New staff added via /creator/staff get one of 'admin' | 'accounts' |
 // 'developer', each scoped to a subset of the console's pages.
-export type CreatorPage = 'overview' | 'organizations' | 'signups' | 'pricing' | 'revenue' | 'staff' | 'support' | 'blog'
+export type CreatorPage = 'overview' | 'organizations' | 'signups' | 'pricing' | 'revenue' | 'staff' | 'support' | 'blog' | 'sales'
 
 const PAGE_ACCESS: Record<CreatorPage, string[]> = {
   overview: ['creator', 'admin', 'accounts', 'developer'],
@@ -18,6 +18,8 @@ const PAGE_ACCESS: Record<CreatorPage, string[]> = {
   support: ['creator', 'admin'],
   // Publishes public-facing content -- same conservative bar as staff/support.
   blog: ['creator', 'admin'],
+  // The dedicated sales/marketing cadre, scoped only to this page.
+  sales: ['creator', 'admin', 'sales'],
 }
 
 export function canAccessCreatorPage(role: string, page: CreatorPage): boolean {
