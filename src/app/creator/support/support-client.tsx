@@ -30,6 +30,8 @@ export default function SupportClient() {
   const [busy, setBusy] = useState(false)
   const [userTyping, setUserTyping] = useState(false)
   const lastTypingPingRef = useRef(0)
+  const [transcriptSending, setTranscriptSending] = useState(false)
+  const [transcriptMessage, setTranscriptMessage] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -62,6 +64,15 @@ export default function SupportClient() {
     if (now - lastTypingPingRef.current < TYPING_PING_THROTTLE_MS) return
     lastTypingPingRef.current = now
     fetch(`/api/creator/support/${requestId}/typing`, { method: 'POST' }).catch(() => {})
+  }
+
+  const sendTranscript = async () => {
+    setTranscriptSending(true)
+    setTranscriptMessage('')
+    const res = await fetch(`/api/support/requests/${selected.id}/transcript`, { method: 'POST' })
+    const result = await res.json()
+    setTranscriptMessage(res.ok ? 'Transcript emailed to the subscriber and support.' : result.error || 'Could not send transcript')
+    setTranscriptSending(false)
   }
 
   const handleReplyChange = (value) => {
@@ -191,6 +202,19 @@ export default function SupportClient() {
                   </button>
                 ))}
               </div>
+
+              {selected.status === 'resolved' && (
+                <div className="mb-4">
+                  <button
+                    onClick={sendTranscript}
+                    disabled={transcriptSending}
+                    className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-gray-900 disabled:opacity-50"
+                  >
+                    {transcriptSending ? 'Sending...' : 'Send transcript'}
+                  </button>
+                  {transcriptMessage && <p className="text-xs text-gray-500 mt-1">{transcriptMessage}</p>}
+                </div>
+              )}
 
               <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
                 {(thread?.messages || []).map((m) => (

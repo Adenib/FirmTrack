@@ -378,10 +378,12 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
                 ))}
                 {messages.length === 0 && <p className="text-sm text-gray-500">{openRequest.description}</p>}
               </div>
-              {openRequest.channel === 'ai_assisted' ? (
+              {openRequest.status === 'resolved' ? (
+                <SendTranscriptButton requestId={openRequest.id} />
+              ) : openRequest.channel === 'ai_assisted' ? (
                 <AiChatThread requestId={openRequest.id} initialMessages={messages} />
               ) : (
-                openRequest.status !== 'resolved' && (
+                (
                   <div>
                     {chatError && <p className="text-amber-600 text-xs mb-2">{chatError}</p>}
                     {agentTyping && <p className="text-xs text-gray-400 italic mb-1">Agent is typing...</p>}
@@ -409,6 +411,34 @@ export default function SupportModal({ aiSupportActive, onClose }: Props) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function SendTranscriptButton({ requestId }: { requestId: string }) {
+  const [sending, setSending] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const send = async () => {
+    setSending(true)
+    setMessage('')
+    const res = await fetch(`/api/support/requests/${requestId}/transcript`, { method: 'POST' })
+    const result = await res.json()
+    setMessage(res.ok ? 'Transcript emailed -- check your inbox.' : result.error || 'Could not send transcript')
+    setSending(false)
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-gray-600 mb-2">This request is resolved.</p>
+      <button
+        onClick={send}
+        disabled={sending}
+        className="bg-gray-800 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-900 disabled:opacity-50"
+      >
+        {sending ? 'Sending...' : 'Send transcript to my email'}
+      </button>
+      {message && <p className="text-xs text-gray-500 mt-2">{message}</p>}
     </div>
   )
 }

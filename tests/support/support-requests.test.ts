@@ -231,4 +231,35 @@ describe('Support requests API', () => {
     const detail = await detailRes.json()
     expect(detail.messages.some((m: { sender_type: string; body: string }) => m.sender_type === 'agent' && m.body === 'Looking into this now.')).toBe(true)
   })
+
+  it('transcript: requires authorization, only available once resolved, emails both parties', async () => {
+    const createRes = await tenant.fetch('/api/support/requests', {
+      method: 'POST',
+      body: JSON.stringify({ subject: 'Transcript test', description: 'x', channel: 'standard' }),
+    })
+    const { request } = await createRes.json()
+
+    const unauthedRes = await fetch(`http://localhost:3000/api/support/requests/${request.id}/transcript`, { method: 'POST' })
+    expect(unauthedRes.status).toBe(401)
+
+    const otherTenantRes = await otherTenant.fetch(`/api/support/requests/${request.id}/transcript`, { method: 'POST' })
+    expect(otherTenantRes.status).toBe(403)
+
+    const tooEarlyRes = await tenant.fetch(`/api/support/requests/${request.id}/transcript`, { method: 'POST' })
+    expect(tooEarlyRes.status).toBe(400)
+
+    await supportAdmin.fetch(`/api/creator/support/${request.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'resolved' }),
+    })
+
+    const subscriberRes = await tenant.fetch(`/api/support/requests/${request.id}/transcript`, { method: 'POST' })
+    expect(subscriberRes.status).toBe(200)
+    const subscriberBody = await subscriberRes.json()
+    expect(subscriberBody.sent).toBe(true)
+    expect(subscriberBody.recipients.length).toBeGreaterThan(0)
+
+    const agentRes = await supportAdmin.fetch(`/api/support/requests/${request.id}/transcript`, { method: 'POST' })
+    expect(agentRes.status).toBe(200)
+  })
 })
