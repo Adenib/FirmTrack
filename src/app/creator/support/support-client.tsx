@@ -18,6 +18,8 @@ const STATUS_BADGE = {
   resolved: 'bg-green-100 text-green-700',
 }
 
+const SEVERITIES = ['A', 'B', 'C']
+
 export default function SupportClient() {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,6 +34,10 @@ export default function SupportClient() {
   const lastTypingPingRef = useRef(0)
   const [transcriptSending, setTranscriptSending] = useState(false)
   const [transcriptMessage, setTranscriptMessage] = useState('')
+  const [admins, setAdmins] = useState([])
+  const [reassignTarget, setReassignTarget] = useState('')
+  const [reassigning, setReassigning] = useState(false)
+  const [reassignMessage, setReassignMessage] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -45,6 +51,18 @@ export default function SupportClient() {
 
   useEffect(() => {
     load()
+    // Only staff who can actually act on a request (same 'support' page
+    // access this route itself requires) are worth offering as a
+    // reassignment target -- handing it to anyone else would just 403.
+    fetch('/api/creator/staff')
+      .then((r) => r.json())
+      .then((result) => {
+        const eligible = (result.staff || []).filter(
+          (s) => s.status === 'active' && ['creator', 'admin'].includes(s.role)
+        )
+        setAdmins(eligible)
+      })
+      .catch(() => {})
   }, [])
 
   const openRequest = async (req) => {
@@ -128,6 +146,40 @@ export default function SupportClient() {
     setBusy(false)
   }
 
+  const bumpSeverity = async (severity) => {
+    setBusy(true)
+    const res = await fetch(`/api/creator/support/${selected.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ severity }),
+    })
+    if (res.ok) {
+      await openRequest(selected)
+      await load()
+    }
+    setBusy(false)
+  }
+
+  const reassign = async () => {
+    if (!reassignTarget) return
+    setReassigning(true)
+    setReassignMessage('')
+    const res = await fetch(`/api/creator/support/${selected.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ assigned_to: reassignTarget }),
+    })
+    const result = await res.json()
+    if (res.ok) {
+      setReassignMessage('Reassigned -- they have been notified by email.')
+      await openRequest(selected)
+      await load()
+    } else {
+      setReassignMessage(result.error || 'Could not reassign')
+    }
+    setReassigning(false)
+  }
+
   const filtered = statusFilter ? requests.filter((r) => r.status === statusFilter) : requests
 
   return (
@@ -190,7 +242,7 @@ export default function SupportClient() {
               <p className="text-xs text-gray-500 mb-3">{selected.organizations?.name}</p>
               <p className="text-sm text-gray-700 mb-4">{selected.description}</p>
 
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-3">
                 {['open', 'agent_assigned', 'resolved'].map((s) => (
                   <button
                     key={s}
@@ -202,6 +254,57 @@ export default function SupportClient() {
                   </button>
                 ))}
               </div>
+
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs text-gray-500">Severity:</span>
+                {SEVERITIES.map((sev) => (
+                  <button
+                    key={sev}
+                    onClick={() => bumpSeverity(sev)}
+                    disabled={busy || (thread?.request?.severity ?? selected.severity) === sev}
+                    className="text-xs px-2 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    Sev {sev}
+                  </button>
+                ))}
+              </div>
+
+              {admins.length > 0 && (
+                <div className="mb-4">
+                  {(() => {
+                    const currentAssigneeId = thread?.request?.assigned_to ?? selected.assigned_to
+                    const currentAssignee = admins.find((a) => a.id === currentAssigneeId)
+                    return currentAssignee ? (
+                      <p className="text-xs text-gray-500 mb-1">
+                        Currently assigned to: <span className="font-medium">{currentAssignee.nickname || currentAssignee.full_name || currentAssignee.email}</span>
+                      </p>
+                    ) : null
+                  })()}
+                  <span className="text-xs text-gray-500 block mb-1">Reassign to:</span>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={reassignTarget}
+                      onChange={(e) => setReassignTarget(e.target.value)}
+                      className="flex-1 px-2 py-1.5 border rounded-md text-sm"
+                    >
+                      <option value="">Pick a colleague...</option>
+                      {admins
+                        .filter((a) => a.id !== (thread?.request?.assigned_to ?? selected.assigned_to))
+                        .map((a) => (
+                          <option key={a.id} value={a.id}>{a.nickname || a.full_name || a.email}</option>
+                        ))}
+                    </select>
+                    <button
+                      onClick={reassign}
+                      disabled={reassigning || !reassignTarget}
+                      className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-gray-900 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {reassigning ? 'Reassigning...' : 'Reassign'}
+                    </button>
+                  </div>
+                  {reassignMessage && <p className="text-xs text-gray-500 mt-1">{reassignMessage}</p>}
+                </div>
+              )}
 
               {selected.status === 'resolved' && (
                 <div className="mb-4">

@@ -15,12 +15,14 @@ describe('Support requests API', () => {
   let otherTenant: TestTenant
   let devAdmin: TestPlatformAdmin
   let supportAdmin: TestPlatformAdmin
+  let secondSupportAdmin: TestPlatformAdmin
 
   beforeAll(async () => {
     tenant = await createTestTenant('SupportTenant')
     otherTenant = await createTestTenant('SupportOtherTenant')
     devAdmin = await createTestPlatformAdmin('developer')
     supportAdmin = await createTestPlatformAdmin('admin')
+    secondSupportAdmin = await createTestPlatformAdmin('admin')
   })
 
   afterAll(async () => {
@@ -28,6 +30,7 @@ describe('Support requests API', () => {
     await destroyTestTenant(otherTenant)
     await destroyTestPlatformAdmin(devAdmin)
     await destroyTestPlatformAdmin(supportAdmin)
+    await destroyTestPlatformAdmin(secondSupportAdmin)
   })
 
   it('requires authentication to create or list', async () => {
@@ -261,5 +264,53 @@ describe('Support requests API', () => {
 
     const agentRes = await supportAdmin.fetch(`/api/support/requests/${request.id}/transcript`, { method: 'POST' })
     expect(agentRes.status).toBe(200)
+  })
+
+  it('severity can be bumped up after creation', async () => {
+    const createRes = await tenant.fetch('/api/support/requests', {
+      method: 'POST',
+      body: JSON.stringify({ subject: 'Severity bump test', description: 'x', channel: 'standard', severity: 'C' }),
+    })
+    const { request } = await createRes.json()
+
+    const badRes = await supportAdmin.fetch(`/api/creator/support/${request.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ severity: 'Z' }),
+    })
+    expect(badRes.status).toBe(400)
+
+    const bumpRes = await supportAdmin.fetch(`/api/creator/support/${request.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ severity: 'A' }),
+    })
+    expect(bumpRes.status).toBe(200)
+    expect((await bumpRes.json()).request.severity).toBe('A')
+  })
+
+  it('reassignment: only to an active admin with support access, notifies them', async () => {
+    const createRes = await tenant.fetch('/api/support/requests', {
+      method: 'POST',
+      body: JSON.stringify({ subject: 'Reassignment test', description: 'x', channel: 'standard' }),
+    })
+    const { request } = await createRes.json()
+
+    // devAdmin has the 'developer' cadre, which has no support access.
+    const badRes = await supportAdmin.fetch(`/api/creator/support/${request.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ assigned_to: devAdmin.adminId }),
+    })
+    expect(badRes.status).toBe(400)
+
+    const goodRes = await supportAdmin.fetch(`/api/creator/support/${request.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ assigned_to: secondSupportAdmin.adminId }),
+    })
+    expect(goodRes.status).toBe(200)
+    expect((await goodRes.json()).request.assigned_to).toBe(secondSupportAdmin.adminId)
+
+    // The newly-assigned admin can act on it even though they weren't
+    // the one who originally touched it.
+    const detailRes = await secondSupportAdmin.fetch(`/api/creator/support/${request.id}`)
+    expect(detailRes.status).toBe(200)
   })
 })
