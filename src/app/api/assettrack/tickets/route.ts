@@ -143,11 +143,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'notify_email is not a valid email address' }, { status: 400 })
   }
 
-  let asset: { id: string; asset_tag: string; make: string | null; model: string | null } | null = null
+  let asset: {
+    id: string
+    asset_tag: string
+    make: string | null
+    model: string | null
+    assignee_name: string | null
+    assignee: { email: string }[] | null
+  } | null = null
   if (asset_id) {
     const { data } = await supabaseAdmin
       .from('assettrack_assets')
-      .select('id, asset_tag, make, model')
+      .select('id, asset_tag, make, model, assignee_name, assignee:assigned_to(email)')
       .eq('id', asset_id)
       .eq('tenant_id', profile.tenant_id)
       .single()
@@ -191,6 +198,13 @@ export async function POST(request: Request) {
   if (settings?.notification_email) {
     const reference = `AT-${ticket.id.slice(0, 8).toUpperCase()}`
     const assetLine = asset ? `${asset.asset_tag} — ${asset.make || ''} ${asset.model || ''}`.trim() : 'No device linked'
+    // The reporter (whoever submitted the ticket) isn't always the same
+    // person the laptop is actually registered to in the asset register
+    // -- e.g. IT or an office admin reporting on someone else's behalf --
+    // so both are worth showing distinctly.
+    const laptopUserLine = asset
+      ? [asset.assignee_name, asset.assignee?.[0]?.email].filter(Boolean).join(' — ') || 'Unassigned'
+      : null
     await notifyAssetTicketSubmitted({
       to: settings.notification_email,
       subject: `New AssetTrack ticket ${reference}: ${category}`,
@@ -199,6 +213,7 @@ export async function POST(request: Request) {
         <p><strong>Reference:</strong> ${reference}<br/>
         <strong>Reported by:</strong> ${user.email}<br/>
         <strong>Device:</strong> ${assetLine}<br/>
+        ${laptopUserLine ? `<strong>Laptop registered to:</strong> ${laptopUserLine}<br/>` : ''}
         <strong>Category:</strong> ${category}<br/>
         <strong>Impact:</strong> ${impact || 'normal'}</p>
         <p><strong>Description:</strong><br/>${issue_description.trim()}</p>
