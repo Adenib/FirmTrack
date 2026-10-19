@@ -10,6 +10,7 @@ import {
 } from '@/components/brand/icons'
 import { MARKETING_MODULES } from '@/lib/marketing/modules'
 import FaqChatWidget from '@/components/marketing/faq-chat-widget'
+import { buildOrganizationSchema, buildSoftwareApplicationSchema, buildFaqPageSchema } from '@/lib/marketing/structured-data'
 
 const TRUST_ITEMS = [
   { icon: ShieldLockIcon, label: 'Multi-factor authentication' },
@@ -31,8 +32,13 @@ const KEY_BENEFITS = [
 ]
 
 export default function HomePage() {
+  const structuredData = [buildOrganizationSchema(), buildSoftwareApplicationSchema(), buildFaqPageSchema()]
+
   return (
     <div className="min-h-screen flex flex-col">
+      {/* eslint-disable-next-line react/no-danger -- static, server-built JSON, no user input involved */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+
       <header className="border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Logo size="sm" />
