@@ -84,7 +84,7 @@ export default function StaffClient({ currentAdminId }) {
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Platform Staff</h1>
       <p className="text-gray-600 mb-6">
         Give people access to the Creator Console. Admin sees everything; Accounts sees Overview + Revenue;
-        Developer sees Overview + Organizations.
+        Developer sees Overview + Organizations; Sales sees only Sales Chat.
       </p>
 
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
