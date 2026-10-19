@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 const MODULES = [
@@ -62,6 +63,11 @@ export default function OrgManager({
 
   const [rebatePercent, setRebatePercent] = useState('10')
   const [applyingRebate, setApplyingRebate] = useState(false)
+
+  const router = useRouter()
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const subMap = Object.fromEntries(subscriptions.map((s) => [s.module, s]))
   const allModulesActive = PRICED_MODULES.every((m) => subMap[m]?.is_active)
@@ -143,6 +149,23 @@ export default function OrgManager({
     setApplyingRebate(false)
     if (!response.ok) setMessage(result.error || 'Failed to apply bundle rebate.')
     else window.location.reload()
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    setDeleteError('')
+    const response = await fetch(`/api/creator/organizations/${org.id}`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmName: deleteConfirmText }),
+    })
+    const result = await response.json()
+    if (!response.ok) {
+      setDeleting(false)
+      setDeleteError(result.error || 'Failed to delete organization.')
+      return
+    }
+    router.push('/creator/organizations')
   }
 
   return (
@@ -298,6 +321,39 @@ export default function OrgManager({
               </span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Danger zone */}
+      <div className="bg-red-50 border border-red-200 rounded-lg p-5 mt-6">
+        <h2 className="font-semibold text-red-900 mb-1">Delete organization</h2>
+        <p className="text-xs text-red-700 mb-4">
+          This permanently deletes {org.name} and every record belonging to it -- matters, clients,
+          invoices, time entries, documents, users, and all other tenant data. This cannot be undone.
+        </p>
+        {deleteError && (
+          <p className="text-sm text-red-800 bg-red-100 border border-red-200 rounded-md px-3 py-2 mb-3">
+            {deleteError}
+          </p>
+        )}
+        <label className="block text-xs text-red-700 mb-1">
+          Type <span className="font-mono font-semibold">{org.name}</span> to confirm
+        </label>
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            className="px-3 py-2 border border-red-300 rounded-md text-sm flex-1"
+            placeholder={org.name}
+          />
+          <button
+            onClick={handleDelete}
+            disabled={deleting || deleteConfirmText !== org.name}
+            className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 disabled:opacity-50 whitespace-nowrap"
+          >
+            {deleting ? 'Deleting...' : 'Delete organization'}
+          </button>
         </div>
       </div>
     </div>
