@@ -219,6 +219,10 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     // explicitly anyway for symmetry with the rest of this ordered cleanup.
     'mfa_backup_codes',
     'agent_api_keys',
+    // app_feedback_prompts.user_id / app_feedback.user_id -> users, no
+    // cascade, so both must be cleared before 'users' below.
+    'app_feedback',
+    'app_feedback_prompts',
     'accounts_staff',
     'accounts_categories',
     // internal_cost_rates.lawyer_id/category_id -> lawyers/lawyer_categories,

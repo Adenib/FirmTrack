@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import UpgradeModal from '@/components/ui/upgrade-modal'
 import SupportModal from '@/components/support/support-modal'
+import FeedbackPrompt from '@/components/feedback/feedback-prompt'
 import Logo from '@/components/brand/logo'
 import {
   ClockIcon,
@@ -240,6 +241,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           onClose={() => setUpgradeModule(null)}
         />
       )}
+
+      <FeedbackPrompt />
 
       {showSupportModal && (
         <SupportModal

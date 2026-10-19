@@ -50,6 +50,8 @@ const TABLES_IN_ORDER = [
   'assettrack_tickets',
   'assettrack_assets',
   'assettrack_sync_settings',
+  'app_feedback',
+  'app_feedback_prompts',
   'users',
 ]
 
