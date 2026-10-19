@@ -20,6 +20,11 @@ describe('Sales chat (anonymous "Chat with Sales" leads)', () => {
   })
 
   afterAll(async () => {
+    // sales_leads has no tenant to scope a throwaway org around (a
+    // prospect isn't a subscriber), so it's not covered by
+    // destroyTestTenant -- clean it up explicitly instead of leaving it
+    // behind in the real Creator Console's Sales Chat list.
+    if (leadId) await supabaseAdmin.from('sales_leads').delete().eq('id', leadId)
     await destroyTestPlatformAdmin(salesAdmin)
     await destroyTestPlatformAdmin(secondSalesAdmin)
     await destroyTestPlatformAdmin(devAdmin)
