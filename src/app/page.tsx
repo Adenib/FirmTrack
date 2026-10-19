@@ -53,6 +53,7 @@ export default function HomePage() {
         </div>
       </header>
 
+      <main>
       <section className="bg-brand-gradient text-white">
         <div className="max-w-6xl mx-auto px-6 py-14 sm:py-24 text-center">
           <p className="text-sm font-medium text-blue-200 mb-4 tracking-wide uppercase">
@@ -148,7 +149,7 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Built with security in mind</h2>
           <p className="text-gray-600 text-center mb-10">
             Real safeguards, not just a promise —{' '}
-            <Link href="/legal/security-and-subprocessors" className="text-brand-blue hover:underline">
+            <Link href="/legal/security-and-subprocessors" className="text-brand-blue underline">
               see our security practices
             </Link>
             .
@@ -173,6 +174,7 @@ export default function HomePage() {
           Create your account
         </Link>
       </section>
+      </main>
 
       <footer className="border-t border-gray-200 mt-auto">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
