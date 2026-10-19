@@ -2,6 +2,13 @@ import Link from 'next/link'
 import Logo from '@/components/brand/logo'
 import { getPublishedPosts } from '@/lib/blog/get-posts'
 
+// Without this, Next statically freezes this page at build/deploy time --
+// a post published afterward through Creator Console (a DB write, no
+// deploy) would never appear here until the next deploy. 60s keeps it
+// effectively static for performance while still picking up new posts
+// quickly.
+export const revalidate = 60
+
 export const metadata = {
   title: 'Blog — FirmTrack',
   description: 'Practice management, trust accounting, and billing insights for law firms.',

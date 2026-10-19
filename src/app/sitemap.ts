@@ -4,6 +4,11 @@ import { getPublishedPosts } from '@/lib/blog/get-posts'
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
+// Otherwise this route is frozen at build/deploy time, same issue as the
+// blog pages -- a post published through Creator Console wouldn't reach
+// the sitemap (and therefore search engines) until the next deploy.
+export const revalidate = 60
+
 // Kept in sync by hand with the LEGAL_SLUGS list in next.config.ts --
 // both enumerate the same public/legal/<slug>/ documents.
 const LEGAL_SLUGS = [

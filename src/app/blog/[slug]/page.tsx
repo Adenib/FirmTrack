@@ -4,6 +4,11 @@ import Logo from '@/components/brand/logo'
 import MarkdownContent from '@/components/blog/markdown-content'
 import { getPublishedPost } from '@/lib/blog/get-posts'
 
+// Same reasoning as /blog's index page -- a newly published post (a DB
+// write via Creator Console, not a deploy) should become reachable within
+// a minute, not only at the next deploy.
+export const revalidate = 60
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const post = await getPublishedPost(slug)
