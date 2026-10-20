@@ -223,6 +223,12 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     // cascade, so both must be cleared before 'users' below.
     'app_feedback',
     'app_feedback_prompts',
+    // movements predates this repo's migration history (no tracked
+    // migration creates it, same situation as matters/clients/lawyers
+    // below) -- its FK cascade behavior isn't confirmed, so it's cleared
+    // explicitly here too rather than assumed to cascade from 'users' or
+    // 'organizations'.
+    'movements',
     'accounts_staff',
     'accounts_categories',
     // internal_cost_rates.lawyer_id/category_id -> lawyers/lawyer_categories,
