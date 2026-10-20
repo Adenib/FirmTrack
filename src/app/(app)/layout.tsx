@@ -161,7 +161,7 @@ const MODULES: ModuleEntry[] = [
 ]
 
 type LayoutData = {
-  organization: { name: string; plan: string } | null
+  organization: { name: string; plan: string; logoUrl: string | null } | null
   profile: { email: string; role: string } | null
   activeModules: string[]
 }
@@ -303,7 +303,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <XIcon className="w-5 h-5" />
             </button>
           </div>
-          <p className="font-semibold text-gray-900 truncate">{organization?.name || '...'}</p>
+          <div className="flex items-center gap-2">
+            {organization?.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- a signed storage URL, not a static asset
+              <img
+                src={organization.logoUrl}
+                alt=""
+                className="w-7 h-7 rounded object-contain border border-gray-200 shrink-0"
+              />
+            )}
+            <p className="font-semibold text-gray-900 truncate">{organization?.name || '...'}</p>
+          </div>
           <p className="text-xs text-gray-500 capitalize">{organization?.plan || ''} plan</p>
         </div>
 

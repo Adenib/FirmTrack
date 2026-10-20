@@ -11,6 +11,7 @@ import {
   ShieldLockIcon,
   LockIcon,
   RefreshIcon,
+  SparkleIcon,
 } from '@/components/brand/icons'
 
 export default async function AdminPage() {
@@ -76,6 +77,12 @@ export default async function AdminPage() {
       title: 'Security Settings',
       description: 'Require multi-factor authentication for everyone in your organization.',
       icon: LockIcon,
+    },
+    {
+      href: '/admin/branding',
+      title: 'Organization Branding',
+      description: "Upload your firm's own logo for your sidebar and invoices.",
+      icon: SparkleIcon,
     },
   ]
 

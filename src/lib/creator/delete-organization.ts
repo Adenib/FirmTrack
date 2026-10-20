@@ -72,6 +72,15 @@ async function destroyAttachments(supabaseAdmin: SupabaseClient, tenantId: strin
   }
 }
 
+// Flat path (${tenantId}/logo.<ext>), unlike the nested buckets above --
+// destroyAttachments would list the logo file itself as if it were a
+// subdirectory and find nothing inside it, silently leaving the file behind.
+async function destroyLogo(supabaseAdmin: SupabaseClient, tenantId: string) {
+  const { data: files } = await supabaseAdmin.storage.from('logos').list(tenantId)
+  const paths = (files || []).map((f) => `${tenantId}/${f.name}`)
+  if (paths.length) await supabaseAdmin.storage.from('logos').remove(paths)
+}
+
 // Deletes every row belonging to this organization across every known
 // tenant-scoped table, its storage attachments, its auth users, and
 // finally the organization row itself. Best-effort: a failure on one
@@ -91,6 +100,9 @@ export async function deleteOrganization(
       result.tableErrors.push({ table: `storage(${bucket})`, message: e.message })
     })
   }
+  await destroyLogo(supabaseAdmin, orgId).catch((e: Error) => {
+    result.tableErrors.push({ table: 'storage(logos)', message: e.message })
+  })
 
   for (const table of TABLES_IN_ORDER) {
     const { error } = await supabaseAdmin.from(table).delete().eq('tenant_id', orgId)

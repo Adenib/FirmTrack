@@ -150,11 +150,19 @@ async function destroyTestDocuments(tenantId: string) {
   }
 }
 
+// Flat path, unlike the other two -- {tenantId}/logo.<ext>, no sub-id.
+async function destroyTestLogo(tenantId: string) {
+  const { data: files } = await supabaseAdmin.storage.from('logos').list(tenantId)
+  const paths = (files || []).map((f) => `${tenantId}/${f.name}`)
+  if (paths.length) await supabaseAdmin.storage.from('logos').remove(paths)
+}
+
 export async function destroyTestTenant(tenant: { tenantId: string; userId: string }, extraUserIds: string[] = []) {
   const { tenantId, userId } = tenant
 
   await destroyTestAttachments(tenantId)
   await destroyTestDocuments(tenantId)
+  await destroyTestLogo(tenantId)
 
   const tablesInOrder = [
     'invoice_reminders',

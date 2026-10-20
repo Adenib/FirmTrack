@@ -1,9 +1,24 @@
 import { createClient } from '@supabase/supabase-js'
+import { LOGO_BUCKET } from '@/lib/branding/constants'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+// Embedded as a base64 data URI rather than a signed URL -- puppeteer
+// renders this HTML with no session/auth context of its own, so a URL
+// requiring a fetch back to Supabase storage is an avoidable extra point
+// of failure. A data URI just works, offline and deterministically.
+async function logoDataUri(logoPath: string | null): Promise<string | null> {
+  if (!logoPath) return null
+  const { data, error } = await supabaseAdmin.storage.from(LOGO_BUCKET).download(logoPath)
+  if (error || !data) return null
+  const buffer = Buffer.from(await data.arrayBuffer())
+  const ext = logoPath.split('.').pop()
+  const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg'
+  return `data:${mime};base64,${buffer.toString('base64')}`
+}
 
 function fmtAmount(n: number, currency?: string | null): string {
   const formatted = Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -34,7 +49,7 @@ export type InvoiceRow = {
 
 async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<string> {
   const [orgRes, matterRes, timeEntriesRes, disbursementsRes] = await Promise.all([
-    supabaseAdmin.from('organizations').select('name').eq('id', tenantId).single(),
+    supabaseAdmin.from('organizations').select('name, logo_path').eq('id', tenantId).single(),
     supabaseAdmin
       .from('matters')
       .select('case_name, matter_id, clients(name, email)')
@@ -55,6 +70,7 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
   ])
 
   const orgName = orgRes.data?.name || 'FirmTrack'
+  const logoUri = await logoDataUri(orgRes.data?.logo_path || null)
   const matter = matterRes.data
   const client = matter ? (Array.isArray(matter.clients) ? matter.clients[0] : matter.clients) : null
   const timeEntries = timeEntriesRes.data || []
@@ -94,6 +110,8 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
   body { font-family: Arial, Helvetica, sans-serif; color: #1f2937; font-size: 12px; margin: 40px; }
   h1 { font-size: 20px; margin: 0 0 4px; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand img { width: 44px; height: 44px; object-fit: contain; border-radius: 4px; }
   .meta { text-align: right; }
   .meta div { margin-bottom: 2px; }
   .bill-to { margin-bottom: 24px; }
@@ -111,9 +129,12 @@ async function buildInvoiceHtml(tenantId: string, invoice: InvoiceRow): Promise<
 </head>
 <body>
   <div class="header">
-    <div>
-      <h1>${escapeHtml(orgName)}</h1>
-      <div>Invoice</div>
+    <div class="brand">
+      ${logoUri ? `<img src="${logoUri}" alt="" />` : ''}
+      <div>
+        <h1>${escapeHtml(orgName)}</h1>
+        <div>Invoice</div>
+      </div>
     </div>
     <div class="meta">
       <div><strong>Invoice #:</strong> ${escapeHtml(invoice.invoice_number)}</div>
