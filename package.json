@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
+    "@higgsfield/client": "^0.2.6",
     "@napi-rs/canvas": "^1.0.8",
     "@sparticuz/chromium": "^149.0.0",
     "@supabase/ssr": "^0.12.0",
