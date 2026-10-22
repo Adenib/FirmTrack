@@ -74,6 +74,7 @@ export async function GET(request: Request) {
     .select('*')
     .eq('tenant_id', profile.tenant_id)
     .eq('user_id', user.id)
+    .is('deleted_at', null)
     .order('logged_at', { ascending: false })
     .limit(200)
 
