@@ -77,6 +77,7 @@ const MODULES: ModuleEntry[] = [
       { key: 'accounttrack', label: 'Overview', href: '/accounttrack' },
       { key: 'accounttrack', label: 'Accounting Periods', href: '/accounttrack/accounting-periods' },
       { key: 'accounttrack', label: 'Registers', href: '/accounttrack/registers' },
+      { key: 'accounttrack', label: 'Reconciliation', href: '/accounttrack/reconciliation' },
       { key: 'accounttrack', label: 'Chart of Accounts', href: '/accounttrack/chart-of-accounts' },
       { key: 'accounttrack', label: 'Statements', href: '/accounttrack/statements' },
       { key: 'accounttrack', label: 'Lawyer Overview', href: '/accounttrack/lawyer-overview' },

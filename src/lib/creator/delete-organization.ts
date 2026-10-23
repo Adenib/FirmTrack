@@ -19,6 +19,11 @@ const TABLES_IN_ORDER = [
   'payroll_runs',
   'payroll_salaries',
   'leave_types',
+  // bank_statement_imports.account_id -> chart_of_accounts and
+  // bank_statement_lines.matched_journal_line_id -> journal_lines both have
+  // no cascade, so this must be cleared before both below. bank_statement_lines
+  // itself cascades from bank_statement_imports via ON DELETE CASCADE.
+  'bank_statement_imports',
   'journal_lines',
   'journal_entries',
   'accounting_periods',
