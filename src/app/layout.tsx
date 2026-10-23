@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FirmTrack — Track Performance, Grow Your Firm",
+  title: "FirmTrack — Legal Practice Management Software for Law Firms",
   description:
-    "Practice management for legal firms: time and billing, accounting, HR, and calendaring in one place.",
+    "FirmTrack is legal practice management software for law firms in Nigeria and beyond — time and billing, trust accounting, HR, payroll, documents, and calendaring in one secure platform.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

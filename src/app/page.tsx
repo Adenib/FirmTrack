@@ -186,6 +186,9 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
           <p>&copy; {new Date().getFullYear()} FirmTrack. All rights reserved.</p>
           <div className="flex items-center gap-6">
+            <Link href="/practice-management-software-nigeria" className="hover:text-brand-blue">
+              For Nigerian Firms
+            </Link>
             <Link href="/legal/terms-of-service" className="hover:text-brand-blue">
               Terms
             </Link>

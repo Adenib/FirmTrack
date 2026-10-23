@@ -28,6 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: BASE_URL, changeFrequency: 'weekly', priority: 1 },
+    { url: `${BASE_URL}/practice-management-software-nigeria`, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE_URL}/blog`, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${BASE_URL}/legal`, changeFrequency: 'monthly', priority: 0.3 },
     ...LEGAL_SLUGS.map((slug) => ({

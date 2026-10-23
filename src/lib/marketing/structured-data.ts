@@ -8,6 +8,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 // single <script type="application/ld+json"> tag -- no markup of their
 // own.
 
+// No street address is published here -- areaServed signals who FirmTrack
+// is for without asserting a physical location we haven't verified.
+// Upgrade to a real LocalBusiness/address once one is confirmed.
 export function buildOrganizationSchema() {
   return {
     '@context': 'https://schema.org',
@@ -15,6 +18,7 @@ export function buildOrganizationSchema() {
     name: 'FirmTrack',
     url: BASE_URL,
     logo: `${BASE_URL}/brand/icon-mark.png`,
+    areaServed: { '@type': 'Country', name: 'Nigeria' },
   }
 }
 
@@ -27,7 +31,8 @@ export function buildSoftwareApplicationSchema() {
     operatingSystem: 'Web',
     url: BASE_URL,
     description:
-      'Practice management software for law firms -- matters, billable time, billing, trust accounting, HR, payroll, and secure documents in one platform.',
+      'Legal practice management software for law firms in Nigeria and beyond -- matters, billable time, billing, trust accounting, HR, payroll, and secure documents in one platform.',
+    areaServed: { '@type': 'Country', name: 'Nigeria' },
     offers: [
       { '@type': 'Offer', name: 'Basic', priceCurrency: 'NGN', price: TIER_PRICES.basic },
       { '@type': 'Offer', name: 'Standard', priceCurrency: 'NGN', price: TIER_PRICES.standard },

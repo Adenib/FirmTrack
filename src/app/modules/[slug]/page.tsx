@@ -12,7 +12,11 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const mod = getMarketingModule(slug)
-  return { title: mod ? `${mod.title} — FirmTrack` : 'FirmTrack' }
+  if (!mod) return { title: 'FirmTrack' }
+  return {
+    title: `${mod.title} — Legal Practice Management Software | FirmTrack`,
+    description: `${mod.tagline} Part of FirmTrack, legal practice management software for law firms in Nigeria and beyond.`,
+  }
 }
 
 export default async function ModulePage({ params }: { params: Promise<{ slug: string }> }) {
