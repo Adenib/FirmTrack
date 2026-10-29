@@ -9,7 +9,7 @@ export type SendTransport = (args: {
   apiKey: string
   fromEmail: string
   fromName: string
-  to: string
+  to: string[]
   subject: string
   html: string
 }) => Promise<void>
@@ -23,7 +23,7 @@ const resendTransport: SendTransport = async ({ apiKey, fromEmail, fromName, to,
     },
     body: JSON.stringify({
       from: `${fromName} <${fromEmail}>`,
-      to: [to],
+      to,
       subject,
       html,
     }),
@@ -32,6 +32,14 @@ const resendTransport: SendTransport = async ({ apiKey, fromEmail, fromName, to,
     const body = await res.text()
     throw new Error(`Resend API error (${res.status}): ${body}`)
   }
+}
+
+// notification_email is stored as a single string but may hold several
+// comma-separated addresses (e.g. "it@aelex.com, backup-it@aelex.com") --
+// split/trim/dedupe here once, so every caller (and the Settings UI, which
+// just saves whatever was typed) can treat it as plain text.
+function parseRecipients(to: string): string[] {
+  return [...new Set(to.split(',').map((addr) => addr.trim()).filter(Boolean))]
 }
 
 async function sendAssetTrackEmail(
@@ -46,20 +54,23 @@ async function sendAssetTrackEmail(
   if (!apiKey || !fromEmail) {
     return { sent: false, error: 'Email sending is not configured (RESEND_API_KEY / ASSETTRACK_FROM_EMAIL)' }
   }
-  if (!args.to) {
+  const recipients = parseRecipients(args.to || '')
+  if (recipients.length === 0) {
     return { sent: false, error: missingRecipientError }
   }
 
   try {
-    await transport({ apiKey, fromEmail, fromName, to: args.to, subject: args.subject, html: args.html })
+    await transport({ apiKey, fromEmail, fromName, to: recipients, subject: args.subject, html: args.html })
     return { sent: true }
   } catch (err) {
     return { sent: false, error: err instanceof Error ? err.message : String(err) }
   }
 }
 
-// IT's "a ticket was submitted" notification -- recipient is the
-// per-tenant assettrack_sync_settings.notification_email.
+// IT's "a ticket was submitted" notification -- recipients come from the
+// per-tenant assettrack_sync_settings.notification_email, which may be a
+// single address or several comma-separated ones (e.g. AELEX's it@aelex.com
+// plus a backup address).
 export async function notifyAssetTicketSubmitted(
   args: { to: string; subject: string; html: string },
   transport: SendTransport = resendTransport

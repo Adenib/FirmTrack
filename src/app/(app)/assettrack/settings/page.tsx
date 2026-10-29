@@ -206,14 +206,16 @@ export default function AssetTrackSettingsPage() {
           <section className="bg-white border border-gray-200 rounded-lg p-4">
             <h2 className="font-semibold text-gray-900 mb-2">Notifications</h2>
             <p className="text-xs text-gray-500 mb-2">
-              Sent an email to this address whenever a new ticket is submitted. Leave blank to turn notifications off.
+              Sent an email to this address whenever a new ticket is submitted. Add more than one by separating
+              them with commas. Leave blank to turn notifications off.
             </p>
             <div className="flex items-center gap-2">
               <input
                 type="email"
+                multiple
                 value={notificationEmail}
                 onChange={(e) => setNotificationEmail(e.target.value)}
-                placeholder="it@yourfirm.com"
+                placeholder="it@yourfirm.com, backup-it@yourfirm.com"
                 className="flex-1 px-3 py-2 border rounded-md text-sm"
               />
               <button

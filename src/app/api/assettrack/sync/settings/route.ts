@@ -68,6 +68,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'sla_days must be a positive number' }, { status: 400 })
   }
 
+  // notification_email may hold several comma-separated addresses (e.g.
+  // "it@aelex.com, backup-it@aelex.com") -- validate and normalize each one
+  // rather than the raw string, since this is the only place it's ever
+  // written.
+  let normalizedNotificationEmail: string | null | undefined = undefined
+  if (notification_email !== undefined) {
+    if (!notification_email) {
+      normalizedNotificationEmail = null
+    } else {
+      const addresses = [...new Set(String(notification_email).split(',').map((a: string) => a.trim()).filter(Boolean))]
+      const invalid = addresses.filter((a) => !/^\S+@\S+\.\S+$/.test(a))
+      if (invalid.length > 0) {
+        return NextResponse.json({ error: `Not a valid email address: ${invalid.join(', ')}` }, { status: 400 })
+      }
+      normalizedNotificationEmail = addresses.join(', ')
+    }
+  }
+
   const patch: Record<string, unknown> = { tenant_id: profile.tenant_id, updated_at: new Date().toISOString() }
   if (sharepoint_site_id) {
     patch.sharepoint_site_id = sharepoint_site_id
@@ -77,7 +95,7 @@ export async function POST(request: Request) {
   }
   if (field_mapping !== undefined) patch.field_mapping = field_mapping || {}
   if (sla_days !== undefined) patch.sla_days = Number(sla_days)
-  if (notification_email !== undefined) patch.notification_email = notification_email || null
+  if (notification_email !== undefined) patch.notification_email = normalizedNotificationEmail
 
   const { data: settings, error } = await supabaseAdmin
     .from('assettrack_sync_settings')

@@ -53,10 +53,27 @@ describe('notifyAssetTicketSubmitted', () => {
     expect(calls[0]).toMatchObject({
       apiKey: 'test-key',
       fromEmail: 'noreply@firmtracks.com',
-      to: 'it@aelex.com',
+      to: ['it@aelex.com'],
       subject: 'New ticket',
       html: '<p>details</p>',
     })
+  })
+
+  it('splits a comma-separated notification_email into multiple recipients', async () => {
+    process.env.RESEND_API_KEY = 'test-key'
+    process.env.ASSETTRACK_FROM_EMAIL = 'noreply@firmtracks.com'
+
+    const calls: unknown[] = []
+    const result = await notifyAssetTicketSubmitted(
+      { to: 'it@aelex.com,  backup-it@aelex.com , it@aelex.com', subject: 'New ticket', html: '<p>details</p>' },
+      async (args) => {
+        calls.push(args)
+      }
+    )
+
+    expect(result.sent).toBe(true)
+    // Trimmed, and the accidental duplicate collapsed.
+    expect((calls[0] as { to: string[] }).to).toEqual(['it@aelex.com', 'backup-it@aelex.com'])
   })
 
   it('reports not sent, not thrown, when the transport itself fails', async () => {
@@ -98,6 +115,6 @@ describe('notifyAssetTicketReporter', () => {
     )
 
     expect(result.sent).toBe(true)
-    expect(calls[0]).toMatchObject({ to: 'staff@example.com', subject: 'Your laptop is ready' })
+    expect(calls[0]).toMatchObject({ to: ['staff@example.com'], subject: 'Your laptop is ready' })
   })
 })
