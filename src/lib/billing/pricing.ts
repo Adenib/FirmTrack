@@ -11,6 +11,7 @@ export const MODULES = [
   { key: 'ai_support', label: 'AI Support Assistant', free: false },
   { key: 'aitrack', label: 'AITrack', free: false },
   { key: 'assettrack', label: 'AssetTrack', free: false },
+  { key: 'procuretrack', label: 'ProcureTrack', free: false },
 ] as const
 
 export type ModuleKey = (typeof MODULES)[number]['key']

@@ -55,6 +55,37 @@ const TABLES_IN_ORDER = [
   'assettrack_tickets',
   'assettrack_assets',
   'assettrack_sync_settings',
+  // ProcureTrack -- children before parents, and the whole block before
+  // 'journal_entries' above (procuretrack_payments.journal_entry_id has no
+  // cascade) and before 'users' below (procuretrack_requisitions.requested_by
+  // is NOT NULL with no cascade). procuretrack_audit_log is NOT listed --
+  // it has UPDATE/DELETE revoked from service_role, same as document_events,
+  // and cleans up via its own tenant_id cascade once 'organizations' below
+  // is deleted.
+  'procuretrack_invoice_lines',
+  'procuretrack_payments',
+  'procuretrack_invoices',
+  'procuretrack_goods_receipt_lines',
+  'procuretrack_goods_receipts',
+  'procuretrack_po_amendments',
+  'procuretrack_po_lines',
+  'procuretrack_purchase_orders',
+  'procuretrack_rfq_quotes',
+  'procuretrack_rfq_vendors',
+  'procuretrack_rfqs',
+  'procuretrack_approvals',
+  'procuretrack_approval_rules',
+  'procuretrack_requisitions',
+  'procuretrack_budgets',
+  'procuretrack_catalog_items',
+  'procuretrack_contracts',
+  'vendor_portal_users',
+  'vendor_documents',
+  // Shared with AssetTrack -- must come after every procuretrack table
+  // above that references it without cascade (invoices, purchase_orders,
+  // contracts).
+  'vendors',
+  'departments',
   'app_feedback',
   'app_feedback_prompts',
   'movements',
@@ -100,6 +131,17 @@ export async function deleteOrganization(
   const { data: users } = await supabaseAdmin.from('users').select('id').eq('tenant_id', orgId)
   const userIds = (users || []).map((u) => u.id)
 
+  // Vendor portal accounts are a separate Supabase Auth identity space
+  // (never rows in public.users), so they need their own auth cleanup --
+  // the loop above would otherwise miss them entirely and leave orphaned
+  // auth.users rows behind after this organization is gone.
+  const { data: vendorPortalUsers } = await supabaseAdmin
+    .from('vendor_portal_users')
+    .select('auth_user_id')
+    .eq('tenant_id', orgId)
+    .not('auth_user_id', 'is', null)
+  const vendorAuthUserIds = (vendorPortalUsers || []).map((v) => v.auth_user_id as string)
+
   for (const bucket of ATTACHMENT_BUCKETS) {
     await destroyAttachments(supabaseAdmin, orgId, bucket).catch((e: Error) => {
       result.tableErrors.push({ table: `storage(${bucket})`, message: e.message })
@@ -114,7 +156,7 @@ export async function deleteOrganization(
     if (error) result.tableErrors.push({ table, message: error.message })
   }
 
-  for (const userId of userIds) {
+  for (const userId of [...userIds, ...vendorAuthUserIds]) {
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
     if (error) result.userDeleteErrors.push({ userId, message: error.message })
   }

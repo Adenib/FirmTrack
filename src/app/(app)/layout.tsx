@@ -23,6 +23,7 @@ import {
   SparkleIcon,
   LaptopIcon,
   ChatBubbleIcon,
+  CartIcon,
 } from '@/components/brand/icons'
 
 type SubItem = { key: string; label: string; href: string }
@@ -127,6 +128,27 @@ const MODULES: ModuleEntry[] = [
       { key: 'assettrack', label: 'Asset Register', href: '/assettrack/assets' },
       { key: 'assettrack', label: 'Reports', href: '/assettrack/reports' },
       { key: 'assettrack', label: 'Settings', href: '/assettrack/settings' },
+    ],
+  },
+  {
+    key: 'procuretrack',
+    label: 'ProcureTrack',
+    href: '/procuretrack',
+    description: 'Purchase requisitions through approval, RFQ, purchase orders, goods receipt, invoicing, and payment.',
+    icon: CartIcon,
+    subItems: [
+      { key: 'procuretrack', label: 'Requisitions', href: '/procuretrack/requisitions' },
+      { key: 'procuretrack', label: 'Vendors', href: '/procuretrack/vendors' },
+      { key: 'procuretrack', label: 'Catalog', href: '/procuretrack/catalog' },
+      { key: 'procuretrack', label: 'RFQs', href: '/procuretrack/rfqs' },
+      { key: 'procuretrack', label: 'Purchase Orders', href: '/procuretrack/purchase-orders' },
+      { key: 'procuretrack', label: 'Goods Receipts', href: '/procuretrack/goods-receipts' },
+      { key: 'procuretrack', label: 'Invoices', href: '/procuretrack/invoices' },
+      { key: 'procuretrack', label: 'Payments', href: '/procuretrack/payments' },
+      { key: 'procuretrack', label: 'Contracts', href: '/procuretrack/contracts' },
+      { key: 'procuretrack', label: 'Budgets', href: '/procuretrack/budgets' },
+      { key: 'procuretrack', label: 'Reports', href: '/procuretrack/reports' },
+      { key: 'procuretrack', label: 'Settings', href: '/procuretrack/settings' },
     ],
   },
   {

@@ -193,6 +193,39 @@ export async function destroyTestTenant(tenant: { tenantId: string; userId: stri
     'assettrack_tickets',
     'assettrack_assets',
     'assettrack_sync_settings',
+    // ProcureTrack -- children before parents throughout, and the whole
+    // block before 'journal_entries' (procuretrack_payments.journal_entry_id
+    // has no cascade) and before 'users' (procuretrack_requisitions.
+    // requested_by is NOT NULL with no cascade). procuretrack_audit_log is
+    // NOT listed -- same as document_events/assettrack_ticket_events, it
+    // has UPDATE/DELETE revoked from service_role and cleans up via its
+    // own tenant_id -> organizations cascade once 'organizations' is
+    // deleted at the very end.
+    'procuretrack_invoice_lines',
+    'procuretrack_payments',
+    'procuretrack_invoices',
+    'procuretrack_goods_receipt_lines',
+    'procuretrack_goods_receipts',
+    'procuretrack_po_amendments',
+    'procuretrack_po_lines',
+    'procuretrack_purchase_orders',
+    'procuretrack_rfq_quotes',
+    'procuretrack_rfq_vendors',
+    'procuretrack_rfqs',
+    'procuretrack_approvals',
+    'procuretrack_approval_rules',
+    'procuretrack_requisitions',
+    'procuretrack_budgets',
+    'procuretrack_catalog_items',
+    'procuretrack_contracts',
+    'vendor_portal_users',
+    'vendor_documents',
+    // Shared with AssetTrack (assettrack_tickets.vendor_id is ON DELETE
+    // SET NULL, non-blocking either way) -- must still come after every
+    // procuretrack table above that references it without cascade
+    // (invoices, purchase_orders, contracts).
+    'vendors',
+    'departments',
     'payroll_line_items',
     'payroll_runs',
     'payroll_salaries',
@@ -358,4 +391,32 @@ export async function createTestPlatformAdmin(role: string = 'admin'): Promise<T
 export async function destroyTestPlatformAdmin(admin: TestPlatformAdmin) {
   await supabaseAdmin.from('platform_admins').delete().eq('id', admin.adminId)
   await supabaseAdmin.auth.admin.deleteUser(admin.userId).catch(() => {})
+}
+
+// ProcureTrack vendor portal users are the same shape as platform admins:
+// a real Supabase Auth account with no row in public.users at all (identity
+// lives in vendor_portal_users instead) -- /api/auth/login works for them
+// unchanged, since its is_active/org-approval checks are both skipped when
+// no public.users profile is found for the authenticated id.
+export type TestVendorPortalUser = { portalUserId: string; userId: string; email: string; vendorId: string; fetch: TestTenant['fetch'] }
+
+export async function createTestVendorPortalUser(tenant: TestTenant, vendorId: string): Promise<TestVendorPortalUser> {
+  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const email = `test-vendor-${uniqueId}@firmtrack-test.local`
+  const password = 'TestPassword123!'
+
+  const res = await tenant.fetch('/api/procuretrack/portal/invite', {
+    method: 'POST',
+    body: JSON.stringify({ vendor_id: vendorId, email, password }),
+  })
+  const body = await res.json()
+  if (!res.ok) throw new Error(`Failed to invite test vendor portal user: ${body.error}`)
+
+  const authedFetch = await loginAs(email, password)
+  return { portalUserId: body.portalUser.id, userId: body.portalUser.auth_user_id, email, vendorId, fetch: authedFetch }
+}
+
+export async function destroyTestVendorPortalUser(vendorPortalUser: TestVendorPortalUser) {
+  await supabaseAdmin.from('vendor_portal_users').delete().eq('id', vendorPortalUser.portalUserId)
+  await supabaseAdmin.auth.admin.deleteUser(vendorPortalUser.userId).catch(() => {})
 }

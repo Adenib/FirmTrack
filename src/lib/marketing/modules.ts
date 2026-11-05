@@ -7,6 +7,7 @@ import {
   SettingsIcon,
   FileCheckIcon,
   LaptopIcon,
+  CartIcon,
 } from '@/components/brand/icons'
 
 export type MarketingModule = {
@@ -128,6 +129,19 @@ export const MARKETING_MODULES: MarketingModule[] = [
       'Vendor referral, parts, and resolution tracking with a full audit trail',
     ],
     screenshotAlt: 'AssetTrack showing a laptop repair ticket moving through triage to resolution',
+  },
+  {
+    slug: 'procuretrack',
+    title: 'ProcureTrack',
+    tagline: 'From requisition to payment, every purchase traceable end to end.',
+    icon: CartIcon,
+    features: [
+      'Requisition, approval, RFQ, purchase order, goods receipt, and invoicing in one chain',
+      'Configurable approval thresholds by amount and department -- no hard-coded limits',
+      'Automatic 3-way match between purchase order, goods receipt, and invoice',
+      'Department budgets, a shared vendor registry, and a vendor self-service portal',
+    ],
+    screenshotAlt: 'ProcureTrack showing a purchase order moving through approval to payment',
   },
 ]
 

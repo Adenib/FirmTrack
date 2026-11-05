@@ -26,7 +26,10 @@ const DECISIONS = ['repair', 'replace', 'warranty', 'pending']
 const STAFF_EDITABLE_FIELDS = [
   'asset_id', 'status', 'triage_notes', 'diagnosis', 'data_backed_up', 'backup_notes',
   'estimated_repair_cost', 'estimated_replacement_cost', 'decision', 'vendor_name',
-  'parts_status', 'resolution_notes',
+  // vendor_id is additive, alongside the original free-text vendor_name --
+  // staff can optionally link a ticket to a real vendors row going
+  // forward without that older field being removed or repurposed.
+  'vendor_id', 'parts_status', 'resolution_notes',
 ] as const
 
 // Cost estimates and vendor name are staff-only, even on the reporting
@@ -305,6 +308,15 @@ export async function PATCH(request: Request) {
   }
   if ('decision' in patch && !DECISIONS.includes(String(patch.decision))) {
     return NextResponse.json({ error: 'Invalid decision' }, { status: 400 })
+  }
+  if ('vendor_id' in patch && patch.vendor_id !== null) {
+    const { data: vendor } = await supabaseAdmin
+      .from('vendors')
+      .select('id')
+      .eq('id', patch.vendor_id)
+      .eq('tenant_id', profile.tenant_id)
+      .single()
+    if (!vendor) return NextResponse.json({ error: 'Unknown vendor_id' }, { status: 400 })
   }
   for (const field of ['estimated_repair_cost', 'estimated_replacement_cost']) {
     if (field in patch && patch[field] !== null) {
