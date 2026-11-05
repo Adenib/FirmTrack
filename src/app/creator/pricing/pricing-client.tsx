@@ -14,6 +14,7 @@ const MODULES = [
   { key: 'ai_support', label: 'AI Support Assistant (legacy)' },
   { key: 'aitrack', label: 'AITrack' },
   { key: 'assettrack', label: 'AssetTrack' },
+  { key: 'procuretrack', label: 'ProcureTrack' },
 ]
 
 const TIERS = ['basic', 'standard', 'elite']
